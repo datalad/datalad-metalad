@@ -1,8 +1,14 @@
 DataLad extension for semantic metadata handling
 ************************************************
 
-The extension equips DataLad with some extra commands that enable
-alternative workflows.
+This software is a [DataLad](http://datalad.org) extension that equips DataLad
+with an alternative command suite for metadata handling (extraction, aggregation,
+reporting). It is backward-compatible with the metadata storage format in DataLad
+proper, while being substantially more performant (especially on large dataset
+hierarchies). Additionally, it provides new metadata extractors and improved
+variants of DataLad's own ones that are tuned for better performance and richer,
+JSON-LD compliant metadata reports.
+
 
 What is in it for users?
 ========================
