@@ -265,7 +265,9 @@ def _native_metadata_to_graph_nodes(
     for extractor, report in iteritems(md):
         if '@context' in report:
             # this is linked data!
-            context = ReadOnlyDict(report['@context'])
+            context = ReadOnlyDict(report['@context']) \
+                if isinstance(report['@context'], dict) \
+                else report['@context']
             if extractor in contexts \
                     and context != contexts[extractor]:
                 raise RuntimeError(
@@ -308,25 +310,41 @@ def _native_metadata_to_graph_nodes(
 
 
 def format_jsonld_metadata(nbc):
-    ro_default_context = ReadOnlyDict(default_context)
     # build the full graph
-    graph = []
-    # for all contexts and their documents
-    for k, v in iteritems(nbc):
-        if k == ro_default_context:
-            # if the context matches the default, extend the top-level graph
-            graph.extend(v)
-        elif v:
-            # document with a different context: add as a sub graph
-            graph.append({
-                '@context': dict(k),
-                '@graph': v,
-            })
-    jsonld = {
-        '@context': default_context,
-        '@graph': graph,
-    }
-    return jsonld
+    jsonld = []
+    for context, graph in iteritems(nbc):
+        # document with a different context: add as a sub graph
+        jsonld.append({
+            '@context': dict(context)
+            if isinstance(context, ReadOnlyDict)
+            else context,
+            '@graph': graph,
+        })
+    return jsonld[0] if len(jsonld) == 1 else jsonld
+
+
+def get_file_id(rec):
+    """Returns a suitable '@id' of a file metadata from a status result
+
+    Prefer a present annex key, but fall back on the Git shasum that is
+    always around. Identify the GITSHA as such, and in a similar manner
+    to git-annex's style
+    """
+    return rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
+        rec['bytesize'] if rec['type'] != 'symlink' else 0,
+        rec['gitshasum'])
+
+
+def get_agent_id(name, email):
+    """Return a suitable '@id' for committers/authors
+
+    In most cases we will not have a URL for people/software agents.
+    Let's create a string ID that is based on the combination of both
+    name and email.
+    """
+    return '{}<{}>'.format(
+        name.replace(' ', '_'),
+        email)
 
 
 from datalad import setup_package
