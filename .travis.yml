@@ -1,0 +1,99 @@
+# vim ft=yaml
+# travis-ci.org definition for DataLad build
+language: python
+
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+
+cache:
+  - apt
+
+env:
+  global:
+    # will be used in the matrix, where neither other variable is used
+    - BOTO_CONFIG=/tmp/nowhere
+    - DATALAD_TESTS_SSH=1
+    - DATALAD_LOG_CMD_ENV=GIT_SSH_COMMAND
+    - TESTS_TO_PERFORM=
+    - NOSE_OPTS=-s
+    - NOSE_SELECTION_OP="not "   # so it would be "not (integration or usecase)"
+    # Special settings/helper for combined coverage from special remotes execution
+    - COVERAGE=coverage
+    - DATALAD_DATASETS_TOPURL=http://datasets-tests.datalad.org
+  matrix:
+    - DATALAD_REPO_VERSION=5
+    - DATALAD_REPO_VERSION=6
+
+matrix:
+  include:
+  - python: 3.5
+    env:
+    # eventually: - TMPDIR="/var/tmp/sym ссылка"
+    - TMPDIR="/var/tmp/sym link"
+
+before_install:
+  # Just in case we need to check if nfs is there etc
+  - sudo lsmod
+  # The ultimate one-liner setup for NeuroDebian repository
+  - bash <(wget -q -O- http://neuro.debian.net/_files/neurodebian-travis.sh)
+  - travis_retry sudo apt-get update -qq
+  - travis_retry sudo apt-get install eatmydata  # to speedup some installations
+  # prep for SSH network access
+  - sudo bash -c 'echo "127.0.0.1  datalad-test" >> /etc/hosts'
+  - travis_retry sudo eatmydata apt-get install openssh-client
+  - mkdir -p ~/.ssh
+  - echo -e "Host localhost\n\tStrictHostKeyChecking no\n\tIdentityFile /tmp/dl-test-ssh-id\nHost datalad-test\n\tStrictHostKeyChecking no\n\tIdentityFile /tmp/dl-test-ssh-id\n" >> ~/.ssh/config
+  - ssh-keygen -f /tmp/dl-test-ssh-id -N ""
+  - cat /tmp/dl-test-ssh-id.pub >> ~/.ssh/authorized_keys
+  - bash -c 'eval $(ssh-agent) && ssh-add /tmp/dl-test-ssh-id'
+  - ssh -v localhost exit
+  - ssh -v datalad-test exit
+  # install git-annex with the relevant bits
+  # no recommends to avoid inheriting the entire multimedia stack
+  - travis_retry sudo eatmydata apt-get install --no-install-recommends git-annex-standalone aria2 git-remote-gcrypt lsof gnupg nocache
+
+install:
+  # Install standalone build of git-annex for the recent enough version
+  - travis_retry sudo eatmydata apt-get install zip pandoc
+  # for metadata support
+  - git config --global user.email "test@travis.land"
+  - git config --global user.name "Travis Almighty"
+  - cd ..; pip install -q codecov; cd -
+  - pip install -r requirements.txt
+  #- pip install 'sphinx>=1.6.2'
+  # So we could test under sudo -E with PATH pointing to installed location
+  - sudo sed -i -e 's/^Defaults.*secure_path.*$//' /etc/sudoers
+  # TMPDIRs
+  - if [[ "${TMPDIR:-}" =~ .*/sym\ link ]]; then echo "Symlinking $TMPDIR"; ln -s /tmp "$TMPDIR"; fi
+  - if [[ "${TMPDIR:-}" =~ .*/d\ i\ r ]]; then echo "mkdir $TMPDIR"; mkdir -p "$TMPDIR"; fi
+
+script:
+  # Verify that setup.py build doesn't puke
+  - python setup.py build
+  # Test installation system-wide
+  - sudo pip install .
+  # Run tests
+  - http_proxy=
+    PATH=$PWD/tools/coverage-bin:$PATH
+    $NOSE_WRAPPER `which nosetests` $NOSE_OPTS
+      -v
+      --with-doctest
+      --with-cov --cover-package datalad_metalad
+      --logging-level=INFO
+      $TESTS_TO_PERFORM
+  # Imports should be relative
+  - if grep -r -e '\(from\|import\)\s\s*datalad_metalad' datalad_metalad; then
+      echo Convert absolute imports to relative;
+      exit 1;
+    fi
+  #- if [ ! "${DATALAD_LOG_LEVEL:-}" = 2 ]; then
+  #      PYTHONPATH=$PWD $NOSE_WRAPPER make -C docs html doctest;
+  #  fi
+  # Report WTF information using system wide installed version
+  - datalad wtf
+
+after_success:
+  - coverage combine -a /tmp/.coverage-entrypoints-*
+  - codecov
