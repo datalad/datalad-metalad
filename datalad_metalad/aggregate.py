@@ -26,7 +26,7 @@ import os.path as op
 import shutil
 
 # API commands we need
-from datalad_metalad.extract import Extract
+from .extract import Extract
 from datalad.core.local.status import Status
 from datalad.core.local.save import Save
 from datalad.core.local.diff import (
