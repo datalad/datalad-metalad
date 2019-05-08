@@ -108,6 +108,7 @@ class RunProvenanceExtractor(MetadataExtractor):
                 )
             activities[rec['gitshasum']] = rec
 
+        yielded_files = False
         if process_type in ('all', 'content'):
             for rec in status:
                 # see if we have any knowledge about this entry
@@ -130,6 +131,7 @@ class RunProvenanceExtractor(MetadataExtractor):
                         type=rec['type'],
                         status='ok',
                     )
+                    yielded_files = True
                 else:
                     # we don't know an activity that made this file, but we
                     # could still report who has last modified it
@@ -176,14 +178,18 @@ class RunProvenanceExtractor(MetadataExtractor):
                     'email': rec['email'],
                 })
 
-            yield dict(
-                metadata={
-                    '@context': 'http://openprovenance.org/prov.jsonld',
-                    '@graph': graph,
-                },
-                type='dataset',
-                status='ok',
-            )
+            if yielded_files or graph:
+                # we either need a context report for file records, or
+                # we have something to say about this dataset
+                # in general, one will not come without the other
+                yield dict(
+                    metadata={
+                        '@context': 'http://openprovenance.org/prov.jsonld',
+                        '@graph': graph,
+                    },
+                    type='dataset',
+                    status='ok',
+                )
 
 
 def yield_run_records(ds):
