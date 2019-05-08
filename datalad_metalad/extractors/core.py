@@ -16,6 +16,8 @@
 from .base import MetadataExtractor
 from .. import (
     default_context,
+    get_file_id,
+    get_agent_id,
 )
 from datalad.utils import (
     Path,
@@ -100,10 +102,7 @@ class DataladCoreExtractor(MetadataExtractor):
         commitinfo = _get_commit_info(ds, refcommit, status)
         contributor_ids = []
         for contributor in commitinfo.pop('contributors', []):
-            # use RFC822 inspired style as ID
-            contributor_id = '{}<{}>'.format(
-                contributor[0].replace(' ', '_'),
-                contributor[1])
+            contributor_id = get_agent_id(*contributor[:2])
             yield {
                 '@id': contributor_id,
                 # we cannot distinguish real people from machine-committers
@@ -132,7 +131,7 @@ class DataladCoreExtractor(MetadataExtractor):
             # relative path within dataset, always POSIX
             # TODO find a more specific term for "local path relative to root"
             'name': Path(part['path']).relative_to(ds.pathobj).as_posix(),
-            '@id': _get_file_key(part),
+            '@id': get_file_id(part),
         }
             for part in status
             if part['type'] != 'dataset'
@@ -281,7 +280,7 @@ class DataladCoreExtractor(MetadataExtractor):
 
     def _describe_file(self, rec):
         info = {
-            '@id': _get_file_key(rec),
+            '@id': get_file_id(rec),
             # schema.org doesn't have a useful term, only contentSize
             # and fileSize which seem to be geared towards human consumption
             # not numerical accuracy
@@ -335,15 +334,6 @@ def _get_archive_key(whereis):
         elif u'.zip/' in whereis:
             # key will not have a slash
             return whereis.split('/')[0]
-
-
-def _get_file_key(rec):
-    # prefer the annex key, but fall back on the git shasum that is
-    # always around, identify the GITSHA as such in a similar manner
-    # to git-annex's style
-    return rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
-        rec['bytesize'] if rec['type'] != 'symlink' else 0,
-        rec['gitshasum'])
 
 
 def _get_commit_info(ds, refcommit, status):
