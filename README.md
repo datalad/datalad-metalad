@@ -16,7 +16,7 @@ Command(s) currently provided by this extension
   DataLad's metadata extractors.
 - `meta-aggregate` -- complete reimplementation of metadata aggregation, with
   stellar performance benefits, in particular on large dataset hierarchies.
-- `meta-report` -- new command to specifically access the aggregated metadata
+- `meta-dump` -- new command to specifically access the aggregated metadata
   present in a dataset, much faster and more predictable behavior than the
   `metadata` command in datalad-core.
 

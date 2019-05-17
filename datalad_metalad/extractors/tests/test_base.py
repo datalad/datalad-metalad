@@ -15,7 +15,7 @@ from pkg_resources import iter_entry_points
 from datalad.api import (
     Dataset,
     meta_extract,
-    rev_save as save,
+    save,
     install,
 )
 from datalad.support.gitrepo import GitRepo
@@ -42,7 +42,7 @@ from ...tests import (
 @with_tree(tree={'file.dat': ''})
 def check_api(no_annex, path):
     ds = Dataset(path).create(force=True, no_annex=no_annex)
-    ds.rev_save()
+    ds.save()
     assert_repo_status(ds.path)
 
     processed_extractors, skipped_extractors = [], []
@@ -119,7 +119,7 @@ def test_plainest(path):
     (r.pathobj / '.datalad').mkdir()
     (r.pathobj / '.datalad' / 'dummy').write_text(text_type('stamp'))
     ds = Dataset(r.path)
-    ds.rev_save()
+    ds.save()
     assert_result_count(
         meta_extract(
             dataset=ds.path,

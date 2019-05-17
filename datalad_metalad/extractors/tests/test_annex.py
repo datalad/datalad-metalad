@@ -14,7 +14,7 @@ from datalad.distribution.dataset import Dataset
 # API commands needed
 from datalad.api import (
     create,
-    rev_save,
+    save,
     meta_extract,
 )
 from datalad.tests.utils import (
@@ -30,7 +30,7 @@ def test_annex_contentmeta(path):
     mfile_path.parent.mkdir()
     mfile_path.write_text(u'nothing')
     (ds.pathobj / 'ignored').write_text(u'nometa')
-    ds.rev_save()
+    ds.save()
     ds.repo.set_metadata(
         text_type(mfile_path.relative_to(ds.pathobj)),
         init={'tag': 'mytag', 'fancy': 'this?'}

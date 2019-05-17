@@ -82,7 +82,7 @@ def test_ds_extraction(path):
     ds = Dataset(path).create(force=True)
     ds.config.add('datalad.metadata.exclude-path', '.metadata',
                   where='dataset')
-    ds.rev_save()
+    ds.save()
     assert_repo_status(ds.path)
 
     # by default we get core and annex reports

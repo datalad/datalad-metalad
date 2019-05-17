@@ -14,8 +14,8 @@ from datalad.distribution.dataset import Dataset
 # API commands needed
 from datalad.api import (
     create,
-    rev_save,
-    meta_report,
+    save,
+    meta_dump,
     meta_aggregate,
 )
 from datalad.tests.utils import (
@@ -100,11 +100,11 @@ def test_custom_dsmeta(path):
     # enable custom extractor
     # use default location
     ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
-    ds.rev_save()
+    ds.save()
     assert_repo_status(ds.path)
     res = ds.meta_aggregate()
     assert_status('ok', res)
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     dsmeta = res[0]['metadata']
     assert_in('metalad_custom', dsmeta)
@@ -117,7 +117,7 @@ def test_custom_dsmeta(path):
         'datalad.metadata.custom-dataset-source',
         'nothere',
         where='dataset')
-    ds.rev_save()
+    ds.save()
     # we could argue that any config change should lead
     # to a reaggregation automatically, but that would mean
     # that we are willing to pay a hefty performance price
@@ -133,7 +133,7 @@ def test_custom_dsmeta(path):
             ds, 'nothere'),
     )
 
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(res[0]['metadata'].get('metalad_custom', {}), {})
 
@@ -143,9 +143,9 @@ def test_custom_dsmeta(path):
         # always POSIX!
         'down/customloc',
         where='dataset')
-    ds.rev_save()
+    ds.save()
     ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(testmeta, res[0]['metadata']['metalad_custom'])
 
@@ -155,9 +155,9 @@ def test_custom_dsmeta(path):
         # put back default
         '.metadata/dataset.json',
         where='dataset')
-    ds.rev_save()
+    ds.save()
     ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(
         # merge order: testmeta <- sample_jsonld
@@ -180,7 +180,7 @@ def test_custom_contentmeta(path):
     ds.config.add('datalad.metadata.custom-content-source',
                   '{freldir}/_{fname}.dl.json',
                   where='dataset')
-    ds.rev_save()
+    ds.save()
     res = ds.meta_extract(sources=['metalad_custom'], process_type='content')
     assert_result_count(
         res, 1,
@@ -208,7 +208,7 @@ def test_custom_contentmeta(path):
 def test_custom_content_broken(path):
     ds = Dataset(path).create(force=True)
     ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
-    ds.rev_save()
+    ds.save()
     res = ds.meta_extract(sources=['metalad_custom'], process_type='content',
                                   on_failure='ignore')
     assert_result_count(res, 1)
