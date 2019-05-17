@@ -195,7 +195,7 @@ class Aggregate(Interface):
         # path args could be
         # - installed datasets
         # - names of pre-aggregated dataset that are not around
-        # - -like rev-status they should match anything underneath them
+        # - -like status they should match anything underneath them
 
         # Step 1: figure out which available dataset is closest to a given path
         if path:
@@ -830,7 +830,7 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
     ]
     for obsolete_obj in obsolete_objs:
         # remove from the object store
-        # there is no need to fiddle with `remove()`, rev-save will do that
+        # there is no need to fiddle with `remove()`, save will do that
         # just fine on its own
         lgr.debug("Remove obsolete metadata object %s", obsolete_obj)
         obsolete_obj.unlink()

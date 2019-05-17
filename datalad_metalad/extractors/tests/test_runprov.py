@@ -14,7 +14,7 @@ from datalad.distribution.dataset import Dataset
 # API commands needed
 from datalad.api import (
     create,
-    rev_save,
+    save,
     meta_extract,
 )
 from datalad.tests.utils import (
@@ -37,7 +37,7 @@ def test_custom_dsmeta(path):
     ds.config.add('datalad.metadata.nativetype',
                   'metalad_runprov',
                   where='dataset')
-    ds.rev_save()
+    ds.save()
     assert_repo_status(ds.path)
     # run when there are no run records
     res = ds.meta_extract(sources=['metalad_runprov'])

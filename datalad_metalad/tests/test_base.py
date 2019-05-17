@@ -17,7 +17,7 @@ from datalad.distribution.dataset import Dataset
 from datalad.support.gitrepo import GitRepo
 from datalad.api import (
     create,
-    rev_save,
+    save,
     remove,
 )
 from .. import (
@@ -65,21 +65,21 @@ def test_get_refcommit(path):
     eq_(get_refcommit(ds), None)
     # place irrelevant file and commit
     create_tree(ds.path, {'.datalad': {'ignored': 'content'}})
-    ds.rev_save()
+    ds.save()
     # no change to the previous run, irrelevant changes are ignored
     eq_(get_refcommit(ds), None)
     # a real change
     create_tree(ds.path, {'real': 'othercontent'})
-    ds.rev_save()
+    ds.save()
     real_change = get_refcommit(ds)
     eq_(real_change, ds.repo.get_hexsha('HEAD'))
     # another irrelevant change, no change in refcommit
     create_tree(ds.path, {'.datalad': {'ignored2': 'morecontent'}})
-    ds.rev_save()
+    ds.save()
     eq_(get_refcommit(ds), real_change)
     # we can pick up deletions
     os.unlink(text_type(ds.pathobj / 'real'))
-    ds.rev_save()
+    ds.save()
     eq_(get_refcommit(ds), ds.repo.get_hexsha('HEAD'))
     # subdataset addition
     subds = ds.create('sub')
@@ -87,11 +87,11 @@ def test_get_refcommit(path):
     eq_(subds_addition, ds.repo.get_hexsha('HEAD'))
     # another irrelevant change, no change in refcommit, despite subds presence
     create_tree(ds.path, {'.datalad': {'ignored3': 'evenmorecontent'}})
-    ds.rev_save()
+    ds.save()
     eq_(get_refcommit(ds), subds_addition)
     # subdataset modification is a relevant change
     create_tree(subds.path, {'real': 'real'})
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
     eq_(get_refcommit(ds), ds.repo.get_hexsha('HEAD'))
     # and subdataset removal
     ds.remove('sub', check=False)

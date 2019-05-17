@@ -57,7 +57,7 @@ def test_ignore_nondatasets(path):
             _kill_time(
                 ds.meta_report(reporton='datasets', on_failure='ignore')))
         # making it a submodule has no effect either
-        ds.rev_save(subpath)
+        ds.save(subpath)
         eq_(len(ds.subdatasets()), n_subm + 1)
         eq_(meta,
             _kill_time(
@@ -69,7 +69,7 @@ def test_ignore_nondatasets(path):
 @with_tempfile(mkdir=True)
 def test_bf2458(src, dst):
     ds = Dataset(src).create(force=True)
-    ds.rev_save(to_git=False)
+    ds.save(to_git=False)
 
     # no clone (empty) into new dst
     clone = install(source=ds.path, path=dst)

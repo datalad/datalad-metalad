@@ -100,12 +100,12 @@ def test_basic_aggregate(path):
     sub = base.create('sub', force=True)
     #base.meta_report(sub.path, init=dict(homepage='this'), apply2global=True)
     subsub = base.create(op.join('sub', 'subsub'), force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     assert_repo_status(base.path)
     # we will first aggregate the middle dataset on its own, this will
     # serve as a smoke test for the reuse of metadata objects later on
     sub.meta_aggregate()
-    base.rev_save()
+    base.save()
     assert_repo_status(base.path)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
@@ -159,9 +159,9 @@ def test_aggregation(path):
     subsubds = subds.create('subsub', force=True)
     subsubds.config.add('datalad.metadata.nativetype', 'frictionless_datapackage',
                         where='dataset')
-    assert_status('ok', ds.rev_save(recursive=True))
+    assert_status('ok', ds.save(recursive=True))
     # while we are at it: dot it again, nothing should happen
-    assert_status('notneeded', ds.rev_save(recursive=True))
+    assert_status('notneeded', ds.save(recursive=True))
 
     assert_repo_status(ds.path)
     # aggregate metadata from all subdatasets into any superdataset, including
@@ -318,7 +318,7 @@ def test_reaggregate_with_unavailable_objects(path):
             '** annex.largefiles=nothing\nmetadata/objects/** annex.largefiles=anything\n')
     sub = base.create('sub', force=True)
     subsub = base.create(op.join('sub', 'subsub'), force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     assert_repo_status(base.path)
     # first a quick check that an unsupported 'into' mode causes an exception
     assert_raises(
@@ -357,7 +357,7 @@ def test_aggregate_with_unavailable_objects_from_subds(path, target):
             '** annex.largefiles=nothing\nmetadata/objects/** annex.largefiles=anything\n')
     sub = base.create('sub', force=True)
     subsub = base.create(op.join('sub', 'subsub'), force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     assert_repo_status(base.path)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
@@ -391,7 +391,7 @@ def test_publish_aggregated(path):
         f.write(
             '** annex.largefiles=nothing\nmetadata/objects/** annex.largefiles=anything\n')
     base.create('sub', force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     assert_repo_status(base.path)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
@@ -439,7 +439,7 @@ def test_aggregate_removal(path):
             '** annex.largefiles=nothing\nmetadata/objects/** annex.largefiles=anything\n')
     sub = base.create('sub', force=True)
     subsub = sub.create(op.join('subsub'), force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
     res = base.meta_report(reporton='aggregates', recursive=True)
@@ -474,7 +474,7 @@ def test_update_strategy(path):
             '** annex.largefiles=nothing\nmetadata/objects/** annex.largefiles=anything\n')
     sub = base.create('sub', force=True)
     subsub = sub.create(op.join('subsub'), force=True)
-    base.rev_save(recursive=True)
+    base.save(recursive=True)
     assert_repo_status(base.path)
     # we start clean
     for ds in base, sub, subsub:
@@ -549,7 +549,7 @@ def test_partial_aggregation(path):
     ds = Dataset(path).create(force=True)
     sub1 = ds.create('sub1', force=True)
     sub2 = ds.create('sub2', force=True)
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
 
     # if we aggregate a path(s) and say to recurse, we must not recurse into
     # the dataset itself and aggregate others
@@ -595,7 +595,7 @@ def test_partial_aggregation(path):
     sub1.unlock('here')
     with open(op.join(sub1.path, 'here'), 'w') as f:
         f.write('fresh')
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
     assert_repo_status(path)
     # TODO for later
     # test --since with non-incremental
@@ -610,7 +610,7 @@ def test_aggregate_fail(path):
     ds = Dataset(path).create()
     # we need one real piece of content
     (ds.pathobj / 'real').write_text(text_type('real'))
-    ds.rev_save()
+    ds.save()
     (ds.pathobj / 'dummy').write_text(text_type('blurb'))
     assert_repo_status(ds.path, untracked=['dummy'])
     # aggregation will not fail, untracked content is simply ignored
@@ -635,7 +635,7 @@ def _prep_partial_update_ds(path):
     # important to use a different name than the file in subds1
     # so we have two metadata objects with different hashes
     (subds2.pathobj / 'realsub2').write_text(text_type('real'))
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
     return ds, subds, subds2
 
 
@@ -648,7 +648,7 @@ def test_reaggregate(path):
     assert_status('notneeded', ds.meta_aggregate(recursive=True))
     # modify subds1
     (subds1.pathobj / 'new').write_text(text_type('content'))
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
     # go for a full re-aggregation, it should do the right thing
     # and only re-extract from subds1 and the root dataset
     # as these are the only ones with changes
@@ -728,7 +728,7 @@ def test_unique_values(path):
                   where='dataset', reload=False)
     ds.config.add('datalad.metadata.nativetype', 'metalad_custom',
                   where='dataset')
-    ds.rev_save()
+    ds.save()
     assert_repo_status(ds.path)
 
     # all on default
@@ -779,6 +779,6 @@ def test_heterogenous_extractors(path):
                      where='dataset', reload=False)
     subds.config.add('datalad.metadata.nativetype', 'metalad_custom',
                      where='dataset')
-    ds.rev_save(recursive=True)
+    ds.save(recursive=True)
     assert_repo_status(ds.path)
     ds.meta_aggregate(recursive=True)
