@@ -15,7 +15,7 @@ from six import text_type
 from simplejson import dumps as jsondumps
 
 from datalad.api import (
-    meta_report,
+    meta_dump,
     install,
     create,
     meta_aggregate,
@@ -98,7 +98,7 @@ def test_basic_aggregate(path):
     # TODO give datasets some more metadata to actually aggregate stuff
     base = Dataset(op.join(path, 'origin')).create(force=True)
     sub = base.create('sub', force=True)
-    #base.meta_report(sub.path, init=dict(homepage='this'), apply2global=True)
+    #base.meta_dump(sub.path, init=dict(homepage='this'), apply2global=True)
     subsub = base.create(op.join('sub', 'subsub'), force=True)
     base.save(recursive=True)
     assert_repo_status(base.path)
@@ -109,14 +109,14 @@ def test_basic_aggregate(path):
     assert_repo_status(base.path)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
-    direct_meta = base.meta_report(recursive=True, return_type='list')
+    direct_meta = base.meta_dump(recursive=True, return_type='list')
     # loose the deepest dataset
     sub.uninstall('subsub', check=False)
     # no we should be able to reaggregate metadata, and loose nothing
     # because we can aggregate aggregated metadata of subsub from sub
     base.meta_aggregate(recursive=True, into='all')
     # same result for aggregate query than for (saved) direct query
-    agg_meta = base.meta_report(recursive=True, return_type='list')
+    agg_meta = base.meta_dump(recursive=True, return_type='list')
     for d, a in zip(direct_meta, agg_meta):
         assert_dict_equal(d, a)
     # no we can throw away the subdataset tree, and loose no metadata
@@ -124,7 +124,7 @@ def test_basic_aggregate(path):
     assert(not sub.is_installed())
     assert_repo_status(base.path)
     # same result for aggregate query than for (saved) direct query
-    agg_meta = base.meta_report(recursive=True, return_type='list')
+    agg_meta = base.meta_dump(recursive=True, return_type='list')
     for d, a in zip(direct_meta, agg_meta):
         assert_dict_equal(d, a)
 
@@ -132,7 +132,7 @@ def test_basic_aggregate(path):
 def _compare_metadata_helper(origres, compds):
     for ores in origres:
         rpath = op.relpath(ores['path'], ores['refds'])
-        cres = compds.meta_report(
+        cres = compds.meta_dump(
             rpath,
             reporton='{}s'.format(ores['type']))
         if ores['type'] == 'file':
@@ -178,14 +178,14 @@ def test_aggregation(path):
     assert_repo_status(ds.path)
 
     # quick test of aggregate report
-    aggs = ds.meta_report(reporton='aggregates', recursive=True)
+    aggs = ds.meta_dump(reporton='aggregates', recursive=True)
     # one for each dataset
     assert_result_count(aggs, 3)
     # mother also report layout version
     assert_result_count(aggs, 1, path=ds.path, layout_version=1)
 
     # store clean direct result
-    origres = ds.meta_report(recursive=True)
+    origres = ds.meta_dump(recursive=True)
     # basic sanity check
     assert_result_count(origres, 3, type='dataset')
     assert_result_count(
@@ -212,7 +212,7 @@ def test_aggregation(path):
     eq_(ds.id, clone.id)
 
     # get fresh metadata
-    cloneres = clone.meta_report()
+    cloneres = clone.meta_dump()
     # basic sanity check
     assert_result_count(cloneres, 1, type='dataset')
     # payload file
@@ -280,21 +280,21 @@ def test_aggregate_query(path, randompath):
     ds = Dataset(path).create(force=True)
     # no magic change to actual dataset metadata due to presence of
     # aggregated metadata
-    res = ds.meta_report(reporton='datasets', on_failure='ignore')
+    res = ds.meta_dump(reporton='datasets', on_failure='ignore')
     assert_result_count(res, 0)
     # but we can now ask for metadata of stuff that is unknown on disk
-    res = ds.meta_report(op.join('sub', 'deep', 'some'), reporton='datasets')
+    res = ds.meta_dump(op.join('sub', 'deep', 'some'), reporton='datasets')
     assert_result_count(res, 1)
     eq_({'homepage': 'http://top.example.com'}, res[0]['metadata'])
     sub = ds.create('sub', force=True)
     # when no reference dataset there is NO magic discovery of the relevant
     # dataset
     with chpwd(randompath):
-        assert_raises(ValueError, meta_report,
+        assert_raises(ValueError, meta_dump,
             op.join(path, 'sub', 'deep', 'some'), reporton='datasets')
     # but inside a dataset things work
     with chpwd(ds.path):
-        res = meta_report(
+        res = meta_dump(
             op.join(path, 'sub', 'deep', 'some'),
             reporton='datasets')
         assert_result_count(res, 1)
@@ -303,7 +303,7 @@ def test_aggregate_query(path, randompath):
         eq_({'homepage': 'http://top.example.com'}, res[0]['metadata'])
     # when a reference dataset is given, it will be used as the metadata
     # provider
-    res = sub.meta_report(op.join('deep', 'some'), reporton='datasets')
+    res = sub.meta_dump(op.join('deep', 'some'), reporton='datasets')
     assert_result_count(res, 1)
     eq_({'homepage': 'http://sub.example.com'}, res[0]['metadata'])
 
@@ -412,9 +412,9 @@ def test_publish_aggregated(path):
     # and we can squeeze the same metadata out
     eq_(
         [{k: v for k, v in i.items() if k not in ('path', 'refds', 'parentds')}
-         for i in base.meta_report('sub')],
+         for i in base.meta_dump('sub')],
         [{k: v for k, v in i.items() if k not in ('path', 'refds', 'parentds')}
-         for i in remote.meta_report('sub')],
+         for i in remote.meta_dump('sub')],
     )
 
 
@@ -426,7 +426,7 @@ def _get_contained_objs(ds):
 
 def _get_referenced_objs(ds):
     return set([Path(r[f]).relative_to(ds.pathobj).as_posix()
-                for r in ds.meta_report(reporton='aggregates', recursive=True)
+                for r in ds.meta_dump(reporton='aggregates', recursive=True)
                 for f in ('content_info', 'dataset_info')])
 
 
@@ -442,7 +442,7 @@ def test_aggregate_removal(path):
     base.save(recursive=True)
     base.meta_aggregate(recursive=True, into='all')
     assert_repo_status(base.path)
-    res = base.meta_report(reporton='aggregates', recursive=True)
+    res = base.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 3)
     assert_result_count(res, 1, path=subsub.path)
     # check that we only have object files that are listed in agginfo
@@ -457,10 +457,10 @@ def test_aggregate_removal(path):
     # internally consistent state
     eq_(_get_contained_objs(base), _get_referenced_objs(base))
     # info on subsub was removed at all levels
-    res = base.meta_report(reporton='aggregates', recursive=True)
+    res = base.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 0, path=subsub.path)
     assert_result_count(res, 2)
-    res = sub.meta_report(reporton='aggregates', recursive=True)
+    res = sub.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 0, path=subsub.path)
     assert_result_count(res, 1)
 
@@ -492,16 +492,16 @@ def test_update_strategy(path):
     eq_(len(_get_referenced_objs(base)), 6)
     for ds in sub, subsub:
         eq_(len(_get_contained_objs(ds)), 0)
-    res = base.meta_report(reporton='aggregates', recursive=True)
+    res = base.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 3)
     # it is impossible to query an intermediate or leaf dataset
     # for metadata
     for ds in sub, subsub:
         assert_status(
             'impossible',
-            ds.meta_report(reporton='aggregates', on_failure='ignore'))
+            ds.meta_dump(reporton='aggregates', on_failure='ignore'))
     # get the full metadata report
-    target_meta = _kill_time(base.meta_report())
+    target_meta = _kill_time(base.meta_dump())
 
     # now redo full aggregation, this time updating all
     # (intermediate) datasets
@@ -514,11 +514,11 @@ def test_update_strategy(path):
     for ds in sub, subsub:
         assert_status(
             'ok',
-            ds.meta_report(reporton='aggregates', on_failure='ignore'))
+            ds.meta_dump(reporton='aggregates', on_failure='ignore'))
 
     # all of that has no impact on the reported metadata
     # minus the change in the refcommits
-    for i in zip(target_meta, _kill_time(base.meta_report())):
+    for i in zip(target_meta, _kill_time(base.meta_dump())):
         assert_dict_equal(i[0], i[1])
 
 
@@ -554,7 +554,7 @@ def test_partial_aggregation(path):
     # if we aggregate a path(s) and say to recurse, we must not recurse into
     # the dataset itself and aggregate others
     ds.meta_aggregate(path='sub1', recursive=True)
-    res = ds.meta_report(reporton='aggregates', recursive=True)
+    res = ds.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 1, path=ds.path)
     assert_result_count(res, 1, path=sub1.path)
     # so no metadata aggregates for sub2 yet
@@ -564,7 +564,7 @@ def test_partial_aggregation(path):
     origsha = ds.repo.get_hexsha()
     assert_repo_status(ds.path)
     # baseline, recursive aggregation gets us something for all three datasets
-    res = ds.meta_report(reporton='aggregates', recursive=True)
+    res = ds.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 3)
     # now let's do partial aggregation from just one subdataset
     # we should not loose information on the other datasets
@@ -572,7 +572,7 @@ def test_partial_aggregation(path):
     # subtree is missing: not installed, too expensive to reaggregate, ...
     ds.meta_aggregate(path='sub1')
     eq_(origsha, ds.repo.get_hexsha())
-    res = ds.meta_report(reporton='aggregates', recursive=True)
+    res = ds.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 3)
     assert_result_count(res, 1, path=sub2.path)
     # nothing changes, so no commit
@@ -586,7 +586,7 @@ def test_partial_aggregation(path):
     # to the content of the subdataset, not the subdataset record
     # in the superdataset
     ds.meta_aggregate(path='sub1' + op.sep, force='fromscratch')
-    res = ds.meta_report(reporton='aggregates', recursive=True)
+    res = ds.meta_dump(reporton='aggregates', recursive=True)
     assert_result_count(res, 1)
     assert_result_count(res, 1, path=sub1.path)
     # now reaggregated in full
@@ -734,7 +734,7 @@ def test_unique_values(path):
     # all on default
     ds.meta_aggregate()
     # all good, we get a report on this one dataset
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     ucm = res[0]['metadata']['datalad_unique_content_properties']
     eq_(

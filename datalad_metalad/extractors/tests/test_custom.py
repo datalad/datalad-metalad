@@ -15,7 +15,7 @@ from datalad.distribution.dataset import Dataset
 from datalad.api import (
     create,
     save,
-    meta_report,
+    meta_dump,
     meta_aggregate,
 )
 from datalad.tests.utils import (
@@ -104,7 +104,7 @@ def test_custom_dsmeta(path):
     assert_repo_status(ds.path)
     res = ds.meta_aggregate()
     assert_status('ok', res)
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     dsmeta = res[0]['metadata']
     assert_in('metalad_custom', dsmeta)
@@ -133,7 +133,7 @@ def test_custom_dsmeta(path):
             ds, 'nothere'),
     )
 
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(res[0]['metadata'].get('metalad_custom', {}), {})
 
@@ -145,7 +145,7 @@ def test_custom_dsmeta(path):
         where='dataset')
     ds.save()
     ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(testmeta, res[0]['metadata']['metalad_custom'])
 
@@ -157,7 +157,7 @@ def test_custom_dsmeta(path):
         where='dataset')
     ds.save()
     ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_report(reporton='datasets')
+    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
     eq_(
         # merge order: testmeta <- sample_jsonld

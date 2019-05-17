@@ -28,7 +28,7 @@ High-level API commands
 
    meta_extract
    meta_aggregate
-   meta_report
+   meta_dump
 
 Metadata extractors
 -------------------

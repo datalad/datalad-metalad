@@ -170,7 +170,7 @@ def get_ds_aggregate_db(dspath, version='default', warn_absent=True):
 
 
 @build_doc
-class Report(Interface):
+class Dump(Interface):
     """Query a dataset's aggregated metadata for dataset and file metadata
 
     Two types of metadata are supported:
@@ -184,30 +184,30 @@ class Report(Interface):
 
     Examples:
 
-      Report the metadata of a single file, the queried dataset is determined
+      Dump the metadata of a single file, the queried dataset is determined
       based on the current working directory::
 
-        % datalad query-metadata somedir/subdir/thisfile.dat
+        % datalad meta-dump somedir/subdir/thisfile.dat
 
       Sometimes it is helpful to get metadata records formatted in a more
       accessible form, here as pretty-printed JSON::
 
-        % datalad -f json_pp query-metadata somedir/subdir/thisfile.dat
+        % datalad -f json_pp meta-dump somedir/subdir/thisfile.dat
 
       Same query as above, but specify which dataset to query (must be
       containing the query path)::
 
-        % datalad query-metadata -d . somedir/subdir/thisfile.dat
+        % datalad meta-dump -d . somedir/subdir/thisfile.dat
 
-      Report any metadata record of any dataset known to the queried dataset::
+      Dump any metadata record of any dataset known to the queried dataset::
 
-        % datalad query-metadata --recursive --reporton datasets
+        % datalad meta-dump --recursive --reporton datasets
 
       Get a JSON-formatted report of metadata aggregates in a dataset, incl.
       information on enabled metadata extractors, dataset versions, dataset
       IDs, and dataset paths::
 
-        % datalad -f json query-metadata --reporton aggregates
+        % datalad -f json meta-dump --reporton aggregates
     """
     # make the custom renderer the default, path reporting isn't the top
     # priority here
@@ -248,7 +248,7 @@ class Report(Interface):
     )
 
     @staticmethod
-    @datasetmethod(name='meta_report')
+    @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
             path=None,
@@ -256,7 +256,7 @@ class Report(Interface):
             reporton='all',
             recursive=False):
         # prep results
-        res_kwargs = dict(action='meta_report', logger=lgr)
+        res_kwargs = dict(action='meta_dump', logger=lgr)
         ds = require_dataset(
             dataset=dataset,
             check_installed=True,
@@ -403,7 +403,7 @@ class Report(Interface):
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
-        if res['status'] != 'ok' or not res.get('action', None) == 'meta_report':
+        if res['status'] != 'ok' or not res.get('action', None) == 'meta_dump':
             # logging complained about this already
             return
         # list the path, available metadata keys, and tags

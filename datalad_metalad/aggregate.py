@@ -54,7 +54,7 @@ from . import (
     _val2hashable,
 )
 from .utils import sort_paths_by_datasets
-from .report import (
+from .dump import (
     get_ds_aggregate_db_locations,
     get_ds_aggregate_db,
 )
@@ -96,7 +96,7 @@ class Aggregate(Interface):
     (super)dataset. Based on such collections of aggregated metadata it is then
     possible to discover particular (sub)datasets and individual files in them,
     without having to obtain the actual dataset repositories first (see the
-    DataLad 'meta-report' command).
+    DataLad 'meta-dump' command).
 
     To enable aggregation of metadata that are contained in files of a dataset,
     one has to enable one or more metadata extractor for a dataset. DataLad

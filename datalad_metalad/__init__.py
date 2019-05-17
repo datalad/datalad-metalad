@@ -22,10 +22,10 @@ command_suite = (
     "DataLad semantic metadata command suite",
     [
         (
-            'datalad_metalad.report',
-            'Report',
-            'meta-report',
-            'meta_report'
+            'datalad_metalad.dump',
+            'Dump',
+            'meta-dump',
+            'meta_dump'
         ),
         (
             'datalad_metalad.extract',
@@ -221,7 +221,7 @@ def collect_jsonld_metadata(dspath, res, nodes_by_context, contexts):
       the path to the dataset that contains the file.
     res : dict
       Result dictionary as produced by `meta_extract()` or
-      `meta-report()`.
+      `meta_dump()`.
     nodes_by_context : dict
       JSON-LD documented are collected in this dict, using their context
       as keys.
