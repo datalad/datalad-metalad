@@ -58,9 +58,8 @@ location_keys = ('dataset_info', 'content_info', 'filepath_info')
 default_context = {
     # schema.org definitions by default
     "@vocab": "http://schema.org/",
-    # resolve non-compact/absolute identifiers to the DataLad
-    # resolver
-    "@base": "http://dx.datalad.org/",
+    # DataLad ID prefix, pointing to our own resolver
+    "datalad": "http://dx.datalad.org/",
 }
 
 
@@ -328,11 +327,16 @@ def get_file_id(rec):
 
     Prefer a present annex key, but fall back on the Git shasum that is
     always around. Identify the GITSHA as such, and in a similar manner
-    to git-annex's style
+    to git-annex's style.
+
+    Any ID string is prefixed with 'datalad:' to identify it as a
+    DataLad-recognized ID. This prefix is defined in the main JSON-LD
+    context defintion.
     """
-    return rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
+    id_ = rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
         rec['bytesize'] if rec['type'] != 'symlink' else 0,
         rec['gitshasum'])
+    return 'datalad:{}'.format(id_)
 
 
 def get_agent_id(name, email):
