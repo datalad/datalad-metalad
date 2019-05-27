@@ -139,7 +139,7 @@ class DataladCoreExtractor(MetadataExtractor):
         for subds in [s for s in status if s['type'] == 'dataset']:
             subdsinfo = {
                 # reference by subdataset commit
-                '@id': subds['gitshasum'],
+                '@id': 'datalad:{}'.format(subds['gitshasum']),
                 '@type': 'Dataset',
                 'name': Path(subds['path']).relative_to(ds.pathobj).as_posix(),
             }
@@ -147,7 +147,7 @@ class DataladCoreExtractor(MetadataExtractor):
                 contains=subds['path'],
                 return_type='item-or-list').get('gitmodule_datalad-id', None)
             if subdsid:
-                subdsinfo['identifier'] = subdsid
+                subdsinfo['identifier'] = 'datalad:{}'.format(subdsid)
             parts.append(subdsinfo)
         if parts:
             meta['hasPart'] = parts
@@ -174,7 +174,7 @@ class DataladCoreExtractor(MetadataExtractor):
                 annex_uuid = ds.config.get(
                     'remote.{}.annex-uuid'.format(r), None)
                 if annex_uuid is not None:
-                    info['@id'] = annex_uuid
+                    info['@id'] = 'datalad:{}'.format(annex_uuid)
                     known_uuids[annex_uuid] = info
                 if 'url' in info or '@id' in info:
                     # only record if we have any identifying information

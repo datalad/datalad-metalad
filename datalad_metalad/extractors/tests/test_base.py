@@ -147,8 +147,9 @@ def test_report(path, orig):
         res[0]['metadata']['metalad_core']
     )
     assert_in(
-        {'@type': 'Dataset', '@id': subds.repo.get_hexsha(),
-         'identifier': subds.id, 'name': 'sub'},
+            {'@type': 'Dataset',
+            '@id': 'datalad:{}'.format(subds.repo.get_hexsha()),
+            'identifier': 'datalad:{}'.format(subds.id), 'name': 'sub'},
         core_dsmeta['hasPart']
     )
     # has not seen the content
