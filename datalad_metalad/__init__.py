@@ -209,6 +209,17 @@ def _val2hashable(val):
         return val
 
 
+def _hashable2val(val):
+    """Undo _val2hashable()
+    """
+    if isinstance(val, ReadOnlyDict):
+        return dict(val)
+    elif isinstance(val, tuple):
+        return list(map(_hashable2val, val))
+    else:
+        return val
+
+
 def collect_jsonld_metadata(dspath, res, nodes_by_context, contexts):
     """Sift through a metadata result and gather JSON-LD documents
 
@@ -285,7 +296,8 @@ def _native_metadata_to_graph_nodes(
 
         # harvest documents in the report
         # TODO add some kind of "describedBy" to the graph nodes
-        nodes = nodes_by_context.get(context, [])
+        hashable_context = _val2hashable(context)
+        nodes = nodes_by_context.get(hashable_context, [])
         if '@graph' not in report:
             # not a multi-document graph, remove context and treat as
             # a single-node graph
@@ -305,7 +317,7 @@ def _native_metadata_to_graph_nodes(
             # report and nothing trimmed by datalad internally for
             # space-saving reasons
             nodes.extend(report['@graph'])
-        nodes_by_context[context] = nodes
+        nodes_by_context[hashable_context] = nodes
 
 
 def format_jsonld_metadata(nbc):
@@ -314,9 +326,7 @@ def format_jsonld_metadata(nbc):
     for context, graph in iteritems(nbc):
         # document with a different context: add as a sub graph
         jsonld.append({
-            '@context': dict(context)
-            if isinstance(context, ReadOnlyDict)
-            else context,
+            '@context': _hashable2val(context),
             '@graph': graph,
         })
     return jsonld[0] if len(jsonld) == 1 else jsonld
