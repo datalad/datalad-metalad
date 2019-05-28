@@ -55,6 +55,7 @@ from datalad.dochelpers import exc_str
 from datalad.log import log_progress
 from datalad.ui import ui
 import datalad.support.ansi_colors as ac
+from simplejson import dumps as jsondumps
 
 # API commands needed
 from datalad.core.local import status as _status
@@ -410,6 +411,23 @@ class Extract(Interface):
                     # this is an extractor property, and mostly serves
                     # internal purposes
                     if k not in ('unique_exclude',)),
+            ))
+            return
+        if kwargs.get('format', None) == 'jsonld':
+            # special case of a JSON-LD report request
+            # all reports are consolidated into a single
+            # graph, dumps just that (no pretty printing, can
+            # be done outside)
+            ui.message(jsondumps(
+                res['metadata'],
+                # support utf-8 output
+                ensure_ascii=False,
+                # this cannot happen, spare the checks
+                check_circular=False,
+                # this will cause the output to not necessarily be
+                # JSON compliant, but at least contain all info that went
+                # in, and be usable for javascript consumers
+                allow_nan=True,
             ))
             return
         # list the path, available metadata keys, and tags
