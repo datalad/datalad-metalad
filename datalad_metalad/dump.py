@@ -55,6 +55,7 @@ from . import (
     collect_jsonld_metadata,
     format_jsonld_metadata,
 )
+from simplejson import dumps as jsondumps
 
 lgr = logging.getLogger('datalad.metadata.query')
 
@@ -406,6 +407,23 @@ class Dump(Interface):
     def custom_result_renderer(res, **kwargs):
         if res['status'] != 'ok' or not res.get('action', None) == 'meta_dump':
             # logging complained about this already
+            return
+        if kwargs.get('reporton', None) == 'jsonld':
+            # special case of a JSON-LD report request
+            # all reports are consolidated into a single
+            # graph, dumps just that (no pretty printing, can
+            # be done outside)
+            ui.message(jsondumps(
+                res['metadata'],
+                # support utf-8 output
+                ensure_ascii=False,
+                # this cannot happen, spare the checks
+                check_circular=False,
+                # this will cause the output to not necessarily be
+                # JSON compliant, but at least contain all info that went
+                # in, and be usable for javascript consumers
+                allow_nan=True,
+            ))
             return
         # list the path, available metadata keys, and tags
         path = op.relpath(res['path'],
