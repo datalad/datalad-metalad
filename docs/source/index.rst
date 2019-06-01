@@ -1,7 +1,7 @@
 DataLad extension for semantic metadata handling
 ************************************************
 
-This software is a [DataLad](http://datalad.org) extension that equips DataLad
+This software is a `DataLad <http://datalad.org>`__ extension that equips DataLad
 with an alternative command suite for metadata handling (extraction, aggregation,
 reporting). It is backward-compatible with the metadata storage format in DataLad
 proper, while being substantially more performant (especially on large dataset
@@ -10,17 +10,15 @@ variants of DataLad's own ones that are tuned for better performance and richer,
 JSON-LD compliant metadata reports.
 
 
-What is in it for users?
-========================
-
-What is in it for developers?
-=============================
-
 API
 ===
 
 High-level API commands
 -----------------------
+
+These commands provide and improved and extended equivalent to the `metadata`
+and `aggregate_metadata` commands (and the primitive `extract-metadata` plugin)
+that ship with the DataLad core package.
 
 .. currentmodule:: datalad.api
 .. autosummary::
@@ -33,6 +31,18 @@ High-level API commands
 Metadata extractors
 -------------------
 
+To use any of the contained extractors their names needs to be prefixed with
+`metalad_`, such that the `runprov` extractor is effectively named
+`metalad_runprov`.
+
+.. currentmodule:: datalad_metalad.extractors
+.. autosummary::
+   :toctree: generated
+
+   core
+   annex
+   custom
+   runprov
 
 Acknowledgments
 ===============

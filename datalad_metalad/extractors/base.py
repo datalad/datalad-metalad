@@ -63,13 +63,11 @@ class MetadataExtractor(object):
         dictionaries that must contain a 'path' key, containing the absolute
         path to the required file within the given dataset.
 
-        Example implementation
+        Example implementation::
 
-        ```
-        for s in status:
-            if s['path'].endswith('.pdf'):
-                yield s
-        ```
+            for s in status:
+                if s['path'].endswith('.pdf'):
+                    yield s
         """
         # be default an individual extractor is expected to manage
         # availability on its own

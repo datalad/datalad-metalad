@@ -22,37 +22,37 @@ Concept
   to look up which file was created by which activity and report
   that in the content metadata
 
-Here is a sketch of the reported metadata structure
+Here is a sketch of the reported metadata structure::
 
-{
-  "@context": "http://openprovenance.org/prov.jsonld",
-  "@graph": [
-    # agents
     {
-      "@id": "Name_Surname<email@example.com>",
-      "@type": "agent"
-    },
-    ...
-    # activities
-    {
-      "@id": "<GITSHA_of_run_record>",
-      "@type": "activity",
-      "atTime": "2019-05-01T12:10:55+02:00",
-      "rdfs:comment": "[DATALAD RUNCMD] rm test.png",
-      "prov:wasAssociatedWith": {
-        "@id": "Name_Surname<email@example.com>",
-      }
-    },
-    ...
-    # entities
-    {
-      "@id": "SOMEKEY",
-      "@type": "entity",
-      "prov:wasGeneratedBy": {"@id": "<GITSHA_of_run_record>"}
+      "@context": "http://openprovenance.org/prov.jsonld",
+      "@graph": [
+        # agents
+        {
+          "@id": "Name_Surname<email@example.com>",
+          "@type": "agent"
+        },
+        ...
+        # activities
+        {
+          "@id": "<GITSHA_of_run_record>",
+          "@type": "activity",
+          "atTime": "2019-05-01T12:10:55+02:00",
+          "rdfs:comment": "[DATALAD RUNCMD] rm test.png",
+          "prov:wasAssociatedWith": {
+            "@id": "Name_Surname<email@example.com>",
+          }
+        },
+        ...
+        # entities
+        {
+          "@id": "SOMEKEY",
+          "@type": "entity",
+          "prov:wasGeneratedBy": {"@id": "<GITSHA_of_run_record>"}
+        }
+        ...
+      ]
     }
-    ...
-  ]
-}
 """
 
 
