@@ -98,3 +98,13 @@ def test_custom_dsmeta(path):
         res, 2, type='file')
     assert_result_count(
         res, 1, type='file', path=text_type(ds.pathobj / 'dummy_side'))
+
+    # check that it survives a partial report (no _core metadata extracted)
+    # for JSON-LD reporting
+    res = ds.meta_extract(sources=['metalad_runprov'], format='jsonld')
+    # only a single results
+    assert_result_count(res, 1)
+    # 2 actvities, 1 agent, 2 generated entities
+    eq_(len(res[0]['metadata']['@graph']), 5)
+    # all properly ID'ed
+    assert(all('@id' in d for d in res[0]['metadata']['@graph']))
