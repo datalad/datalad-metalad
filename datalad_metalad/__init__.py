@@ -246,7 +246,8 @@ def collect_jsonld_metadata(dspath, res, nodes_by_context, contexts):
         )
     else:
         fmeta = res['metadata']
-        fid = fmeta['metalad_core']['@id']
+        # pull out a datalad ID from -core, if there is any
+        fid = fmeta.get('metalad_core', {}).get('@id', None)
         _native_metadata_to_graph_nodes(
             fmeta,
             nodes_by_context,
@@ -311,6 +312,9 @@ def _native_metadata_to_graph_nodes(
                 report = dict(
                     defaults,
                     **report)
+                if report.get('@id', None) is None:
+                    # a document without an identifier, ignore
+                    continue
             nodes.extend([report])
         else:
             # we are not applying `defaults` assuming this is a full-blown
