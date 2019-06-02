@@ -15,11 +15,16 @@ lgr = logging.getLogger('datalad.dataset')
 
 # TODO drop when https://github.com/datalad/datalad/pull/3247
 # is merged
-def sort_paths_by_datasets(orig_dataset_arg, paths):
+def sort_paths_by_datasets(refds, orig_dataset_arg, paths):
     """Sort paths into actually present datasets
 
     Parameters
     ----------
+    refds : Dataset or None
+      Dataset instance of a reference dataset, if any exists. This is
+      not just a `dataset` argument in any form (for path resolution),
+      see `orig_dataset_arg` for that, but has to be a Dataset instance
+      that serves as the root of all operations.
     orig_dataset_arg : None or str
       The original dataset argument of the calling command. This is
       used to determine the path specification semantics, i.e.
@@ -56,7 +61,7 @@ def sort_paths_by_datasets(orig_dataset_arg, paths):
                 logger=lgr))
             continue
         else:
-            if orig_dataset_arg and root == text_type(p) and \
+            if refds and root == text_type(p) and \
                     not orig_path.endswith(op.sep):
                 # the given path is pointing to a dataset
                 # distinguish rsync-link syntax to identify

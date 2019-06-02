@@ -782,3 +782,55 @@ def test_heterogenous_extractors(path):
     ds.save(recursive=True)
     assert_repo_status(ds.path)
     ds.meta_aggregate(recursive=True)
+
+
+@with_tempfile(mkdir=True)
+def test_aggregate_aggregation(path):
+    path = Path(path)
+    ds = Dataset(path).create()
+    sourceds = ds.create(path / 'source')
+    origds = ds.create(path / 'source' / 'orig')
+    # put a single (empty) file in origds to have some metadata-relevant
+    # content
+    payload = origds.pathobj / 'CONTENT'
+    payload.write_text(u'')
+    ds.save(recursive=True)
+    assert_repo_status(ds.path)
+    # aggregate orids metadata into sourceds, note the trailing slash
+    sourceds.meta_aggregate('orig' + op.sep)
+    # orig has no aggregates
+    assert_status(
+        'impossible',
+        origds.meta_dump(
+            reporton='aggregates', recursive=True, on_failure='ignore'))
+    # but sourceds has exactly one record -- that of origds
+    res = sourceds.meta_dump(
+        reporton='aggregates', recursive=True, on_failure='ignore')
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, path=origds.path)
+    # now we change the payload file to have some metadata-change signal
+    # and save the entire hierarchy
+    payload.unlink()
+    payload.write_text(u'BIGONE')
+    ds.save(recursive=True)
+    assert_repo_status(ds.path)
+
+    # FOR REAL: aggregate the aggregate on 'orig' from 'source'
+    # this must not REaggregate 'orig'
+    # there is no trailing slash
+    ds.meta_aggregate(op.join('source', 'orig'))
+    # the freshly aggregated, but outdated metadata still reports
+    # a zero bytesize for the payload file
+    eq_(
+        ds.meta_dump(payload, reporton='files'
+            )[0]['metadata']['metalad_core']['contentbytesize'],
+        0
+    )
+    # and now with actual aggregation from orig
+    ds.meta_aggregate(op.join('source', 'orig') + op.sep)
+    # picks up the new size
+    eq_(
+        ds.meta_dump(payload, reporton='files'
+            )[0]['metadata']['metalad_core']['contentbytesize'],
+        6
+    )
