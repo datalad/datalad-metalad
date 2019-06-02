@@ -28,6 +28,8 @@ Additional metadata extractor implementations
   metalad extractor API
 - `metalad_custom` -- read pre-crafted metadata from shadow/side-care files for
   a dataset and/or any file in a dataset.
+- `metalad_runprov` -- report provenance metadata for `datalad run` records
+  following the [W3C PROV](https://www.w3.org/TR/prov-overview) model
 
 
 ## Installation
