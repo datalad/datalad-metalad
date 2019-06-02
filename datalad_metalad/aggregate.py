@@ -137,6 +137,25 @@ class Aggregate(Interface):
     a long time to process. See the documentation of the ``extract-metadata``
     command for a number of configuration settings that can be used to tailor
     this process on a per-dataset basis.
+
+    *Aggregation of aggregates*
+
+    Sometimes it is desirable to re-use existing metadata aggregates, instead
+    of performing a metadata extraction, even if a particular dataset is
+    locally available (e.g. because large files are not downloaded, or
+    extraction runtime is prohibitively long). Such behavior is enabled through
+    a special, rsync-like, path specification syntax. Consider three nested
+    datasets: `top` / `mid` / `bottom`. The syntax for aggregating a record on
+    `bottom` from `mid` into `top`, while being in the root top `top`, is::
+
+        datalad meta-aggregate mid/bottom
+
+    In order to use an aggregate on `bottom` from `bottom` itself, or to
+    trigger re-extraction in case of detected changes, add a trailing
+    path separator to the path. In POSIX-compatible machines, this looks like::
+
+        datalad meta-aggregate mid/bottom/
+
     """
     _params_ = dict(
         dataset=Parameter(
@@ -200,7 +219,7 @@ class Aggregate(Interface):
         # Step 1: figure out which available dataset is closest to a given path
         if path:
             extract_from_ds, errors = sort_paths_by_datasets(
-                dataset, assure_list(path))
+                ds, dataset, assure_list(path))
             for e in errors:  # pragma: no cover
                 e.update(
                     logger=lgr,
@@ -215,6 +234,16 @@ class Aggregate(Interface):
             Dataset(k): set(assure_list(v))
             for k, v in iteritems(extract_from_ds)
         }
+
+        # we need to somehow make it possible to support a syntactical
+        # distinction of 'subds' and 'subds/' within this command, while
+        # `status` doesn't support that
+        # if no dataset arg was given, we use the string path of the
+        # discovered dataset as a constraint arg for the `status` call
+        # this way, 'subds' will always be considered as the subdataset
+        # record within the superdataset, and not as a dataset itself
+        if path is not None and dataset is None:
+            dataset = ds.path
 
         #
         # Step 1: figure out which available dataset need to be processed
