@@ -7,6 +7,7 @@ from collections import (
     Mapping,
 )
 from six import iteritems
+import hashlib
 from datalad.utils import (
     Path,
     PurePosixPath,
@@ -358,11 +359,13 @@ def get_agent_id(name, email):
 
     In most cases we will not have a URL for people/software agents.
     Let's create a string ID that is based on the combination of both
-    name and email.
+    name and email. Return an MD5 hash instead of a plain-text string
+    to discourage direct interpretation by humans.
     """
-    return '{}<{}>'.format(
+    return hashlib.md5(u'{}<{}>'.format(
         name.replace(' ', '_'),
-        email)
+        email
+    ).encode('utf-8')).hexdigest()
 
 
 from datalad import setup_package
