@@ -656,6 +656,22 @@ def test_reaggregate(path):
     # we should see three deletions, two for the replaced metadata blobs
     # of the modified subdataset, and one for the dataset metadata of the super
     assert_result_count(res, 3, action='delete')
+
+    # Note: This currently fails. Via python API the results have only
+    #  - two "deleted"
+    #  - two "meta_extract; notneeded"
+    #  - three "added"
+    # Via CLI with "-d ." however, there are
+    #  - three deleted
+    #  - no results fromextract whatsoever
+    #  - four "added"
+    # So this would be correct according to the following assertions.
+    # Via CLI without "-d ." we get the same as here via python. How does this make sense?
+    # If anything ds.meta_aggregate() should be identical to `datalad meta-aggregate -d .`, no?
+
+    # Also note, that "added" results should indeed be one more than deleted, I think (aggregate.json)
+
+
     # four additions: two new blobs for the subdataset, one dataset
     # metadata blob for the root, due to a new modification date
     # and the aggregate catalog
@@ -842,14 +858,22 @@ def test_aggregate_into_top_no_extraction(path):
     path = Path(path)
     superds = Dataset(path).create()
     subds = superds.create(path / 'sub')
-    # put a single (empty) file in origds to have some metadata-relevant
+    # put a single (empty) file in subds to have some metadata-relevant
     # content
     payload = subds.pathobj / 'CONTENT'
     payload.write_text(u'some')
     superds.save(recursive=True)
     assert_repo_status(superds.path)
     # have metadata aggregated in the subds
-    subds.meta_aggregate()
+
+    import pdb; pdb.set_trace()
+
+    print("\n######### Aggregate within source dataset:\n")
+
+
+    res = subds.meta_aggregate()
+
+    print("\n######### Aggregate within source dataset (2nd time):\n")
 
     # FTR: Doing it again, yields extraction not needed:
     assert_result_count(subds.meta_aggregate(),
@@ -874,12 +898,12 @@ def test_aggregate_into_top_no_extraction(path):
     assert_result_count(res, 1, type='dataset')
     assert_result_count(res, 1, type='file')
 
+    print("\n######### Aggregate into top dataset:\n")
+
     # Now, aggregate into top
     res = superds.meta_aggregate('sub/', into='top')
     # super should now be able to report:
-    assert_status('ok',
-                  superds.meta_dump('sub/', on_failure='ignore')
-                  )
+    assert_status('ok', superds.meta_dump('sub/', on_failure='ignore'))
     # Re-extraction should not be required:
     assert_result_count(res, 1,
                         action='meta_extract',
