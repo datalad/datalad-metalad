@@ -32,6 +32,7 @@ from datalad.utils import (
     Path,
     PurePosixPath,
 )
+from .. import get_file_id
 
 
 class CustomMetadataExtractor(MetadataExtractor):
@@ -78,6 +79,13 @@ class CustomMetadataExtractor(MetadataExtractor):
                 if meta_fpath is not None and op.exists(meta_fpath):
                     try:
                         meta = jsonload(text_type(meta_fpath))
+                        if isinstance(meta, dict) and meta \
+                                and '@id' not in meta:
+                            # in case we have a single, top-level
+                            # document, and it has no ID: assume that
+                            # it describes the file and assign the
+                            # datalad file ID
+                            meta['@id'] = get_file_id(rec)
                         if meta:
                             yield dict(
                                 path=rec['path'],
@@ -178,6 +186,8 @@ def _yield_dsmeta(ds):
         meta = jsonload(text_type(abssrcfile))
         dsmeta.update(meta)
     if dsmeta:
+        if '@id' not in dsmeta:
+            dsmeta['@id'] = ds.id
         yield dict(
             path=ds.path,
             metadata=dsmeta,
