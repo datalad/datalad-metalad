@@ -2,6 +2,7 @@
 
 __docformat__ = 'restructuredtext'
 
+import os
 from .version import __version__
 from collections import (
     Mapping,
@@ -13,6 +14,7 @@ from datalad.utils import (
     PurePosixPath,
 )
 from datalad.consts import PRE_INIT_COMMIT_SHA
+from datalad.support.digests import Digester
 
 
 # defines a datalad command suite
@@ -349,8 +351,11 @@ def get_file_id(rec):
     context defintion.
     """
     id_ = rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
-        rec['bytesize'] if rec['type'] != 'symlink' else 0,
-        rec['gitshasum'])
+        rec['bytesize'] if 'bytesize' in rec
+        else 0 if rec['type'] == 'symlink'
+        else os.stat(rec['path']).st_size,
+        rec['gitshasum'] if 'gitshasum' in rec
+        else Digester(digests=['sha1'])(rec['path'])['sha1'])
     return 'datalad:{}'.format(id_)
 
 

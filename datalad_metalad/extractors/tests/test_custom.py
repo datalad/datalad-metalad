@@ -97,6 +97,8 @@ testmeta = {
             'customloc': jsondumps(testmeta)}})
 def test_custom_dsmeta(path):
     ds = Dataset(path).create(force=True)
+    sample_jsonld_ = dict(sample_jsonld)
+    sample_jsonld_.update({'@id': ds.id})
     # enable custom extractor
     # use default location
     ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
@@ -108,8 +110,7 @@ def test_custom_dsmeta(path):
     assert_result_count(res, 1)
     dsmeta = res[0]['metadata']
     assert_in('metalad_custom', dsmeta)
-    eq_(sample_jsonld, dsmeta['metalad_custom'])
-    assert_not_in('@id', dsmeta['metalad_custom'])
+    eq_(sample_jsonld_, dsmeta['metalad_custom'])
 
     # overwrite default source location within something non-exiting
     # extraction does not blow up, but no metadata is reported
@@ -187,7 +188,12 @@ def test_custom_contentmeta(path):
         path=text_type(ds.pathobj / 'sub' / 'one'),
         type='file',
         status='ok',
-        metadata={'metalad_custom': {'some': 'thing'}},
+        metadata={
+            'metalad_custom': {
+                'some': 'thing',
+                "@id": "datalad:MD5E-s1--c4ca4238a0b923820dcc509a6f75849b",
+            }
+        },
         action='meta_extract'
     )
 

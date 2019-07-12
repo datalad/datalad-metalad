@@ -36,6 +36,7 @@ sample_dsmeta = {
     "description": "Storm Data is provided by the NWS",
 }
 sample_fmeta = {
+    '@id': 'datalad:SHA1-s1--356a192b7913b04c54574d18c28d46e6395428ab',
     "something": "stupid",
     "complextype": {
         "entity": {

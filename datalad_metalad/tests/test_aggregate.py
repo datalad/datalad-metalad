@@ -740,6 +740,11 @@ def test_unique_values(path):
     eq_(
         ucm['metalad_custom'],
         {
+            '@id': [
+                'datalad:MD5E-s1--c4ca4238a0b923820dcc509a6f75849b',
+                'datalad:MD5E-s1--c81e728d9d4c2f636f067f89cc14862c',
+                'datalad:MD5E-s1--eccbc87e4b5ce2fe28308fd9f2a7baf3',
+            ],
             # complex types do not get shmooshed together
             "complextype": [
                 {
