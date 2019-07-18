@@ -74,6 +74,9 @@ script:
   - python setup.py build
   # Test installation system-wide
   - sudo pip install .
+  - git branch
+  - git branch -a -vv
+  - exit 1
   # Run tests
   - http_proxy=
     PATH=$PWD/tools/coverage-bin:$PATH
