@@ -161,7 +161,7 @@ class Aggregate(Interface):
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""topmost dataset metadata will be aggregated into. If no
-            dataset is specified, a datasets will be discovered based on the
+            dataset is specified, a dataset will be discovered based on the
             current working directory.""",
             constraints=EnsureDataset() | EnsureNone()),
         path=Parameter(
@@ -214,7 +214,7 @@ class Aggregate(Interface):
         # path args could be
         # - installed datasets
         # - names of pre-aggregated dataset that are not around
-        # - -like status they should match anything underneath them
+        # - like status they should match anything underneath them
 
         # Step 1: figure out which available dataset is closest to a given path
         if path:
@@ -255,7 +255,7 @@ class Aggregate(Interface):
             # pass arg in as-is to get proper argument semantics
             dataset=dataset,
             # query on all paths to get desired result with recursion
-            # enables
+            # enabled
             path=path,
             # never act on anything untracked, we cannot record its identity
             untracked='no',
@@ -448,7 +448,7 @@ class Aggregate(Interface):
 def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
     """Internal helper
 
-    Performs non-recursive aggergation for a single dataset.
+    Performs non-recursive aggregation for a single dataset.
 
     Parameters
     ----------
@@ -529,7 +529,7 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
         exstate_rec = top_agginfo_db.get(
             aggsrc.pathobj, {}).get('extractors', None)
         if (
-                # old aggregate catalag with a plain extractor name list
+                # old aggregate catalogue with a plain extractor name list
                 not isinstance(exstate_rec, dict) \
                 or sorted(exinfo.keys()) != sorted(exstate_rec.keys()) \
                 or any(exinfo[k]['state'] != exstate_rec[k]
