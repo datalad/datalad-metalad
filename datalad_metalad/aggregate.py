@@ -526,6 +526,8 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                 process_type='extractors',
                 result_renderer='disabled')
         }
+        ##Adina: this checks whether there is a json dict for subds in super,
+        ##is None when never aggregated from sub into top, thus not a dict
         exstate_rec = top_agginfo_db.get(
             aggsrc.pathobj, {}).get('extractors', None)
         if (
