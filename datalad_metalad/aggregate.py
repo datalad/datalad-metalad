@@ -863,6 +863,14 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                     if Path(aggds) == subj \
                     or subj in Path(aggds).parents
                 )
+
+                # we know there is up-to-date meta data in subj (where we want
+                # metadata from), but if the top has not seen this meta data before,
+                # there is no record in top_agginfo_db about it. Let's get it into
+                # subj to not extract it again
+                if subj not in top_agginfo_db:
+                    subjs.append(Dataset(subj))
+
             else:
                 subjs.append(subj)
 
