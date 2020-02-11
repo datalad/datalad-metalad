@@ -771,8 +771,15 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
         # Now, do the extraction if needed
         if not use_self_aggregate and (force == 'extraction' or (
                 (have_diff_top or last_refcommit_top is None) and
-                (have_diff_src or last_refcommit_src is None))):
-
+                (have_diff_src or last_refcommit_src is None)) or
+                (have_diff_top and not have_diff_src and
+                         last_refcommit_src == last_refcommit_top)):
+        # Adina: The last condition should only be true for a recursive aggregation
+        # with a changed subdataset that has up-to-date meta data: There is a diff
+        # between refcommit in Top and current state of top, ref commits of source
+        # and top are identical. Previously, lack of this condition was the
+        # reason why top dataset content info did not get reaggregated
+        # https://github.com/datalad/datalad-metalad/pull/21/commits/26a56551c665380362f13022030cacdd602fc7d8#r377609152)
             lgr.debug(
                 'Extract metadata from %s '
                 '(use_self_aggregate=%s, force=%s, last_refcommit=%s, '
