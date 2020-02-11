@@ -467,14 +467,17 @@ def _extractor_changed(ds, ds_db, exinfo, path):
     # check recorded states in src and dst vs. "current"
     if (
             # old aggregate catalog with a plain extractor name list
+            # Adina: this can be None if the super ds aggregate_v1.json does
+            # not contain an entry for the subdataset - is that desired?
             not isinstance(exstate_rec, dict) \
             or sorted(exinfo.keys()) != sorted(exstate_rec.keys()) \
-            or any(exinfo[k]['state'] != exstate_rec[k]
+            or any(sorted(exinfo[k]['state']) != sorted(exstate_rec[k])
                    for k in exinfo)
          ):
 
         lgr.debug('Difference between recorded and current extractor detected in %s (was: %s; is: %s)',
-                  ds, exstate_rec, exinfo.get('state', None))
+                  ds, exstate_rec, exinfo)
+
         return True
     return False
 
