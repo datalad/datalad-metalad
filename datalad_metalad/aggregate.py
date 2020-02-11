@@ -1034,6 +1034,7 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                    for objtype in ('dataset_info', 'content_info'))
                for d, dinfo in iteritems(top_agginfo_db))
     ]
+    lgr.debug("Obsolete objects are: %s", obsolete_objs)
     for obsolete_obj in obsolete_objs:
         # remove from the object store
         # there is no need to fiddle with `remove()`, save will do that
