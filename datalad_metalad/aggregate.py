@@ -593,28 +593,11 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
         last_refcommit_src = src_agginfo_db.get(
             aggsrc.pathobj, {}).get('refcommit', None)
 
-        ####################### TODO: Get a grasp on that "special case":
+        # TODO: Get a grasp on that "special case":
         # we are instructed to take pre-aggregated metadata
         use_self_aggregate = aggsrc in extract_from_ds[aggsrc]
 
-        # "Exploratory" comments following. Need to figure out that special case handling:
-        # (use_self_aggregate = aggsrc in extract_from_ds[aggsrc])
-
-        # Possibly wrong. Tracing it back, it seems that use_self_aggregate can only ever be True if recursive is
-        # True. Otherwise only aggsrc.pathobj can be "in extract_from_ds[aggsrc]".
-
-        # => If that is the case, we figured we are in a recursive call and discovered, that aggsrc is sort of an
-        # intermediate Dataset we need to aggregate from.
-        # => Well, no. Only halfway there. We test for identity, so it can't possibly be further down.
-        # That's the special case for --recursive described in main command block (line 376 ff)
-
-        # This might simply mean "src_rec_outdated = False", which then should lead to using aggregates from aggsrc
-        # instead of extracting. However, still not sure about the circumstances leading to this being True.
-
-        # So, for now leave that as a special case. Come back to it later.
-
         lgr.debug("use_self_aggregate: %s", use_self_aggregate)
-        ###########################
 
         # check whether extraction is needed, by running diff on the
         # datasets against their last known refcommit, to see whether they had
@@ -840,21 +823,8 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
         # which we have aggregated metadata, and expand aggsubjs with a
         # list of such dataset instances
         subjs = []
-
-        # TODO: Need to figure when exactly extract_from_ds[aggsrc] is empty at this point and what that means
-        # This is important, since everything leading to empty subjs leads to not retrieving any metadata.
-
         for subj in extract_from_ds[aggsrc]:
             if not isinstance(subj, Dataset):
-
-                # Ben: Another potential flaw: What if top is still empty? We end up with empty subjs, because
-                # of the "for aggds in top_agginfo_db". But this means, that treatmeant of a subdataset ends here.
-                # Therefore re-extraction seems the only way to get something about it. We don't reach the
-                # "src_agginfo_db = get_ds_aggregate_db(aggsrc.pathobj, warn_absent=False)" below.
-
-                # Replace top_agginfo_db => src_agginfo_db?
-                # Nope. Still an issue. In test we get no content metadata aggregated if it was replaced that way
-
                 subjs.extend(
                     Dataset(aggds) for aggds in top_agginfo_db  # src_agginfo_db #top_agginfo_db
                     # TODO think about distinguishing a direct match
@@ -875,7 +845,6 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                 subjs.append(subj)
 
         if not subjs:
-            # Ben: what if extract_from_ds[aggsrc] was empty? It still exists for a reason - why ignore it altogether?
             continue
 
         referenced_objs = set()
