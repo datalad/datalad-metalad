@@ -42,7 +42,7 @@ from datalad.distribution.dataset import (
     EnsureDataset,
     datasetmethod,
     require_dataset,
-    rev_resolve_path,
+    resolve_path,
 )
 import datalad.utils as ut
 from datalad.utils import (
@@ -290,7 +290,7 @@ class Dump(Interface):
         # check for paths that are not underneath this dataset
         resolved_paths = set()
         for p in assure_list(path):
-            p = rev_resolve_path(p, dataset)
+            p = resolve_path(p, dataset)
             if p != ds.pathobj and ds.pathobj not in p.parents:
                 raise ValueError(
                     'given path {} is not underneath dataset {}'.format(

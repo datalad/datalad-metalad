@@ -6,7 +6,7 @@ from datalad.utils import Path
 
 from datalad.distribution.dataset import (
     rev_get_dataset_root,
-    rev_resolve_path,
+    resolve_path,
 )
 
 import logging
@@ -49,7 +49,7 @@ def sort_paths_by_datasets(refds, orig_dataset_arg, paths):
         # given path argument, before any normalization happens
         # for further decision logic below
         orig_path = text_type(p)
-        p = rev_resolve_path(p, orig_dataset_arg)
+        p = resolve_path(p, orig_dataset_arg)
         root = rev_get_dataset_root(text_type(p))
         if root is None:
             # no root, not possibly underneath the refds
