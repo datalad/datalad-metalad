@@ -161,7 +161,7 @@ class Aggregate(Interface):
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""topmost dataset metadata will be aggregated into. If no
-            dataset is specified, a datasets will be discovered based on the
+            dataset is specified, a dataset will be discovered based on the
             current working directory.""",
             constraints=EnsureDataset() | EnsureNone()),
         path=Parameter(
@@ -214,7 +214,7 @@ class Aggregate(Interface):
         # path args could be
         # - installed datasets
         # - names of pre-aggregated dataset that are not around
-        # - -like status they should match anything underneath them
+        # - like status they should match anything underneath them
 
         # Step 1: figure out which available dataset is closest to a given path
         if path:
@@ -246,7 +246,7 @@ class Aggregate(Interface):
             dataset = ds.path
 
         #
-        # Step 1: figure out which available dataset need to be processed
+        # Step 1: figure out which available datasets need to be processed
         #
         ds_with_pending_changes = set()
         # note that depending on the recursion settings, we may not
@@ -255,7 +255,7 @@ class Aggregate(Interface):
             # pass arg in as-is to get proper argument semantics
             dataset=dataset,
             # query on all paths to get desired result with recursion
-            # enables
+            # enabled
             path=path,
             # never act on anything untracked, we cannot record its identity
             untracked='no',
@@ -413,7 +413,7 @@ class Aggregate(Interface):
                 for res in Save()(
                         dataset=topds,
                         path=[d.pathobj for d in processed_ds
-                         if topds.pathobj in d.pathobj.parents],
+                              if topds.pathobj in d.pathobj.parents],
                         message="Update subdataset state after metadata aggregation",
                         # never recursive
                         recursive=False,
@@ -445,10 +445,47 @@ class Aggregate(Interface):
                 into))
 
 
+def _extractor_changed(ds, ds_db, exinfo, path):
+    """Determine whether or not there's a change in the extractors
+    between recorded metadata in `ds_db` and `exinfo`
+
+    Parameters
+    ----------
+
+    ds: Dataset
+      dataset with recorded metadata on `path`
+    ds_db: dict
+      aggregation info of `ds`
+    exinfo: dict
+      extractor configuration to compare to
+    path: Path
+      thing we want metadata about
+    """
+
+    exstate_rec = ds_db.get(path, {}).get('extractors', None)
+
+    # check recorded states in src and dst vs. "current"
+    if (
+            # old aggregate catalog with a plain extractor name list
+            # Adina: this can be None if the super ds aggregate_v1.json does
+            # not contain an entry for the subdataset - is that desired?
+            not isinstance(exstate_rec, dict) \
+            or sorted(exinfo.keys()) != sorted(exstate_rec.keys()) \
+            or any(sorted(exinfo[k]['state']) != sorted(exstate_rec[k])
+                   for k in exinfo)
+         ):
+
+        lgr.debug('Difference between recorded and current extractor detected in %s (was: %s; is: %s)',
+                  ds, exstate_rec, exinfo)
+
+        return True
+    return False
+
+
 def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
     """Internal helper
 
-    Performs non-recursive aggergation for a single dataset.
+    Performs non-recursive aggregation for a single dataset.
 
     Parameters
     ----------
@@ -504,10 +541,20 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
             'Aggregate from dataset %s', aggsrc,
             update=1,
             increment=True)
+
+        # load the info that we have on the source dataset's aggregated
+        # metadata
+        src_agginfo_db = get_ds_aggregate_db(aggsrc.pathobj, warn_absent=False)
+
+        # initialize flags
+        top_rec_outdated = False
+        src_rec_outdated = False
+
         # get extractor change and compare to recorded state
         # if there is a change, no diff'ing is needed and extraction
         # can start right away
         # TODO implies ignoreextractorchange force flag
+
         exinfo = {
             e['extractor']: dict(
                 e,
@@ -526,34 +573,54 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                 process_type='extractors',
                 result_renderer='disabled')
         }
-        exstate_rec = top_agginfo_db.get(
-            aggsrc.pathobj, {}).get('extractors', None)
-        if (
-                # old aggregate catalag with a plain extractor name list
-                not isinstance(exstate_rec, dict) \
-                or sorted(exinfo.keys()) != sorted(exstate_rec.keys()) \
-                or any(exinfo[k]['state'] != exstate_rec[k]
-                       for k in exinfo)):
-            lgr.debug(
-                'Difference between recorded and current extractor detected, '
-                'force (re-)extraction (was: %s; is: %s)',
-                exstate_rec, exinfo.get('state', {}))
+
+        if _extractor_changed(ds, top_agginfo_db, exinfo, aggsrc.pathobj):
+            # change in top wrt to current state
+            top_rec_outdated = True
+        if _extractor_changed(aggsrc, src_agginfo_db, exinfo, aggsrc.pathobj):
+            # change in src
+            src_rec_outdated = True
+
+        # if both recorded states don't match the current extractor configuration we know we need to extract
+        if top_rec_outdated and src_rec_outdated:
+            lgr.debug("Force (re-)extraction")
             force = 'extraction'
-        # check extraction is actually needed, by running a diff on the
-        # dataset against the last known refcommit, to see whether it had
-        # any metadata relevant changes
-        last_refcommit = top_agginfo_db.get(
+
+        # get the ref commit for the existing record in the top-level dataset (if there's a record)
+        last_refcommit_top = top_agginfo_db.get(
             aggsrc.pathobj, {}).get('refcommit', None)
-        have_diff = False
+        # get the ref commit for the existing record in the source dataset
+        last_refcommit_src = src_agginfo_db.get(
+            aggsrc.pathobj, {}).get('refcommit', None)
+
+        # TODO: Get a grasp on that "special case":
         # we are instructed to take pre-aggregated metadata
         use_self_aggregate = aggsrc in extract_from_ds[aggsrc]
+
+        lgr.debug("use_self_aggregate: %s", use_self_aggregate)
+
+        # check whether extraction is needed, by running diff on the
+        # datasets against their last known refcommit, to see whether they had
+        # any metadata relevant changes
+
         # TODO should we fall back on the PRE_COMMIT_SHA in case there is
         # no recorded refcommit. This might turn out to be more efficient,
         # as it could avoid working with dataset that have no
         # metadata-relevant content
-        # skip diff'ing when extraction is forced
-        if not use_self_aggregate and force != 'extraction' and last_refcommit:
-            lgr.debug('Diff %s against refcommit %s', aggsrc, last_refcommit)
+        # Ben: This TODO isn't really clear to me; It originally refers to last_refcommit_top, which used to be the only
+        #      one to be diff'ed against current state
+
+        have_diff_top = False
+        have_diff_src = False
+        # TODO: have_diff_top can probably be replaced by using top_rec_outdated, since this is the actual
+        # info it carries; analogous for src
+
+        if not use_self_aggregate and not top_rec_outdated and last_refcommit_top:
+            # 1. we have not yet determined top's record to be outdated
+            # 2. we have a record in top that we can compare to with a diff
+            # => diff, so we know whether top's record needs an update
+
+            lgr.debug('Diff %s against refcommit %s', aggsrc, last_refcommit_top)
             # the following diff duplicates the logic in get_refcommit()
             # however, we need to look deeper into the diff against the
             # refcommit to find removed subdatasets
@@ -566,7 +633,7 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
             ]
             for res in _diff_ds(
                     ds=aggsrc,
-                    fr=last_refcommit,
+                    fr=last_refcommit_top,
                     to='HEAD',
                     constant_refs=False,
                     recursion_level=0,
@@ -578,6 +645,14 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                     # not possible here, but turn off detection anyways
                     eval_file_type=False,
                     cache=cache):
+
+                # Ben: Not sure about the following two conditions. If I redirect call path for gh-20 here,
+                # I get results from _diff_ds stating status='clean' but not having any action field. Looks
+                # somewhat suspicious. I guess this needs fixing in _diff_ds.
+                # Also: "upstairs" doesn't treat it in any way.
+                # Also note, that ATM there's code duplication for that in the blick below (diff'ing the source
+                # ds instead)
+
                 if res.get('action', None) != 'diff':  # pragma: no cover
                     # something unexpected, send upstairs
                     yield res
@@ -585,12 +660,12 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                     # not an actual diff
                     continue
                 p = Path(res['path'])
-                if not have_diff and \
+                if not have_diff_top and \
                         p not in exclude_paths and \
                         not any(e in p.parents for e in exclude_paths):
                     # this is a difference that could have an impact on
                     # metadata stop right here and proceed to extraction
-                    have_diff = True
+                    have_diff_top = True
                     lgr.debug('Found metadata relevant diff in %s: %s -- %s',
                               aggsrc, res, exclude_paths)
                     # we cannot break, we have to keep looking for
@@ -621,13 +696,78 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                     # a value, but not as a key in extract_from_ds
                     vanished_datasets.add(rmdspath)
 
-        if not use_self_aggregate and (
-                force == 'extraction' or last_refcommit is None or have_diff):
+        if not use_self_aggregate and top_rec_outdated and not src_rec_outdated and last_refcommit_src:
+            # 1. top's record is outdated
+            # 2. aggsrc's record we did not yet determine to be outdated as well
+            # 3. we have a record in aggsrc
+            # => diff, since we might be able to use aggsrc's record instead of extraction
+
+            lgr.debug('Diff %s against refcommit %s', aggsrc, last_refcommit_src)
+            # the following diff duplicates the logic in get_refcommit()
+            # however, we need to look deeper into the diff against the
+            # refcommit to find removed subdatasets
+            exclude_paths = [
+                aggsrc.pathobj / PurePosixPath(e)
+                for e in (
+                    list(exclude_from_metadata) + assure_list(
+                        aggsrc.config.get('datalad.metadata.exclude-path', []))
+                )
+            ]
+            for res in _diff_ds(
+                    ds=aggsrc,
+                    fr=last_refcommit_src,
+                    to='HEAD',
+                    constant_refs=False,
+                    recursion_level=0,
+                    # query on all paths to get desired result with
+                    # recursion enables
+                    origpaths=None,
+                    untracked='no',
+                    annexinfo=None,
+                    # not possible here, but turn off detection anyways
+                    eval_file_type=False,
+                    cache=cache):
+
+                if res.get('action', None) != 'diff':  # pragma: no cover
+                    # something unexpected, send upstairs
+                    yield res
+                if res['state'] == 'clean':
+                    # not an actual diff
+                    continue
+                p = Path(res['path'])
+                if not have_diff_src and \
+                        p not in exclude_paths and \
+                        not any(e in p.parents for e in exclude_paths):
+                    # this is a difference that could have an impact on
+                    # metadata stop right here and proceed to extraction
+                    have_diff_src = True
+                    lgr.debug('Found metadata relevant diff in %s: %s -- %s',
+                              aggsrc, res, exclude_paths)
+
+                    # Note, that, in the respective code block for diff'ing top, here would follow
+                    # the detection of obsolete subdatasets. But this isn't needed here, since it is
+                    # about removing such from the aggregation db in the target of the aggregation only
+                    #
+                    # So, in this case we can stop here - we know we need to re-extract
+                    break
+
+        # Now, do the extraction if needed
+        if not use_self_aggregate and (force == 'extraction' or (
+                (have_diff_top or last_refcommit_top is None) and
+                (have_diff_src or last_refcommit_src is None)) or
+                (have_diff_top and not have_diff_src and
+                         last_refcommit_src == last_refcommit_top)):
+        # Adina: The last condition should only be true for a recursive aggregation
+        # with a changed subdataset that has up-to-date meta data: There is a diff
+        # between refcommit in Top and current state of top, ref commits of source
+        # and top are identical. Previously, lack of this condition was the
+        # reason why top dataset content info did not get reaggregated
+        # https://github.com/datalad/datalad-metalad/pull/21/commits/26a56551c665380362f13022030cacdd602fc7d8#r377609152)
             lgr.debug(
                 'Extract metadata from %s '
                 '(use_self_aggregate=%s, force=%s, last_refcommit=%s, '
                 'have_diff=%s)',
-                aggsrc, use_self_aggregate, force, last_refcommit, have_diff)
+                aggsrc, use_self_aggregate, force, last_refcommit_top, have_diff_top)
             # really _extract_ metadata for aggsrc
             agginfo = {}
             for res in _extract_metadata(aggsrc, ds, exinfo):
@@ -686,20 +826,26 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
         for subj in extract_from_ds[aggsrc]:
             if not isinstance(subj, Dataset):
                 subjs.extend(
-                    Dataset(aggds) for aggds in top_agginfo_db
+                    Dataset(aggds) for aggds in top_agginfo_db  # src_agginfo_db #top_agginfo_db
                     # TODO think about distinguishing a direct match
                     # vs this match of any parent (maybe the
                     # latter/current only with --recursive)
                     if Path(aggds) == subj \
                     or subj in Path(aggds).parents
                 )
+
+                # we know there is up-to-date meta data in subj (where we want
+                # metadata from), but if the top has not seen this meta data before,
+                # there is no record in top_agginfo_db about it. Let's get it into
+                # subj to not extract it again
+                if subj not in top_agginfo_db:
+                    subjs.append(Dataset(subj))
+
             else:
                 subjs.append(subj)
 
         if not subjs:
             continue
-
-        src_agginfo_db = get_ds_aggregate_db(aggsrc.pathobj, warn_absent=False)
 
         referenced_objs = set()
         # loop over aggsubjs and pull aggregated metadata for them
@@ -857,6 +1003,7 @@ def _do_top_aggregation(ds, extract_from_ds, force, vanished_datasets, cache):
                    for objtype in ('dataset_info', 'content_info'))
                for d, dinfo in iteritems(top_agginfo_db))
     ]
+    lgr.debug("Obsolete objects are: %s", obsolete_objs)
     for obsolete_obj in obsolete_objs:
         # remove from the object store
         # there is no need to fiddle with `remove()`, save will do that

@@ -839,3 +839,52 @@ def test_aggregate_aggregation(path):
             )[0]['metadata']['metalad_core']['contentbytesize'],
         6
     )
+
+# Test for https://github.com/datalad/datalad-metalad/issues/20
+@with_tempfile(mkdir=True)
+def test_aggregate_into_top_no_extraction(path):
+
+    path = Path(path)
+    superds = Dataset(path).create()
+    subds = superds.create(path / 'sub')
+    # put a single (empty) file in subds to have some metadata-relevant
+    # content
+    payload = subds.pathobj / 'CONTENT'
+    payload.write_text(u'some')
+    superds.save(recursive=True)
+    assert_repo_status(superds.path)
+    # have metadata aggregated in the subds
+
+    res = subds.meta_aggregate()
+
+    # FTR: Doing it again, yields extraction not needed:
+    assert_result_count(subds.meta_aggregate(),
+                        1,
+                        action='meta_extract',
+                        status='notneeded',
+                        type='dataset'
+                        )
+
+    # update subds entry in super
+    superds.save(recursive=True)
+    # super has no metadata on sub's content
+    assert_status(
+        'impossible',
+        superds.meta_dump('sub/', on_failure='ignore')
+    )
+    # but subds has
+    res = subds.meta_dump('.', on_failure='ignore')
+    assert_result_count(res, 2)
+    assert_result_count(res, 2, status='ok')
+    assert_result_count(res, 1, type='dataset')
+    assert_result_count(res, 1, type='file')
+    # Now, aggregate into top
+    res = superds.meta_aggregate('sub/', into='top')
+    # super should now be able to report:
+    assert_status('ok', superds.meta_dump('sub/', on_failure='ignore'))
+    # Re-extraction should not be required:
+    assert_result_count(res, 1,
+                        action='meta_extract',
+                        status='notneeded',
+                        type='dataset'
+                        )
