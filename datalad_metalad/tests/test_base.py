@@ -34,24 +34,25 @@ from datalad.tests.utils import (
 
 @with_tempfile(mkdir=True)
 def test_get_metadata_type(path):
-    Dataset(path).create()
+    ds = Dataset(path).create()
     # nothing set, nothing found
-    eq_(get_metadata_type(Dataset(path)), [])
-    # got section, but no setting
-    open(op.join(path, '.datalad', 'config'), 'w').write('[datalad "metadata"]\n')
-    eq_(get_metadata_type(Dataset(path)), [])
+    eq_(get_metadata_type(ds), [])
     # minimal setting
-    open(op.join(path, '.datalad', 'config'), 'w+').write('[datalad "metadata"]\nnativetype = mamboschwambo\n')
-    eq_(get_metadata_type(Dataset(path)), 'mamboschwambo')
+    ds.config.set(
+        'datalad.metadata.nativetype', 'mamboschwambo',
+        where='dataset')
+    eq_(get_metadata_type(ds), 'mamboschwambo')
 
 
 # FIXME remove when support for the old config var is removed
 @with_tempfile(mkdir=True)
 def test_get_metadata_type_oldcfg(path):
-    Dataset(path).create()
+    ds = Dataset(path).create()
     # minimal setting
-    open(op.join(path, '.datalad', 'config'), 'w+').write('[metadata]\nnativetype = mamboschwambo\n')
-    eq_(get_metadata_type(Dataset(path)), 'mamboschwambo')
+    ds.config.set(
+        'metadata.nativetype', 'mamboschwambo',
+        where='dataset')
+    eq_(get_metadata_type(ds), 'mamboschwambo')
 
 
 @with_tempfile(mkdir=True)
