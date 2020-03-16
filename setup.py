@@ -43,7 +43,7 @@ setup(
     long_description=long_description,
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
     install_requires=[
-        'datalad>=0.12.0rc4',
+        'datalad>=0.12.2',
     ],
     entry_points = {
         'datalad.extensions': [
