@@ -1,0 +1,2 @@
+include versioneer.py
+include datalad_metalad/_version.py
