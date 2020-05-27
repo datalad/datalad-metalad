@@ -1,0 +1,109 @@
+# Schema definition for archived study metadata.
+#
+# Rx was used for schema definition and verification (see http://rx.codesimply.com/)
+#
+# This document consists of two parts:  "typedefs" and "schema". The typedef-part is a
+# list of entries that define types that can be used in typedefs or in the schema. The
+# schema-part defines the schema, in Rx-conventions, that will be used to verify a given
+# metadata specification.
+#
+# Each typedef entry has itself two parts, "id" and "schema". The schema-part contains
+# the schema of the newly defined type in Rx-conventions. The id-part contains the name
+# that can be used for the type defined in the schema-part. The name has to follow tag-
+# syntax (http://taguri.org/).
+---
+typedefs:
+  - id: tag:person
+    schema:
+      type: //rec
+      required:
+        person:
+          type: //rec
+          required:
+            first_name: //str
+            last_name: //str
+          optional:
+            id: //str
+            title: //str
+            affiliation: //str
+            role: //str
+            email: //str
+            additional_contact_information: //str
+
+  - id: tag:date
+    schema:
+      type: //str
+
+  - id: tag:person-ref
+    schema:
+      type: //rec
+      required:
+        first_name: //str
+        last_name: //str
+
+  - id: tag:person-or-id-ref
+    schema:
+      type: //any
+      of:
+        - tag:person-ref
+        - type: //str
+
+  - id: tag:publication
+    schema:
+      type: //rec
+      required:
+        publication:
+          type: //rec
+          required:
+            authors:
+              type: //arr
+              contents: tag:person-or-id-ref
+            title: //str
+          optional:
+            doi: //str
+            publication: //str
+            series: //int
+            volume: //int
+            pages: //str
+            publisher: //str
+            date: tag:date
+
+  - id: tag:keywords
+    schema:
+      type: //arr
+      contents: //str
+
+  - id: tag:dataset
+    schema:
+      type: //rec
+      required:
+        name: //str
+        url: //str
+      optional:
+        description: //str
+        data_format: //str
+        availability: //str
+        license: //str
+        keywords: tag:keywords
+        contact_point: tag:person-or-id-ref
+
+schema:
+  type: //rec
+  required:
+    study:
+      type: //rec
+      required:
+        name: //str
+        dataset: tag:dataset
+      optional:
+        purpose: //str
+        start_date: tag:date
+        end_date: tag:date
+        keywords: tag:keywords
+        persons:
+          type: //arr
+          contents: tag:person
+        contact_point: tag:person-or-id-ref
+        publications:
+          type: //arr
+          contents: tag:publication

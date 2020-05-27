@@ -1,0 +1,8 @@
+# Minimal study metadata example conforming to ../schema/archive_metadata.yml
+
+study:
+    name: Intelligence in Rodents
+
+    dataset:
+        name: Rodent-Intelligence Brainscans
+        url: file:/bulk1:/data/ristudy

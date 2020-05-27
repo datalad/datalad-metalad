@@ -4,7 +4,7 @@
 PYTHON ?= python
 NOSETESTS ?= nosetests
 
-MODULE ?= datalad_metalad
+MODULE ?= datalad_metalad tools
 
 all: clean test
 
