@@ -24,3 +24,4 @@ tmp
 .*.swp
 .travis.yml.evil-bd
 .asv
+.DS_Store
