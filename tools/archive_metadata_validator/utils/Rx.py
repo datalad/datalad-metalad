@@ -1,3 +1,6 @@
+# Copied from https://github.com/rjbs/rx/
+# LICENSE: The General Public License (GPL) Version 2.0
+
 import re
 from six import string_types  # for 2-3 compatibility
 import types
