@@ -7,9 +7,9 @@ If you work with a limited number of columns, please enable
 soft-wrap on your editor.
 -->
 
-#Metadata for Archived Studies
+#Metadata for Archived Studies Handbook
 
-This directory tree contains code and data related to metadata for archived studies. The schema is deliberately kept simple in order to facilitate at least some metadata gathering, even from older studies. At the same time, it allows for more detailed information, if available.
+This document describes the metadata for archived studies. More precisely, it describes the metadata elements that can be used, and the machine-readable format in which they are specified. The schema is deliberately kept simple in order to facilitate quick metadata capturing, even from older studies. At the same time, it allows for more detailed information, if available.
 
 ## Metadata Elements
 
@@ -68,7 +68,7 @@ These are the elements that comprise the publication-element:
 - Date (optional): date of the publication
 
 ### Person Reference
-Person references are used in the dataset-element and in the publication element. They reference persons that are contained in the persons-list of the study-element. That means, person information is kept at a single place in MAS, i.e. in the persons list of the study element. Other places in MAS the require person information just refer to entries in this list.
+Person references are used in the study-element, the dataset-element and in the publication element. They reference persons that are contained in the persons-list of the study-element. That means, person information is kept at a single place in MAS, i.e. in the persons list of the study element. Other places in MAS the require person information just refer to entries in this list.
 
 Entries in the persons list are referred to either by first and last name, or by an identifier. That is what the identifier entry in a person-element is used for. You can assign a unique (within the scope of the metadata file) value, for example: "dr.who",  and use this to refer to a person later.
 
@@ -93,56 +93,66 @@ This section describes, how the elements described in the previous section can b
 
 ####Example for concept 1:
 An example for the first concept, i.e. names and content, is given here:
-```
+
+<pre>
 name: This is a name
 url: http://www.example.com/
-```
+</pre>
+
 The given code defines two entities, namely "name" and "url", with the respective content "This is a name" and "http://www.example.com/".
 
 Long context can also be written into multiple lines, for example, the following code snippet defines an element named "description" with the content "Lorem ipsum ... ullamco":
-```
+
+<pre>
 description:
   Lorem ipsum dolor sit amet, consectetur adipisici elit,
   sed eiusmod tempor incidunt ut labore et dolore magna aliqua.
   Ut enim ad minim veniam, quis nostrud exercitation ullamco
-```
+</pre>
+
 **Please note**: if the content of an element contains the character colon followed by space, you have to enclose the content into double-quotes. For example when you specify the element additional_contact_info like this:
-```
+
+<pre>
 addition_contact_info: Tel: +1 555 201-4444
-```
+</pre>
+
 you would see an error, because "Tel" would be mistaken for an element name, since it is followed by a colon and a space.
 
 To prevent this error, you have to enclose the string `Tel: +1 555 201-4444` into double-quotes like this:
-```
+
+<pre>
 addition_contact_info: "Tel: +1 555 201-4444"
-```
+</pre>
 
 ####Example for concept 2:
 An example for the second concept, i.e. indentation of contained elements, is given here:
 
-```
+<pre>
 study:
   name: Navigational maps in rat brains
   dataset:
     name: fMRI rat navigation
     url: http://www.example.com/studies/images/rat-navigation
   purpose: determine how rats learn to navigate in new environments
-``` 
+</pre>
+
 The code-snippet above defines an element called "study" that contains three sub-elements, i.e. "name", "dataset", and "purpose". Of which "dataset" itself contains two sub-elements, i.e. "name", and "url".
 
 **Please note**: use only spaces for indentation, not tabulators!
 
 ####Example for concept 3:
 An example for the third concept, i.e. lists, is given here:
-```
+
+<pre>
 keywords:
   - fMRI
   - Rodents
-```
+</pre>
+
 The code snippet above defines an element named "keywords", that contains two text strings, i.e. "fMRI" and "Rodents". Each list element is introduced with a "-", i.e. a minus-sign. 
 
 The content of list elements is not restricted to simple types like text strings or number. List elements themselves can be elements with sub-elements, as shown here:
-```
+<pre>
 study:
   persons:
     - person:
@@ -151,7 +161,7 @@ study:
     - person:
         first_name: Ida
         last_name: Miller
-``` 
+</pre>
 The code snippet above defines an element named "study", that contains an element named "persons", that contains a list with two entries. In this example each list entry is itself an element containing other elements. More specific each list entry is a "person" element, that contains two sub-elements, i.e. "first_name" and "last_name" with the respective first and last names.
 
 ## Complete Metadata Definition
@@ -165,10 +175,8 @@ If you keep in mind:
 
 you should be able to quickly generate a metadata description of your study by modifying the complete example, i.e. modifying element content or deleting elements that you do not need and that are marked as optional above. Please note, the example use four spaces for the next indentation level. Feel free to change this number as long as it is consistent, i.e. sub-elements of an element all have the same indentation.
 
-
 #### Example 1: Complete Metadata Description
-```
-# Complete study metadata example conforming to ../schema/archive_metadata.yml
+<pre>
 study:
     name: Intelligence in Rodents
     purpose:
@@ -183,7 +191,6 @@ study:
     contact_point:
         first_name: Hans
         last_name: Glück
-
     persons:
         - person:
             id: person-1
@@ -202,7 +209,6 @@ study:
             affiliation: FZ-Jülich
             role: Scientist
             email: ig@fz-juelich.de
-
     publications:
         - publication:
             doi: doi:example/p1
@@ -229,7 +235,6 @@ study:
             publisher: Elsberg
             pages: 233-244
             date: 1.1.1998
-
     dataset:
         name: Rodent-Intelligence Brainscans
         url: file:/bulk1:/data/ristudy
@@ -247,38 +252,43 @@ study:
         contact_point:
             first_name: Irmgard
             last_name: Glöckner
+</pre>
 
-```
-In example above shows the purpose of the persons-element. It lists all persons that are either involved in the project, and/or are among the authors of a publication, and/or are contact points for inquiries about the study or dataset. In the latter two cases, i.e. authors and contact points, the respective person is just referenced. This allows to use a person in several contexts without repeating the defintion of him over and over.
+The example above illustrates the purpose of the persons-element. It lists all persons that are either involved in the project, and/or are among the authors of a publication, and/or are contact points for inquiries about the study or dataset. In the latter two cases, i.e. authors and contact points, the respective person is just referenced. This allows to use a person in several contexts without repeating the defintion of him over and over.
 
 Person references is also where the id-element in the person-element becomes relevant, and the example illustrates its usage. For example the person with the first name "Irmgard" and the last name "Glöckner" has been assigned the id "person-2". We refer to Irmgard Glöckner in authors list of the publication with the title "Food-based intelligence induction in rodents" by her first and last name, i.e.:
-```
+
+<pre>
     ...
     authors:
         - first_name: Irmgard
           last_name: Glöckner
         - ...
     ...
-```
+</pre>
+
 In the author list of the publication with the title "Rodent studies survey" we instead use the id, i.e. "person-2", that we assigned to Irgmard Glöckner:
-```
+
+<pre>
     ...
     authors:
         - person-2
         - ...
     ...
-```
+</pre>
+
 You are free to use either way of reference.
 
 #### Example 2: Minimal Metadata Description
-```
+The following show the minimal possible metadata description, i.e. the metadata description in which all optional elements are left out.
+
+<pre>
 study:
     name: Intelligence in Rodents
-
     dataset:
         name: Rodent-Intelligence Brainscans
         url: http://www.example.com/data/ristudy
-```
+</pre>
 
 ##Questions?
 
