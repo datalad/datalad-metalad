@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 from pathlib import PosixPath
 from typing import List
 
-import yaml
 from content_validators.date_validator import DateValidator
 from content_validators.reference_validator import ReferenceValidator
 from validator import SpecValidator
@@ -28,7 +27,7 @@ def validate_file(path) -> List:
         return validate_stream(character_stream)
 
 
-def main(argument_list):
+def main(_):
     arguments = PARSER.parse_args()
 
     success = True
@@ -41,7 +40,7 @@ def main(argument_list):
         if errors:
             success = False
             for error in errors:
-                print(f"{file_name}: {error}")
+                sys.stderr.write(f"{file_name}: {error}\n")
     return 0 if success is True else 1
 
 

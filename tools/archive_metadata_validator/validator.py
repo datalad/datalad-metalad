@@ -3,6 +3,7 @@ import yaml
 from collections import namedtuple
 from pathlib import PosixPath
 from typing import Any, List
+from yaml.error import YAMLError, MarkedYAMLError
 
 from content_validators.content_validator import ContentValidator
 from utils import Rx
@@ -60,4 +61,12 @@ class SpecValidator(object):
         return not self.errors
 
     def validate_spec(self, yaml_token_stream) -> bool:
-        return self.validate_spec_object(yaml.safe_load(yaml_token_stream))
+        try:
+            spec_object = yaml.safe_load(yaml_token_stream)
+        except MarkedYAMLError as e:
+            self.errors = [f"YAML error:{e.problem_mark}: {e.problem} {e.context} {e.context_mark}"]
+            return False
+        except YAMLError as e:
+            self.errors = [f"YAML error: {e}"]
+            return False
+        return self.validate_spec_object(spec_object)
