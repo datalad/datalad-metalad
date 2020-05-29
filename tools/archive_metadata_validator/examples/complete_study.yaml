@@ -44,8 +44,8 @@ study:
                   last_name: Glöckner
             title: Food-based intelligence induction in rodents
             publication: Proceedings in rodent behavior
-            series: 23
-            volume: 4
+            volume: 23
+            issue: 4
             pages: 11-15
             publisher: Spraddison
             date: 1.1.1995
@@ -56,8 +56,8 @@ study:
                 - person-2
             title: Rodent studies survey
             publication: Intelligence Research
-            series: 1
-            volume: 3
+            volume: 33
+            issue: 9
             publisher: Elsberg
             pages: 233-244
             date: 1.1.1998

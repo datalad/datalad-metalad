@@ -70,8 +70,8 @@ These are the elements that comprise the publication-element:
 - Date: text, date of the publication
 - DOI (optional): text, the digital object identifier of the publication
 - Publication (optional): text, the name of the publication
-- Series (optional): integer, the series number of the publication
 - Volume (optional): integer, the volume number of the publication
+- Issue (optional): integer, the issue number of the publication
 - Pages (optional): text, pages on which the publication appeared
 - Publisher (optional): text, entity that published the publication
 
@@ -229,8 +229,8 @@ study:
                   last_name: Glöckner
             title: Food-based intelligence induction in rodents
             publication: Proceedings in rodent behavior
-            series: 23
-            volume: 4
+            volume: 23
+            issue: 4
             pages: 11-15
             publisher: Spraddison
             date: 1.1.1995
@@ -241,8 +241,8 @@ study:
                 - person-2
             title: Rodent studies survey
             publication: Intelligence Research
-            series: 1
-            volume: 3
+            volume: 33
+            issue: 9
             publisher: Elsberg
             pages: 233-244
             date: 1.1.1998
@@ -253,6 +253,7 @@ study:
             Lorem ipsum dolor sit amet, consectetur adipisici elit, sed eiusmod tempor
             incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
             nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi
+            Consequat
         data_format: DICOM
         availability: public
         license: Creative Commons 1.0
