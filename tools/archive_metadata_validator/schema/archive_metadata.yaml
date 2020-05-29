@@ -1,109 +1,173 @@
-# Schema definition for archived study metadata.
-#
-# Rx was used for schema definition and verification (see http://rx.codesimply.com/)
-#
-# This document consists of two parts:  "typedefs" and "schema". The typedef-part is a
-# list of entries that define types that can be used in typedefs or in the schema. The
-# schema-part defines the schema, in Rx-conventions, that will be used to verify a given
-# metadata specification.
-#
-# Each typedef entry has itself two parts, "id" and "schema". The schema-part contains
-# the schema of the newly defined type in Rx-conventions. The id-part contains the name
-# that can be used for the type defined in the schema-part. The name has to follow tag-
-# syntax (http://taguri.org/).
----
-typedefs:
-  - id: tag:person
-    schema:
-      type: //rec
-      required:
-        person:
-          type: //rec
-          required:
-            first_name: //str
-            last_name: //str
-          optional:
-            id: //str
-            title: //str
-            affiliation: //str
-            role: //str
-            email: //str
-            additional_contact_information: //str
+$schema": "http://json-schema.org/draft-07/schema#"
+"$id": "http://psychoinformatics.inm7.de/schemas/archived_study.json"
 
-  - id: tag:date
-    schema:
-      type: //str
+definitions:
+  person-data:
+    type: object
+    required:
+      - person
+    properties:
+      person:
+        type: object
+        required:
+          - first_name
+          - last_name
+        properties:
+          first_name:
+            type: string
+          last_name:
+            type: string
+          id:
+            type: string
+          title:
+            type: string
+          affiliation:
+            type: string
+          role:
+            $ref: "#definitions/role"
+          email:
+            type: string
+          additional_contact_information:
+            type: string
+          orcid-id:
+            type: string
 
-  - id: tag:person-ref
-    schema:
-      type: //rec
-      required:
-        first_name: //str
-        last_name: //str
+  role:
+    type: string
 
-  - id: tag:person-or-id-ref
-    schema:
-      type: //any
-      of:
-        - tag:person-ref
-        - type: //str
+  named-person-ref:
+    type: object
+    required:
+      - first_name
+      - last_name
+    properties:
+      first_name:
+        type: string
+      last_name:
+        type: string
 
-  - id: tag:publication
-    schema:
-      type: //rec
-      required:
-        publication:
-          type: //rec
-          required:
-            authors:
-              type: //arr
-              contents: tag:person-or-id-ref
-            title: //str
-          optional:
-            doi: //str
-            publication: //str
-            series: //int
-            volume: //int
-            pages: //str
-            publisher: //str
-            date: tag:date
+  id-person-ref:
+    type: string
 
-  - id: tag:keywords
-    schema:
-      type: //arr
-      contents: //str
+  person-ref:
+    oneOf:
+      - $ref: "#definitions/named-person-ref"
+      - $ref: "#definitions/id-person-ref"
 
-  - id: tag:dataset
-    schema:
-      type: //rec
-      required:
-        name: //str
-        url: //str
-      optional:
-        description: //str
-        data_format: //str
-        availability: //str
-        license: //str
-        keywords: tag:keywords
-        contact_point: tag:person-or-id-ref
+  person-ref-list:
+    type: array
+    items:
+      $ref: "#definitions/person-ref"
 
-schema:
-  type: //rec
-  required:
-    study:
-      type: //rec
-      required:
-        name: //str
-        dataset: tag:dataset
-      optional:
-        purpose: //str
-        start_date: tag:date
-        end_date: tag:date
-        keywords: tag:keywords
-        persons:
-          type: //arr
-          contents: tag:person
-        contact_point: tag:person-or-id-ref
-        publications:
-          type: //arr
-          contents: tag:publication
+  date:
+    type: string
+    format: date
+
+  publication:
+    type: object
+    properties:
+      publication:
+        type: object
+        required:
+          - title
+          - authors
+          - date
+        properties:
+          title:
+            type: string
+          authors:
+            $ref: "#definitions/person-ref-list"
+          date:
+            $ref: "#definitions/date"
+          doi:
+            type: string
+          publication:
+            type: string
+          series:
+            type: integer
+          volume:
+            type: integer
+          pages:
+            type: string
+          publisher:
+            type: string
+
+  keywords:
+    type: array
+    items:
+      type: string
+
+  person-list:
+    type: array
+    items:
+      $ref: "#definitions/person-data"
+
+  publications:
+    type: array
+    items:
+      $ref: "#definitions/publication"
+
+  availability:
+    description: Is an object publicly available, not available, or only available on request
+    type: string
+    enum:
+      - public
+      - private
+      - controlled
+
+  dataset:
+    description: The data that should be archived
+    type: object
+    required:
+      - name
+      - url
+    properties:
+      name:
+        type: string
+      url:
+        description: URL of the entry point for the data
+        type: string
+      description:
+        description: Human-readable description of the data and what it describes
+        type: string
+      data_format:
+        type: string
+      availability:
+        $ref: "#definitions/availability"
+      license:
+        description: Human-readable description of the license under which the data can be used
+        type: string
+      keywords:
+        $ref: "#definitions/keywords"
+      contact_person:
+        $ref: "#definitions/person-ref"
+
+type: object
+required:
+  - study
+properties:
+  study:
+    type: object
+    required:
+      - name
+      - dataset
+    properties:
+      name:
+        type: string
+      purpose:
+        description: Why was the study performed
+        type: string
+      start_date:
+        $ref: "#definitions/date"
+      end_date:
+        $ref: "#definitions/date"
+      keywords:
+        $ref: "#definitions/keywords"
+      persons:
+        $ref: "#definitions/person-list"
+      contact_person:
+        $ref: "#definitions/person-ref"
+      publications:
+        $ref: "#definitions/publications"
+      dataset:
+        $ref: "#definitions/dataset"

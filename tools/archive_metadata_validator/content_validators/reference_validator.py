@@ -34,13 +34,36 @@ class ReferenceValidator(ContentValidator):
                 self.value_at("person.id", entry)
             ) for entry in self.value_at("study.persons", spec, default=[])
         ))
+        self.ids = tuple((person_info.id for person_info in self.persons if person_info.id is not None))
+
+    def _check_id_uniqueness(self) -> List:
+        """ check whether person ids are unique """
+        if len(set(self.ids)) != len(self.ids):
+            repeated_ids = set(filter(lambda x: self.ids.count(x) > 1, self.ids))
+            return [f"Reference error: repeated ids: {','.join((i for i in repeated_ids))}"]
+        return []
+
+    def _check_name_uniqueness(self) -> List:
+        """ check whether first name, last name of persons without ids are unique """
+        name_identified_persons = tuple((
+            (person.first_name, person.last_name)
+            for person in filter(lambda person_info: person_info.id is None, self.persons)
+        ))
+
+        if len(set(name_identified_persons)) != len(name_identified_persons):
+            repeated_names = set(filter(lambda x: name_identified_persons.count(x) > 1, name_identified_persons))
+            return [f"Reference error: repeated names without id: "
+                    f"{', '.join((f'``{i[0]} {i[1]}´´' for i in set(repeated_names)))}"]
+        return []
+        pass
 
     def perform_validation(self, spec: dict) -> List:
-        errors = []
         self._get_person_info(spec)
+        errors = self._check_id_uniqueness()
+        errors += self._check_name_uniqueness()
         for publication_spec in self.value_at("study.publications", spec, default=[]):
             for person_ref in self.value_at("publication.authors", publication_spec):
                 errors += self._validate_person_reference(person_ref)
-        errors += self._validate_nullable_person_reference(self.value_at("study.contact_point", spec))
-        errors += self._validate_nullable_person_reference(self.value_at("study.dataset.contact_point", spec))
+        errors += self._validate_nullable_person_reference(self.value_at("study.contact_person", spec))
+        errors += self._validate_nullable_person_reference(self.value_at("study.dataset.contact_person", spec))
         return errors

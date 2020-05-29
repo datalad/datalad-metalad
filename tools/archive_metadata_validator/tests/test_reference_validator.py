@@ -27,7 +27,7 @@ class TestReferenceValidator(TestCase):
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": "id-2",
+                "contact_person": "id-2",
             }
         }
         validator.perform_validation(spec)
@@ -37,7 +37,7 @@ class TestReferenceValidator(TestCase):
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": {
+                "contact_person": {
                     "first_name": "fn-2",
                     "last_name": "ln-2"
                 }
@@ -50,7 +50,7 @@ class TestReferenceValidator(TestCase):
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": "id-3",
+                "contact_person": "id-3",
             }
         }
         errors = validator.perform_validation(spec)
@@ -61,7 +61,7 @@ class TestReferenceValidator(TestCase):
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": {
+                "contact_person": {
                     "first_name": "fn-x",
                     "last_name": "ln-2"
                 }
@@ -73,7 +73,7 @@ class TestReferenceValidator(TestCase):
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": {
+                "contact_person": {
                     "first_name": "fn-2",
                     "last_name": "ln-x"
                 }
@@ -82,24 +82,24 @@ class TestReferenceValidator(TestCase):
         errors = validator.perform_validation(spec)
         self.assertEqual(len(errors), 1)
 
-    def test_contact_point_validation(self):
+    def test_contact_person_validation(self):
         validator = ReferenceValidator()
         spec = {
             "study": {
                 "persons": PERSONS,
-                "contact_point": "id-3",
+                "contact_person": "id-3",
             }
         }
         errors = validator.perform_validation(spec)
         self.assertEqual(len(errors), 1)
 
-    def test_dataset_contact_point_validation(self):
+    def test_dataset_contact_person_validation(self):
         validator = ReferenceValidator()
         spec = {
             "study": {
                 "persons": PERSONS,
                 "dataset": {
-                    "contact_point": "id-4"
+                    "contact_person": "id-4"
                 }
             }
         }
@@ -166,7 +166,46 @@ class TestReferenceValidator(TestCase):
                     "name": "dn-1",
                     "url": "url://example.com/dataset"
                 },
-                "contact_point": "id-1"
+                "contact_person": "id-1"
+            }
+        }
+        errors = validator.perform_validation(spec)
+        self.assertEqual(len(errors), 1)
+
+    def test_repeated_id_fail(self):
+        validator = ReferenceValidator()
+        repeated_entry = {
+            "person": {
+                "id": "id-1",
+                "first_name": "fn-1",
+                "last_name": "ln-1"
+            }
+        }
+        spec = {
+            "study": {
+                "persons": [
+                    repeated_entry,
+                    repeated_entry
+                ]
+            }
+        }
+        errors = validator.perform_validation(spec)
+        self.assertEqual(len(errors), 1)
+
+    def test_repeated_name_fail(self):
+        validator = ReferenceValidator()
+        repeated_entry = {
+            "person": {
+                "first_name": "fn-1",
+                "last_name": "ln-1"
+            }
+        }
+        spec = {
+            "study": {
+                "persons": [
+                    repeated_entry,
+                    repeated_entry
+                ]
             }
         }
         errors = validator.perform_validation(spec)

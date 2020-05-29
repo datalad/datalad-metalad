@@ -10,7 +10,7 @@ study:
         - Rodent
         - Intelligence
         - Food
-    contact_point:
+    contact_person:
         first_name: Hans
         last_name: Glück
 
@@ -23,6 +23,7 @@ study:
             affiliation: FZ-Jülich
             role: Study Leader
             email: hg@fz-juelich.de
+            orcid-id: 1000-0002-4092-0601
             additional_contact_information: "Tel: +49 111 5553433"
         - person:
             id: person-2
@@ -31,6 +32,7 @@ study:
             title: Dr. Dr.
             affiliation: FZ-Jülich
             role: Scientist
+            orcid-id: 2000-0002-4092-0249
             email: ig@fz-juelich.de
 
     publications:
@@ -69,11 +71,9 @@ study:
             nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi
             Consequat
         data_format: DICOM
-        availability: Public
+        availability: public
         license: Creative Commons 1.0
         keywords:
             - fMRI
             - Rodents
-        contact_point:
-            first_name: Irmgard
-            last_name: Glöckner
+        contact_person: person-2

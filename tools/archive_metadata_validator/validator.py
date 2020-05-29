@@ -6,17 +6,10 @@ from typing import Any, List
 from yaml.error import YAMLError, MarkedYAMLError
 
 from content_validators.content_validator import ContentValidator
-from utils import Rx
+from jsonschema import validate, ValidationError
 
 
 Typedef = namedtuple("SchemaTypedef", ["id", "schema"])
-
-
-class ValidationError(object):
-    def __init__(self):
-        self.description = None
-        self.key_path = None
-        self.value = None
 
 
 class SpecValidator(object):
@@ -42,16 +35,16 @@ class SpecValidator(object):
         return [f"{header}: {error}" for error in errors]
 
     def __init__(self, path_to_schema_spec: PosixPath, validators: List[ContentValidator]):
-        self.schema = self._create_schema_from_spec(self._load_spec_object(path_to_schema_spec))
+        self.schema = self._load_spec_object(path_to_schema_spec)
         self.content_validators = validators
         self.errors = []
 
     def _validate_spec(self, spec):
         try:
-            self.schema.validate(spec)
+            validate(instance=spec, schema=self.schema)
             return []
-        except Exception as error:
-            return [f"Schema error: {error}" for error in error.args]
+        except ValidationError as error:
+            return [f"Schema error: in {'.'.join(error.absolute_path)}: {error.message}"]
 
     def validate_spec_object(self, spec) -> bool:
         self.errors = self._validate_spec(spec)
