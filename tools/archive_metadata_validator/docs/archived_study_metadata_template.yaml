@@ -1,0 +1,162 @@
+#
+# This is a template for the archived study metadata form. You can use this to
+# enter metadata about your study.
+# Please read the Archived Study Metadata Handbook, ca. 15 minutes reading time,
+# for a more detailed explanation of this form.
+#
+# If you do not wish to read to handbook now, here is a short description of
+# this file.
+#
+# Generally information is entered by specifying an element name followed by a
+# colon and a space and then the content. For example:
+#
+#     name: An Important Study
+#
+# defines the element "name" with the content "An Important Study" (as demonstrated
+# in the "purpose"-element below, text can also span multiple lines).
+#
+# All example text is surrounded with <ex> and </ex>. Please replace the example
+# text including the <ex> and </ex> with your data. For example, replace
+#
+#      name: <ex>Name of study</ex>
+#
+# with
+#
+#      name: Intelligence in Rodents
+#
+# if the name of your study is "Intelligence in Rodents".
+#
+# An element might contain another element. This is indicated by indenting the
+# contained element. For example:
+#
+#    study:
+#        name: A name
+#        start_date: 1.1.2020
+#
+# defines an element named study that contains itself two elements, i.e.
+# the element "name" with the content "A name", and the element "start_date"
+# with the content "1.1.2020".
+#
+# In addition to named elements there are lists. Lists have a name and their
+# contained elements are indented and preceded by a "-". For example:
+#
+#     keywords:
+#        - Rodents
+#        - Navigation
+#
+# defines a list named "keywords" with two entries, i.e. "Rodents", and
+# "Navigation". Lists in this template contain only one or two entries for
+# demonstration purposes. You can extend lists with additional elements or delete
+# elements from the list, but you can not create empty lists. If you do not want,
+# in this example, to specify keywords, just delete the line with "keywords:" and
+# all list entries, i.e. the lines with "Rodents" and with "Navigation".
+#
+# Generally if you want to delete an element you have to delete the contained elements
+# as well, that means everything that is indented. For example, if you delete "b" from
+# the following:
+#
+#     a: example text
+#     b:
+#        b1: more example text
+#        b2: even more example text
+#     c:
+#        c1: text example
+#
+# you end up with:
+#
+#     a: example text
+#     c:
+#        c1: text example
+#
+# and if you want to delete "a" from the above document, you end up with:
+#
+#     c:
+#        c1: text example
+#
+# You do not have to enter information for all elements. Most elements are optional
+# and can be deleted.  Comments indicate which element is optional and can be deleted.
+#
+# One last note: content that contains a colon followed by space, e. g. Tel: +49 1 555333
+# has to be enclosed in double quotes like this: "Tel: +49 1 555333". There is an
+# example below in "additional_contact_information".
+#
+
+study:
+    name: <ex>Intelligence in Rodents</ex>
+    # The following element, i.e. purpose:, and its content can be deleted
+    purpose:
+        <ex>Identify what determines intelligence in rodents and
+        Whether it is related to food.</ex>
+    start_date: <ex>1.1.1990</ex> # Can be deleted
+    end_date: <ex>1.1.2010</ex> # Can be deleted
+    keywords:                    # Can be deleted
+        - <ex>Rodent</ex>        #
+        - <ex>Intelligence</ex>  #
+        - <ex>Food</ex>          #
+    contact_person:      # Can be deleted
+        first_name: <ex>Hans</ex> #
+        last_name: <ex>Glück</ex> #
+
+    persons: # Can be deleted
+        - person:
+            first_name: <ex>Hans</ex>
+            last_name: <ex>Glück</ex>
+            id: <ex>person-1</ex>   # Can be deleted (see the handbook for usage of the id-element)
+            title: <ex>Prof. Dr.</ex> # Can be deleted
+            affiliation: <ex>FZ-Jülich</ex>  # Can be deleted
+            role: <ex>Study Leader</ex> # Can be deleted
+            email: <ex>hg@fz-juelich.de</ex> # Can be deleted
+            orcid-id: <ex>1000-0002-4092-0601</ex> # Can be deleted
+            additional_contact_information: "<ex>Tel: +49 111 5553433</ex>" # Can be deleted
+        - person:
+            first_name: <ex>Irmgard</ex>
+            last_name: <ex>Glöckner</ex>
+            id: <ex>person-2</ex> # Can be deleted
+            title: <ex>Dr. Dr.</ex> # Can be deleted
+            affiliation: <ex>FZ-Jülich</ex> # Can be deleted
+            role: <ex>Scientist</ex> # Can be deleted
+            orcid-id: <ex>2000-0002-4092-0249</ex> # Can be deleted
+            email: <ex>ig@fz-juelich.de</ex> # Can be deleted
+
+    publications: # Can be deleted
+        - publication:
+            authors:
+                - <ex>person-1</ex>    # Should match the id of one person in the persons-list
+                - first_name: <ex>Irmgard</ex>  # Should match first and last name of one person
+                  last_name: <ex>Glöckner</ex>  # in the persons-list
+            title: <ex>Food-based intelligence induction in rodents</ex>
+            date: <ex>1.1.1995</ex>
+            doi: <ex>doi:example/p1</ex> # Can be deleted
+            publication: <ex>Proceedings in rodent behavior</ex> # Can be deleted
+            volume: <ex>23</ex> # Can be deleted, has to be a number
+            issue: <ex>4</ex> # Can be deleted, has to be a number
+            pages: <ex>11-15</ex> # Can be deleted
+            publisher: <ex>Spraddison</ex> # Can be deleted
+        - publication:
+            authors:
+                - <ex>person-1</ex> # Should match the id of one person in the persons-list
+                - <ex>person-2</ex> # Should match the id of one person in the persons-list
+            title: <ex>Rodent studies survey</ex>
+            date: <ex>1.1.1998</ex>
+            doi: <ex>doi:example/p2</ex> # Can be deleted
+            publication: <ex>Intelligence Research</ex> # Can be deleted
+            volume: <ex>33</ex> # Can be deleted, has to be a number
+            issue: <ex>9</ex> # Can be deleted, has to be a number
+            publisher: <ex>Elsberg</ex> # Can be deleted
+            pages: <ex>233-244</ex> # Can be deleted
+
+    dataset:
+        name: <ex>Rodent-Intelligence Brainscans</ex>
+        url: <ex>file:/bulk1:/data/ristudy</ex>
+        # The following element, i.e. description:, and its content can be deleted
+        description:
+            <ex>Lorem ipsum dolor sit amet,
+            incidunt ut labore et dolore
+            nostrud exercitation ullamco</ex>
+        data_format: <ex>DICOM</ex> # Can be deleted
+        availability: <ex>public</ex> # Can be deleted, has to be one of: public, private, controlled
+        license: <ex>Creative Commons 1.0</ex>  # Can be deleted
+        keywords:              # Can be deleted
+            - <ex>fMRI</ex>    #
+            - <ex>Rodents</ex> #
+        contact_person: <ex>person-2</ex>  # Can be deleted, should match id of one person in persons-list
