@@ -15,20 +15,25 @@ This document describes the metadata for archived studies. More precisely, it de
 
 The metadata for archived studies (MAS) contains only a few elements, most of which are optional. The top-level element is a Study. This element in turn contains a number of entries, which might themselves be elements.
 
-There are only five high-level elements: study, dataset, person, publication, and person reference. This section gives an overview over the elements in MAS.
+There are only five high-level elements: study, dataset, person, publication, and person reference. This section gives an overview over the elements in MAS. For each sub-element we give the name, whether it is optional, the type of data that it should contain, e.g. text or integer, and optionally an explanation what it should describe. So for example:
+
+- Purpose (optional): text, purpose of study
+
+describes an element named Purpose, which is optional, its type is "text", and it should describe the "purpose of the study".
+
 
 ### Study
 These are the elements that comprise the study-element:
 
-- Name of the study: string
-- Dataset: a dataset-element
-- Purpose of the study (optional): text
-- Start date of the study (optional): date string, e.g. "23.1.2019"
-- End date of the study (optional): date string
-- Keywords (optional): list of keywords
-- Persons involved (optional): list of person-elements
-- Publications (optional): list of publication-elements
-- Contact person (optional): reference to an entry in persons list of study
+- Name: text, name of the study
+- Dataset: Dataset-element (cf. below)
+- Purpose: (optional): text, purpose of the study
+- Start date (optional): text, date on which the study was started, e.g. "23.1.2019"
+- End date (optional): text, date on which the study was ended, e.g. "25.3.2020"
+- Keywords (optional): list of texts
+- Persons (optional): list of Person-elements, persons that were involved in the study
+- Publications (optional): list of Publication-elements
+- Contact person (optional): person reference (cf. below), reference to an entry in the list of persons that were involved in the study
 
 ### Dataset
 These are the elements that comprise the dataset-element:
@@ -37,42 +42,45 @@ These are the elements that comprise the dataset-element:
 - URL of the dataset: text
 - Description (optional): text
 - Data format (optional): text
-- Availability (optional): text
-- License (optional): text
-- keywords (optional): text
-- contact person (optional): person reference (cf. below)
+- Availability (optional): text, one of: "public", "private", "controlled"
+- License (optional): text, describe the license under which the data can be used
+- Keywords (optional): list of texts
+- Contact person (optional): person reference (cf. below)
+
+The availability-element, if present, should reflect whether the dataset is publicly available ("public"), not available ("private"), or only available after requesting access ("controlled"). In the latter case, contact person information should be provided and the contact person should be contacted for access.
 
 ### Person
 These are the elements that comprise the person-element:
 
-- First name of person: text
-- Last name of person: text
-- Internal ID (optional): text (can be used to refer to a person within MAS, cf. Person-reference)
+- First name: text
+- Last name: text
+- ID (optional): text, an internal ID that can be used to refer to a person within MAS (cf. Person-reference)
 - Title (optional): text
 - Affiliation (optional): text
-- Role in the study (optional): text
+- Role (optional): text, the role of the person with the context of the study
 - Email (optional): text
+- ORCID ID (optional): text
 - Additional contact information (optional): text
 
 ### Publication
 These are the elements that comprise the publication-element:
 
-- Authors: a list of person references (cf. below)
-- Title: the title of the publication
-- DOI (optional): the digital object identifier of the publication
-- Publication (optional): the name of the publication
-- Series (optional): the series number of the publication
-- Volume (optional): the volume number of the publication
-- Pages (optional): pages on which the publication appeared
-- Publisher (optional): who published pf the publication
-- Date (optional): date of the publication
+- Authors: list of person references (cf. below)
+- Title: text, the title of the publication
+- Date: text, date of the publication
+- DOI (optional): text, the digital object identifier of the publication
+- Publication (optional): text, the name of the publication
+- Series (optional): integer, the series number of the publication
+- Volume (optional): integer, the volume number of the publication
+- Pages (optional): text, pages on which the publication appeared
+- Publisher (optional): text, entity that published the publication
 
 ### Person Reference
-Person references are used in the study-element, the dataset-element and in the publication element. They reference persons that are contained in the persons-list of the study-element. That means, person information is kept at a single place in MAS, i.e. in the persons list of the study element. Other places in MAS the require person information just refer to entries in this list.
+Person references are used in the Study-element, the Dataset-element and in the Publication-element. They reference persons that are contained in the persons-list of the Study-element. That means, person information is kept at a single place in MAS, i.e. in the persons list of the Study-element. Other places in MAS that require person information just refer to entries in this list.
 
-Entries in the persons list are referred to either by first and last name, or by an identifier. That is what the identifier entry in a person-element is used for. You can assign a unique (within the scope of the metadata file) value, for example: "dr.who",  and use this to refer to a person later.
+Entries in the persons list are referred to either by first and last name, or by an identifier. That is what the id property in a person-element is used for. You can assign a unique (within the scope of the metadata file) value, for example: "person-1",  and use this to refer to this person later. The ID-element can also be use to disambiguate persons that have the same first and last name.
 
-Since there are two way to reference a person (either by first and last name, or by the internal ID), a person reference can be either of the following elements:
+Since there are two ways to reference a person (either by first and last name, or by their ID), a person reference can be either of the following elements:
 
 - First name: text
 - Last name: text
@@ -81,6 +89,7 @@ or
 
 - Id: text
 
+Please check the section "Example 1: Complete Metadata Description" for an example.
 
 ## Metadata format
 This section describes, how the elements described in the previous section can be specified in a digital document. We use a text-based format, i.e. YAML, that is rather intuitive. The three main concepts to keep in mind are:
@@ -89,7 +98,7 @@ This section describes, how the elements described in the previous section can b
  
  2. Elements that are contained within other elements are indented, for example by two spaces (identical indentation levels mean identical containing element)
  
- 3. Lists are marked by a list of "-" characters, that preceeds each list entry.
+ 3. Lists are marked by a list of "-" characters, that precedes each list entry.
 
 ####Example for concept 1:
 An example for the first concept, i.e. names and content, is given here:
@@ -138,7 +147,7 @@ study:
 
 The code-snippet above defines an element called "study" that contains three sub-elements, i.e. "name", "dataset", and "purpose". Of which "dataset" itself contains two sub-elements, i.e. "name", and "url".
 
-**Please note**: use only spaces for indentation, not tabulators!
+**Please note**: only use spaces for indentation, not tabulators!
 
 ####Example for concept 3:
 An example for the third concept, i.e. lists, is given here:
@@ -188,7 +197,7 @@ study:
         - Rodent
         - Intelligence
         - Food
-    contact_point:
+    contact_person:
         first_name: Hans
         last_name: Glück
     persons:
@@ -200,6 +209,7 @@ study:
             affiliation: FZ-Jülich
             role: Study Leader
             email: hg@fz-juelich.de
+            orcid-id: 1000-0002-4092-0601
             additional_contact_information: "Tel: +49 111 5553433"
         - person:
             id: person-2
@@ -208,6 +218,7 @@ study:
             title: Dr. Dr.
             affiliation: FZ-Jülich
             role: Scientist
+            orcid-id: 2000-0002-4092-0249
             email: ig@fz-juelich.de
     publications:
         - publication:
@@ -242,16 +253,13 @@ study:
             Lorem ipsum dolor sit amet, consectetur adipisici elit, sed eiusmod tempor
             incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
             nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi
-            Consequat
         data_format: DICOM
-        availability: Public
+        availability: public
         license: Creative Commons 1.0
         keywords:
             - fMRI
             - Rodents
-        contact_point:
-            first_name: Irmgard
-            last_name: Glöckner
+        contact_person: person-2
 </pre>
 
 The example above illustrates the purpose of the persons-element. It lists all persons that are either involved in the project, and/or are among the authors of a publication, and/or are contact points for inquiries about the study or dataset. In the latter two cases, i.e. authors and contact points, the respective person is just referenced. This allows to use a person in several contexts without repeating the defintion of him over and over.
