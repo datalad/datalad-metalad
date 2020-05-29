@@ -13,4 +13,6 @@ clean:
 
 doc:
 	mkdir -p build/docs
-	$(PYTHON) -m markdown docs/$(HANDBOOK_NAME).md >build/docs/$(HANDBOOK_NAME).html
+	cat docs/header.html >build/docs/$(HANDBOOK_NAME).html
+	$(PYTHON) -m markdown docs/$(HANDBOOK_NAME).md >>build/docs/$(HANDBOOK_NAME).html
+	cat docs/footer.html >>build/docs/$(HANDBOOK_NAME).html
