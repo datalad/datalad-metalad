@@ -44,7 +44,7 @@ class SpecValidator(object):
             validate(instance=spec, schema=self.schema)
             return []
         except ValidationError as error:
-            return [f"Schema error: in {'.'.join(error.absolute_path)}: {error.message}"]
+            return [f"Schema error: in {'.'.join(map(str, error.absolute_path))}: {error.message}"]
 
     def validate_spec_object(self, spec) -> bool:
         self.errors = self._validate_spec(spec)

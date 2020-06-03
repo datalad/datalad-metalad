@@ -14,17 +14,21 @@ SCHEMA_SPEC_PATH = SCRIPT_PATH / "schema" / "archive_metadata.yaml"
 
 PARSER = ArgumentParser()
 PARSER.add_argument("spec_files", type=str, nargs="+")
+PARSER.add_argument("--skip-content-validation", action="store_true")
 
 
-def validate_stream(character_stream) -> List:
-    validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(), ReferenceValidator()])
+def validate_stream(character_stream, skip_content_validation: bool) -> List:
+    if skip_content_validation is True:
+        validator = SpecValidator(SCHEMA_SPEC_PATH, [])
+    else:
+        validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(), ReferenceValidator()])
     validator.validate_spec(character_stream)
     return validator.errors
 
 
-def validate_file(path) -> List:
+def validate_file(path, skip_content_validation: bool) -> List:
     with open(path, "rt") as character_stream:
-        return validate_stream(character_stream)
+        return validate_stream(character_stream, skip_content_validation)
 
 
 def main(_):
@@ -34,9 +38,9 @@ def main(_):
     for file_name in arguments.spec_files:
         if file_name == '-':
             file_name = "STDIN"
-            errors = validate_stream(sys.stdin)
+            errors = validate_stream(sys.stdin, arguments.skip_content_validation)
         else:
-            errors = validate_file(file_name)
+            errors = validate_file(file_name, arguments.skip_content_validation)
         if errors:
             success = False
             for error in errors:

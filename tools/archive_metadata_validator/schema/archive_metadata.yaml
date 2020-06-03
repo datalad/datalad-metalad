@@ -10,14 +10,16 @@ definitions:
       person:
         type: object
         required:
+          - email
           - first_name
           - last_name
         properties:
+          email:
+            description: Institutional email, must be globally unique
+            type: string
           first_name:
             type: string
           last_name:
-            type: string
-          id:
             type: string
           title:
             type: string
@@ -25,8 +27,6 @@ definitions:
             type: string
           role:
             $ref: "#definitions/role"
-          email:
-            type: string
           additional_contact_information:
             type: string
           orcid-id:
@@ -46,18 +46,31 @@ definitions:
       last_name:
         type: string
 
-  id-person-ref:
+  email-person-ref:
     type: string
 
   person-ref:
     oneOf:
       - $ref: "#definitions/named-person-ref"
-      - $ref: "#definitions/id-person-ref"
+      - $ref: "#definitions/email-person-ref"
 
-  person-ref-list:
+  contributor-data:
+    type: object
+    required:
+      - person
+      - roles
+    properties:
+      person:
+        $ref: "#definitions/person-ref"
+      roles:
+        type: array
+        items:
+          $ref: "#definitions/role"
+
+  contributor-list:
     type: array
     items:
-      $ref: "#definitions/person-ref"
+      $ref: "#definitions/contributor-data"
 
   date:
     type: string
@@ -70,13 +83,13 @@ definitions:
         type: object
         required:
           - title
-          - authors
+          - contributors
           - date
         properties:
           title:
             type: string
-          authors:
-            $ref: "#definitions/person-ref-list"
+          contributors:
+            $ref: "#definitions/contributor-list"
           date:
             $ref: "#definitions/date"
           doi:
@@ -107,14 +120,6 @@ definitions:
     items:
       $ref: "#definitions/publication"
 
-  availability:
-    description: Is an object publicly available, not available, or only available on request
-    type: string
-    enum:
-      - public
-      - private
-      - controlled
-
   dataset:
     description: The data that should be archived
     type: object
@@ -132,15 +137,10 @@ definitions:
         type: string
       data_format:
         type: string
-      availability:
-        $ref: "#definitions/availability"
-      license:
-        description: Human-readable description of the license under which the data can be used
-        type: string
       keywords:
         $ref: "#definitions/keywords"
-      contact_person:
-        $ref: "#definitions/person-ref"
+      contributors:
+        $ref: "#definitions/contributor-list"
 
 type: object
 required:
@@ -165,8 +165,8 @@ properties:
         $ref: "#definitions/keywords"
       persons:
         $ref: "#definitions/person-list"
-      contact_person:
-        $ref: "#definitions/person-ref"
+      contributors:
+        $ref: "#definitions/contributor-list"
       publications:
         $ref: "#definitions/publications"
       dataset:

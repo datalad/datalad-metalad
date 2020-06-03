@@ -2,7 +2,6 @@
 
 study:
     name: Intelligence in Rodents
-
     dataset:
         name: Rodent-Intelligence Brainscans
         url: file:/bulk1:/data/ristudy

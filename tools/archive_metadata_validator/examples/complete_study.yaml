@@ -10,38 +10,47 @@ study:
         - Rodent
         - Intelligence
         - Food
-    contact_person:
-        first_name: Hans
-        last_name: Glück
-
     persons:
         - person:
-            id: person-1
+            email: hg@fz-juelich.de
             first_name: Hans
             last_name: Glück
             title: Prof. Dr.
             affiliation: FZ-Jülich
-            role: Study Leader
-            email: hg@fz-juelich.de
             orcid-id: 1000-0002-4092-0601
             additional_contact_information: "Tel: +49 111 5553433"
         - person:
-            id: person-2
+            email: ig@fz-juelich.de
             first_name: Irmgard
             last_name: Glöckner
             title: Dr. Dr.
             affiliation: FZ-Jülich
-            role: Scientist
             orcid-id: 2000-0002-4092-0249
-            email: ig@fz-juelich.de
-
+    contributors:
+        - person:
+              first_name: Hans
+              last_name: Glück
+          roles:
+              - StudyLeader
+              - CorrespondingAuthor
+        - person:
+              first_name: Irmgard
+              last_name: Glöckner
+          roles:
+              - Researcher
     publications:
         - publication:
             doi: doi:example/p1
-            authors:
-                - person-1
-                - first_name: Irmgard
-                  last_name: Glöckner
+            contributors:
+                - person: hg@fz-juelich.de
+                  roles:
+                      - CorrespondingAuthor
+                      - Author
+                - person:
+                      first_name: Irmgard
+                      last_name: Glöckner
+                  roles:
+                      - Author
             title: Food-based intelligence induction in rodents
             publication: Proceedings in rodent behavior
             volume: 23
@@ -51,9 +60,14 @@ study:
             date: 1.1.1995
         - publication:
             doi: doi:example/p2
-            authors:
-                - person-1
-                - person-2
+            contributors:
+                - person: hg@fz-juelich.de
+                  roles:
+                      - Author
+                - person: ig@fz-juelich.de
+                  roles:
+                      - CorrespondingAuthor
+                      - Author
             title: Rodent studies survey
             publication: Intelligence Research
             volume: 33
@@ -61,7 +75,6 @@ study:
             publisher: Elsberg
             pages: 233-244
             date: 1.1.1998
-
     dataset:
         name: Rodent-Intelligence Brainscans
         url: file:/bulk1:/data/ristudy
@@ -71,9 +84,11 @@ study:
             nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi
             Consequat
         data_format: DICOM
-        availability: public
-        license: Creative Commons 1.0
         keywords:
             - fMRI
             - Rodents
-        contact_person: person-2
+        contributors:
+            - person: ig@fz-juelich.de
+              roles:
+                  - CorrespondingAuthor
+                  - DataCurator

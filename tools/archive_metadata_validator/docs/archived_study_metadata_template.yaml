@@ -83,80 +83,94 @@
 
 study:
     name: <ex>Intelligence in Rodents</ex>
-    # The following element, i.e. purpose:, and its content can be deleted
-    purpose:
-        <ex>Identify what determines intelligence in rodents and
-        Whether it is related to food.</ex>
-    start_date: <ex>1.1.1990</ex> # Can be deleted
-    end_date: <ex>1.1.2010</ex> # Can be deleted
-    keywords:                    # Can be deleted
-        - <ex>Rodent</ex>        #
-        - <ex>Intelligence</ex>  #
-        - <ex>Food</ex>          #
-    contact_person:      # Can be deleted
-        first_name: <ex>Hans</ex> #
-        last_name: <ex>Glück</ex> #
+    purpose:                                         # purpose can be deleted
+        <ex>Identify what determines intelligence
+        in rodents and whether it is related
+        to food.</ex>
+    start_date: <ex>1.1.1990</ex>                     # Can be deleted
+    end_date: <ex>1.1.2010</ex>                       # Can be deleted
 
-    persons: # Can be deleted
+    keywords:                                         # keywords can be deleted
+        - <ex>Rodent</ex>
+        - <ex>Intelligence</ex>
+        - <ex>Food</ex>                               # All but the first keyword entry can be deleted
+
+    persons:                                          # persons can be deleted
         - person:
             first_name: <ex>Hans</ex>
             last_name: <ex>Glück</ex>
-            id: <ex>person-1</ex>   # Can be deleted (see the handbook for usage of the id-element)
-            title: <ex>Prof. Dr.</ex> # Can be deleted
-            affiliation: <ex>FZ-Jülich</ex>  # Can be deleted
-            role: <ex>Study Leader</ex> # Can be deleted
-            email: <ex>hg@fz-juelich.de</ex> # Can be deleted
-            orcid-id: <ex>1000-0002-4092-0601</ex> # Can be deleted
-            additional_contact_information: "<ex>Tel: +49 111 5553433</ex>" # Can be deleted
+            email: <ex>hg@fz-juelich.de</ex>
+            title: <ex>Prof. Dr.</ex>                                   # Can be deleted
+            affiliation: <ex>FZ-Jülich</ex>                             # Can be deleted
+            orcid-id: <ex>1000-0002-4092-0601</ex>                      # Can be deleted
+            additional_contact_information: "<ex>Tel: +49 111 5553433</ex>"       # Can be deleted
         - person:
             first_name: <ex>Irmgard</ex>
             last_name: <ex>Glöckner</ex>
-            id: <ex>person-2</ex> # Can be deleted
-            title: <ex>Dr. Dr.</ex> # Can be deleted
-            affiliation: <ex>FZ-Jülich</ex> # Can be deleted
-            role: <ex>Scientist</ex> # Can be deleted
-            orcid-id: <ex>2000-0002-4092-0249</ex> # Can be deleted
-            email: <ex>ig@fz-juelich.de</ex> # Can be deleted
+            email: <ex>ig@fz-juelich.de</ex>
+            title: <ex>Dr. Dr.</ex>                                     # Can be deleted
+            affiliation: <ex>FZ-Jülich</ex>                             # Can be deleted
+            orcid-id: <ex>2000-0002-4092-0249</ex>                      # Can be deleted
 
-    publications: # Can be deleted
+    contributors:                                                       # Can be deleted
+        - person: <ex>hg@fz-juelich.de</ex>
+          roles:
+              - <ex>StudyLeader</ex>
+              - <ex>CorrespondingAuthor</ex>
+
+    publications:                                                       # publications can be deleted
         - publication:
-            authors:
-                - <ex>person-1</ex>    # Should match the id of one person in the persons-list
-                - first_name: <ex>Irmgard</ex>  # Should match first and last name of one person
-                  last_name: <ex>Glöckner</ex>  # in the persons-list
+            contributors:
+                - person: <ex>hg@fz-juelich.de</ex>
+                  roles:
+                      - <ex>CorrespondingAuthor</ex>
+                - person:                                               # All but the first contributors entry can be deleted
+                      first_name: <ex>Irmgard</ex>
+                      last_name: <ex>Glöckner</ex>
+                  roles:
+                      - <ex>Author</ex>
             title: <ex>Food-based intelligence induction in rodents</ex>
             date: <ex>1.1.1995</ex>
-            doi: <ex>doi:example/p1</ex> # Can be deleted
-            publication: <ex>Proceedings in rodent behavior</ex> # Can be deleted
-            volume: <ex>23</ex> # Can be deleted, has to be a number
-            issue: <ex>4</ex> # Can be deleted, has to be a number
-            pages: <ex>11-15</ex> # Can be deleted
-            publisher: <ex>Spraddison</ex> # Can be deleted
-        - publication:
-            authors:
-                - <ex>person-1</ex> # Should match the id of one person in the persons-list
-                - <ex>person-2</ex> # Should match the id of one person in the persons-list
+            doi: <ex>doi:example/p1</ex>                                # Can be deleted
+            publication: <ex>Proceedings in rodent behavior</ex>        # Can be deleted
+            volume: <ex>23</ex>                                         # Can be deleted
+            issue: <ex>4</ex>                                           # Can be deleted
+            pages: <ex>11-15</ex>                                       # Can be deleted
+            publisher: <ex>Spraddison</ex>                              # Can be deleted
+
+        - publication:                                                  # All but the first publication entry can be deleted
+            contributors:
+                - person: <ex>hg@fz-juelich.de</ex>
+                  roles:
+                      - <ex>CorrespondingAuthor</ex>
+                - person: <ex>ig@fz-juelich.de</ex>
+                  roles:
+                      - <ex>Author</ex>
+                      - <ex>Researcher</ex>                             # All but the first role can be deleted
             title: <ex>Rodent studies survey</ex>
             date: <ex>1.1.1998</ex>
-            doi: <ex>doi:example/p2</ex> # Can be deleted
-            publication: <ex>Intelligence Research</ex> # Can be deleted
-            volume: <ex>33</ex> # Can be deleted, has to be a number
-            issue: <ex>9</ex> # Can be deleted, has to be a number
-            publisher: <ex>Elsberg</ex> # Can be deleted
-            pages: <ex>233-244</ex> # Can be deleted
+            doi: <ex>doi:example/p2</ex>
+            publication: <ex>Intelligence Research</ex>
+            volume: <ex>33</ex>
+            issue: <ex>9</ex>
+            publisher: <ex>Elsberg</ex>
+            pages: <ex>233-244</ex>
 
     dataset:
         name: <ex>Rodent-Intelligence Brainscans</ex>
         url: <ex>file:/bulk1:/data/ristudy</ex>
-        # The following element, i.e. description:, and its content can be deleted
-        description:
+        description:                                        # description can be deleted
             <ex>Lorem ipsum dolor sit amet,
             incidunt ut labore et dolore
             nostrud exercitation ullamco</ex>
-        data_format: <ex>DICOM</ex> # Can be deleted
-        availability: <ex>public</ex> # Can be deleted, has to be one of: public, private, controlled
-        license: <ex>Creative Commons 1.0</ex>  # Can be deleted
-        keywords:              # Can be deleted
-            - <ex>fMRI</ex>    #
-            - <ex>Rodents</ex> #
-        contact_person: <ex>person-2</ex>  # Can be deleted, should match id of one person in persons-list
+        data_format: <ex>DICOM</ex>                         # Can be deleted
+
+        keywords:                                           # keywords can be deleted
+            - <ex>fMRI</ex>
+            - <ex>Rodents</ex>                              # All but the first keyword entry can be deleted
+
+        contributors:                                       # contributors can be deleted
+            - person: <ex>ig@fz-juelich.de</ex>
+              roles:
+                  - <ex>CorrespondingAuthor</ex>
+                  - <ex>DataCurator</ex>                    # All but the first role can be deleted
