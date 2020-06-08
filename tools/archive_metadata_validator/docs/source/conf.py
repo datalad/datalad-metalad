@@ -85,7 +85,7 @@ source_suffix = '.rst'
 master_doc = 'archived-study-metadata-handbook'
 
 # General information about the project.
-project = u'Datalad Revolution'
+project = u'Archived Study Metadata'
 copyright = u'2018-, DataLad team'
 author = u'DataLad team'
 

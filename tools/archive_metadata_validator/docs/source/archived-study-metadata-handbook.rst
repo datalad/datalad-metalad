@@ -20,7 +20,7 @@ Metadata Elements
 
 The metadata for archived studies (MAS) contains only a few elements, most of which are optional. The top-level element is a Study. This element in turn contains a number of entries, which might themselves be elements.
 
-There are only five high-level elements: study, dataset, person, publication, and person reference. This section gives an overview over the elements in MAS. For each sub-element we give the name, whether it is optional, the type of data that it should contain, e.g. text or integer, and optionally an explanation what it should describe. So for example:
+There are six high-level elements: study, dataset, person, contributor, publication, and person reference. This section gives an overview of the elements in MAS. For each sub-element we give the name, whether it is optional, the type of data that it should contain, e.g. text or integer, and optionally an explanation of what it should describe. So for example:
 
 - Purpose (optional): text, purpose of study
 
@@ -70,27 +70,28 @@ These are the elements that comprise the person-element:
 
 Contributor
 -----------
-A Contributor-element combines a person reference with a role that this person held, e.g. the person might be the corresponding author of a study. These are the elements that comprise the Contributor-element:
+A Contributor-element combines a person reference with a role that this person held, e.g. the person might be the data curator for the dataset of a study. These are the elements that comprise the Contributor-element:
 
 - Person: person reference (cf. below), the person that contributed
 - Roles: list of text, the roles in which the person contributed.
 
-Roles should be taken from the following list of predefined roles, if appropriate: *Author*, *CorrespondingAuthor*, *DataCurator*, *DataCollector*, *Maintainer*, *ProjectLeader*, *ProjectMember*, *Researcher*, *SoftwareDeveloper*.
+Roles should be taken from the following list of predefined roles, if applicable at all: *Author*, *CorrespondingAuthor*, *DataCurator*, *DataCollector*, *Maintainer*, *ProjectLeader*, *ProjectMember*, *Researcher*, *SoftwareDeveloper*.
 
-Nevertheless, if none of the predefined roles describe the role of the contributing person correctly, you can provide your own description.
+Nevertheless, if none of the predefined roles describes the role of the contributing person correctly, you can provide your own description.
 
 
 Publication
 -----------
 These are the elements that comprise the publication-element:
 
-- Contributors: list of Contributor-elements
+- Corresponding Author: person reference (cf. below)
 - Title: text, the title of the publication
 - Date: text, date of the publication
+- Authors (optional): list of person references, additional authors
 - DOI (optional): text, if a DOI is present, it will be used as an authoritative source for the remaining properties in this element and for entries in the persons-list.
 - Publication (optional): text, the name of the publication
-- Volume (optional): integer, the volume number of the publication
-- Issue (optional): integer, the issue number of the publication
+- Volume (optional): text, the volume number of the publication
+- Issue (optional): text, the issue number of the publication
 - Pages (optional): text, pages on which the publication appeared
 - Publisher (optional): text, entity that published the publication
 
@@ -111,7 +112,7 @@ or
   Last name: text
 
 
-Please check the section "Example 1: Complete Metadata Description" for an example.
+Please check the section `Example 1: Complete Metadata Description`_ for an example.
 
 Metadata format
 ===============
@@ -208,122 +209,106 @@ Example 1: Complete Metadata Description
 
     study:
         name: Intelligence in Rodents
-        purpose:
-            Identify what determines intelligence in rodents and
-            Whether it is related to food.
-        start_date: 1.1.1990
-        end_date: 1.1.2010
-        keywords:
+        purpose:                                 # purpose can be deleted
+            Identify what determines intelligence
+            in rodents and whether it is related
+            to food.
+        start_date: 1.1.1990                     # Can be deleted
+        end_date: 1.1.2010                       # Can be deleted
+
+        keywords:                                # keywords can be deleted
             - Rodent
             - Intelligence
-            - Food
-        persons:
+            - Food                               # All but the first keyword entry can be deleted
+
+        persons:                                 # persons can be deleted
             - person:
-                email: hg@fz-juelich.de
                 first_name: Hans
                 last_name: Glück
-                title: Prof. Dr.
-                affiliation: FZ-Jülich
-                orcid-id: 1000-0002-4092-0601
-                additional_contact_information: "Tel: +49 111 5553433"
+                email: hg@fz-juelich.de
+                title: Prof. Dr.                                   # Can be deleted
+                affiliation: FZ-Jülich                             # Can be deleted
+                orcid-id: 1000-0002-4092-0601                      # Can be deleted
+                additional_contact_information: "Tel: +49 111 5553433"       # Can be deleted
             - person:
-                email: ig@fz-juelich.de
                 first_name: Irmgard
                 last_name: Glöckner
-                title: Dr. Dr.
-                affiliation: FZ-Jülich
-                orcid-id: 2000-0002-4092-0249
-        contributors:
-            - person:
-                  first_name: Hans
-                  last_name: Glück
+                email: ig@fz-juelich.de
+                title: Dr. Dr.                                     # Can be deleted
+                affiliation: FZ-Jülich                             # Can be deleted
+                orcid-id: 2000-0002-4092-0249                      # Can be deleted
+
+        contributors:                                              # Can be deleted
+            - person: hg@fz-juelich.de
               roles:
                   - StudyLeader
                   - CorrespondingAuthor
-            - person:
-                  first_name: Irmgard
-                  last_name: Glöckner
-              roles:
-                  - Researcher
-        publications:
+
+        publications:                                              # publications can be deleted
             - publication:
-                doi: doi:example/p1
-                contributors:
-                    - person: hg@fz-juelich.de
-                      roles:
-                          - CorrespondingAuthor
-                          - Author
-                    - person:
-                          first_name: Irmgard
-                          last_name: Glöckner
-                      roles:
-                          - Author
+                corresponding_author: hg@fz-juelich.de
                 title: Food-based intelligence induction in rodents
-                publication: Proceedings in rodent behavior
-                volume: 23
-                issue: 4
-                pages: 11-15
-                publisher: Spraddison
                 date: 1.1.1995
-            - publication:
-                doi: doi:example/p2
-                contributors:
-                    - person: hg@fz-juelich.de
-                      roles:
-                          - Author
-                    - person: ig@fz-juelich.de
-                      roles:
-                          - CorrespondingAuthor
-                          - Author
+                authors:                                           # authors can be deleted
+                    - first_name: Irmgard
+                      last_name: Glöckner
+                    - hg@fz-juelich.de
+                doi: doi:example/p1                                # Can be deleted
+                publication: Proceedings in rodent behavior        # Can be deleted
+                volume: 23                                         # Can be deleted
+                issue: 4                                           # Can be deleted
+                pages: 11-15                                       # Can be deleted
+                publisher: Spraddison                              # Can be deleted
+
+            - publication:                                         # All but the first publication entry can be deleted
+                corresponding_author: hg@fz-juelich.de
                 title: Rodent studies survey
+                date: 1.1.1998
+                doi: doi:example/p2
                 publication: Intelligence Research
                 volume: 33
                 issue: 9
                 publisher: Elsberg
                 pages: 233-244
-                date: 1.1.1998
+
         dataset:
             name: Rodent-Intelligence Brainscans
             url: file:/bulk1:/data/ristudy
-            description:
-                Lorem ipsum dolor sit amet, consectetur adipisici elit,
-                incidunt ut labore et dolore magna aliqua. Ut enim ad
-                nostrud exercitation ullamco laboris nisi ut aliquid
-            data_format: DICOM
-            keywords:
+            description:                               # description can be deleted
+                Lorem ipsum dolor sit amet,
+                incidunt ut labore et dolore
+                nostrud exercitation ullamco
+            data_format: DICOM                         # Can be deleted
+
+            keywords:                                  # keywords can be deleted
                 - fMRI
-                - Rodents
-            contributors:
+                - Rodents                              # All but the first keyword entry can be deleted
+
+            contributors:                              # contributors can be deleted
                 - person: ig@fz-juelich.de
                   roles:
                       - CorrespondingAuthor
-                      - DataCurator
+                      - DataCurator                    # All but the first role can be deleted
 
-The example above illustrates the purpose of the persons-element. It lists all persons that have a role in the creation of the study, in the creation of the dataset, or in the creation of a publication. Detailed person information is listed in the Persons-element of the study. With respect to their roles, the respective person is just referenced and a role is attached to him. This allows you to use a person in several contexts without repeating the definition of him over and over.
+The example above illustrates the purpose of the persons-element. It lists all persons that have a role in the creation of the study, in the creation of the dataset, or in the creation of a publication. Detailed person information is listed in the persons-element of the study.
 
-Within MAS persons are referred to by either their email, or their first and last name. For example in the contributor list of the publication with the title "Food-based intelligence induction in rodents", we refer to the person with the first name "Irmgard" and the last name "Glöckner" as an author like this::
+This information is referred to within the author and corresponding_author-element of the publication-element. Persons are also referenced within the study-element and the dataset-element, where they are associated with a list of roles, that the person holds in the respective content. References allow you to use a person in several contexts without repeating the definition of him over and over.
+
+Within MAS persons are referred to by either their email, or their first and last name. For example in the authors list of the publication with the title "Food-based intelligence induction in rodents", we refer to the person with the first name "Irmgard" and the last name "Glöckner" as an author like this::
 
     ...
-    Contributors:
-        - person:
-              first_name: Irmgard
-              last_name: Glöckner
-          roles:
-              - Author
+    authors:
+        - first_name: Irmgard
+          last_name: Glöckner
         - ...
     ...
 
-In the contributor list of the publication with the title "Rodent studies survey" we instead use the email of Irgmard Glöckner::
+In the corresponding_author-element of the publication with the title "Rodent studies survey" we instead use the email of Irgmard Glöckner::
 
     ...
-    Contributors:
-        - ...
-        - person: ig@fz-juelich.de
-          roles:
-              - CorrespondingAuthor
-              - Author
+    corresponding_author: ig@fz-juelich.de
 
-You are free to use either form of reference.
+You are free to use either form of reference. NB: you may or may not repeat the corresponding_author in the optional author-element, if a person apears as one of the authors and as corresponding author, this person is assumed to be the corresponding author.
 
 Example 2: Minimal Metadata Description
 ---------------------------------------
@@ -338,4 +323,4 @@ The following show the minimal possible metadata description, i.e. the metadata 
 
 Questions?
 ==========
-If you have any questions, please contact: <mailto:c.moench@fz-juelich.de>.
+If you have any questions, please contact: c.moench@fz-juelich.de.

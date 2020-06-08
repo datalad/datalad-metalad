@@ -54,6 +54,11 @@ definitions:
       - $ref: "#definitions/named-person-ref"
       - $ref: "#definitions/email-person-ref"
 
+  author-list:
+    type: array
+    items:
+      $ref: "#definitions/person-ref"
+
   contributor-data:
     type: object
     required:
@@ -83,13 +88,15 @@ definitions:
         type: object
         required:
           - title
-          - contributors
+          - corresponding_author
           - date
         properties:
           title:
             type: string
-          contributors:
-            $ref: "#definitions/contributor-list"
+          corresponding_author:
+            $ref: "#definitions/person-ref"
+          authors:
+            $ref: "#definitions/author-list"
           date:
             $ref: "#definitions/date"
           doi:
@@ -97,9 +104,9 @@ definitions:
           publication:
             type: string
           volume:
-            type: integer
+            type: string
           issue:
-            type: integer
+            type: string
           pages:
             type: string
           publisher:

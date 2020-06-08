@@ -83,7 +83,7 @@
 
 study:
     name: <ex>Intelligence in Rodents</ex>
-    purpose:                                         # purpose can be deleted
+    purpose:                                          # purpose can be deleted
         <ex>Identify what determines intelligence
         in rodents and whether it is related
         to food.</ex>
@@ -120,17 +120,13 @@ study:
 
     publications:                                                       # publications can be deleted
         - publication:
-            contributors:
-                - person: <ex>hg@fz-juelich.de</ex>
-                  roles:
-                      - <ex>CorrespondingAuthor</ex>
-                - person:                                               # All but the first contributors entry can be deleted
-                      first_name: <ex>Irmgard</ex>
-                      last_name: <ex>Glöckner</ex>
-                  roles:
-                      - <ex>Author</ex>
+            corresponding_author: <ex>hg@fz-juelich.de</ex>
             title: <ex>Food-based intelligence induction in rodents</ex>
             date: <ex>1.1.1995</ex>
+            authors:                                                    # authors can be deleted
+                - first_name: <ex>Irmgard</ex>
+                  last_name: <ex>Glöckner</ex>
+                - <ex>hg@fz-juelich.de</ex>
             doi: <ex>doi:example/p1</ex>                                # Can be deleted
             publication: <ex>Proceedings in rodent behavior</ex>        # Can be deleted
             volume: <ex>23</ex>                                         # Can be deleted
@@ -139,14 +135,7 @@ study:
             publisher: <ex>Spraddison</ex>                              # Can be deleted
 
         - publication:                                                  # All but the first publication entry can be deleted
-            contributors:
-                - person: <ex>hg@fz-juelich.de</ex>
-                  roles:
-                      - <ex>CorrespondingAuthor</ex>
-                - person: <ex>ig@fz-juelich.de</ex>
-                  roles:
-                      - <ex>Author</ex>
-                      - <ex>Researcher</ex>                             # All but the first role can be deleted
+            corresponding_author: <ex>hg@fz-juelich.de</ex>
             title: <ex>Rodent studies survey</ex>
             date: <ex>1.1.1998</ex>
             doi: <ex>doi:example/p2</ex>
