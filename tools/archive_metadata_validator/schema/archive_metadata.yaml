@@ -1,81 +1,54 @@
-$schema": "http://json-schema.org/draft-07/schema#"
-"$id": "http://psychoinformatics.inm7.de/schemas/archived_study.json"
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "http://psychoinformatics.inm7.de/schemas/archived_study.json"
 
 definitions:
-  person-data:
+  person-record:
     type: object
+    additionalProperties: false
     required:
-      - person
-    properties:
-      person:
-        type: object
-        required:
-          - email
-          - first_name
-          - last_name
-        properties:
-          email:
-            description: Institutional email, must be globally unique
-            type: string
-          first_name:
-            type: string
-          last_name:
-            type: string
-          title:
-            type: string
-          affiliation:
-            type: string
-          role:
-            $ref: "#definitions/role"
-          additional_contact_information:
-            type: string
-          orcid-id:
-            type: string
-
-  role:
-    type: string
-
-  named-person-ref:
-    type: object
-    required:
-      - first_name
+      - given_name
       - last_name
     properties:
-      first_name:
+      given_name:
         type: string
       last_name:
         type: string
+      orcid-id:
+        type: string
+      title:
+        type: string
+      affiliation:
+        type: string
+      contact_information:
+        type: string
 
-  email-person-ref:
-    type: string
+  person-set:
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^[^@]+@[^@]+$:
+        $ref: "#definitions/person-record"
 
   person-ref:
-    oneOf:
-      - $ref: "#definitions/named-person-ref"
-      - $ref: "#definitions/email-person-ref"
+    type: string
+    format: email
 
-  author-list:
+  person-ref-list:
     type: array
+    minItems: 1
+    uniqueItems: true
     items:
       $ref: "#definitions/person-ref"
 
-  contributor-data:
-    type: object
-    required:
-      - person
-      - roles
-    properties:
-      person:
-        $ref: "#definitions/person-ref"
-      roles:
-        type: array
-        items:
-          $ref: "#definitions/role"
+  author-ref:
+    oneOf:
+      - $ref: "#definitions/person-ref"
+      - $ref: "#definitions/person-ref-list"
 
-  contributor-list:
-    type: array
-    items:
-      $ref: "#definitions/contributor-data"
+  number-or-id-ref:
+    oneOf:
+      - type: integer
+      - type: string
 
   date:
     type: string
@@ -83,84 +56,91 @@ definitions:
 
   publication:
     type: object
+    additionalProperties: false
+    required:
+      - title
+      - author
+      - year
     properties:
+      title:
+        type: string
+      author:
+        $ref: "#definitions/author-ref"
+      year:
+        type: integer
+      corresponding_author:
+        $ref: "#definitions/person-ref"
+      doi:
+        type: string
       publication:
-        type: object
-        required:
-          - title
-          - corresponding_author
-          - date
-        properties:
-          title:
-            type: string
-          corresponding_author:
-            $ref: "#definitions/person-ref"
-          authors:
-            $ref: "#definitions/author-list"
-          date:
-            $ref: "#definitions/date"
-          doi:
-            type: string
-          publication:
-            type: string
-          volume:
-            type: string
-          issue:
-            type: string
-          pages:
-            type: string
-          publisher:
-            type: string
+        type: string
+      volume:
+        $ref: "#definitions/number-or-id-ref"
+      issue:
+        $ref: "#definitions/number-or-id-ref"
+      pages:
+        $ref: "#definitions/number-or-id-ref"
+      publisher:
+        type: string
 
-  keywords:
+  keyword-list:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+
+  publication-list:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      $ref: "#definitions/publication"
+
+  standard-list:
     type: array
     items:
       type: string
 
-  person-list:
-    type: array
-    items:
-      $ref: "#definitions/person-data"
-
-  publications:
-    type: array
-    items:
-      $ref: "#definitions/publication"
-
   dataset:
     description: The data that should be archived
     type: object
+    additionalProperties: false
     required:
       - name
-      - url
+      - location
+      - keyword
+      - author
     properties:
       name:
         type: string
-      url:
+      location:
         description: URL of the entry point for the data
         type: string
+      keyword:
+        $ref: "#definitions/keyword-list"
+      author:
+        $ref: "#definitions/author-ref"
       description:
         description: Human-readable description of the data and what it describes
         type: string
-      data_format:
-        type: string
-      keywords:
-        $ref: "#definitions/keywords"
-      contributors:
-        $ref: "#definitions/contributor-list"
+      standard:
+        $ref: "#definitions/standard-list"
 
-type: object
-required:
-  - study
-properties:
   study:
     type: object
+    additionalProperties: false
     required:
       - name
-      - dataset
+      - principal_investigator
+      - keyword
     properties:
       name:
         type: string
+      principal_investigator:
+        $ref: "#definitions/person-ref"
+      keyword:
+        $ref: "#definitions/keyword-list"
       purpose:
         description: Why was the study performed
         type: string
@@ -168,13 +148,27 @@ properties:
         $ref: "#definitions/date"
       end_date:
         $ref: "#definitions/date"
-      keywords:
-        $ref: "#definitions/keywords"
       persons:
-        $ref: "#definitions/person-list"
-      contributors:
-        $ref: "#definitions/contributor-list"
+        $ref: "#definitions/person-set"
+      contributor:
+        $ref: "#definitions/person-ref-list"
       publications:
-        $ref: "#definitions/publications"
-      dataset:
-        $ref: "#definitions/dataset"
+        $ref: "#definitions/publication-list"
+
+type: object
+required:
+  - study
+  - dataset
+  - person
+additionalProperties: false
+properties:
+  study:
+    $ref: "#definitions/study"
+  dataset:
+    $ref: "#definitions/dataset"
+  publication:
+    type: array
+    items:
+      $ref: "#definitions/publication"
+  person:
+    $ref: "#definitions/person-set"

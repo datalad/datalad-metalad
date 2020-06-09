@@ -1,7 +1,21 @@
 # Minimal study metadata example conforming to ../schema/archive_metadata.yml
-
 study:
-    name: Intelligence in Rodents
-    dataset:
-        name: Rodent-Intelligence Brainscans
-        url: file:/bulk1:/data/ristudy
+  name: Intelligence in Rodents
+  start_date: 31.10.1990
+  end_date: 22.12.2010
+  keyword:
+    - Rodent
+  principal_investigator: a@fz-juelich.de
+
+dataset:
+  name: Rodent-Intelligence Brainscans
+  location: juseless:/data/project/riskystudy
+  keyword:
+    - fMRI
+  author:
+    - a@fz-juelich.de
+
+person:
+  a@fz-juelich.de:
+    given_name: Hans
+    last_name: Glück

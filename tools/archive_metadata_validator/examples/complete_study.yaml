@@ -1,94 +1,74 @@
 # Complete study metadata example conforming to ../schema/archive_metadata.yml
 study:
-    name: Intelligence in Rodents
-    purpose:
-        Identify what determines intelligence in rodents and
-        Whether it is related to food.
-    start_date: 1.1.1990
-    end_date: 1.1.2010
-    keywords:
-        - Rodent
-        - Intelligence
-        - Food
-    persons:
-        - person:
-            email: hg@fz-juelich.de
-            first_name: Hans
-            last_name: Glück
-            title: Prof. Dr.
-            affiliation: FZ-Jülich
-            orcid-id: 1000-0002-4092-0601
-            additional_contact_information: "Tel: +49 111 5553433"
-        - person:
-            email: ig@fz-juelich.de
-            first_name: Irmgard
-            last_name: Glöckner
-            title: Dr. Dr.
-            affiliation: FZ-Jülich
-            orcid-id: 2000-0002-4092-0249
-    contributors:
-        - person:
-              first_name: Hans
-              last_name: Glück
-          roles:
-              - StudyLeader
-              - CorrespondingAuthor
-        - person:
-              first_name: Irmgard
-              last_name: Glöckner
-          roles:
-              - Researcher
-    publications:
-        - publication:
-            doi: doi:example/p1
-            contributors:
-                - person: hg@fz-juelich.de
-                  roles:
-                      - CorrespondingAuthor
-                      - Author
-                - person:
-                      first_name: Irmgard
-                      last_name: Glöckner
-                  roles:
-                      - Author
-            title: Food-based intelligence induction in rodents
-            publication: Proceedings in rodent behavior
-            volume: 23
-            issue: 4
-            pages: 11-15
-            publisher: Spraddison
-            date: 1.1.1995
-        - publication:
-            doi: doi:example/p2
-            contributors:
-                - person: hg@fz-juelich.de
-                  roles:
-                      - Author
-                - person: ig@fz-juelich.de
-                  roles:
-                      - CorrespondingAuthor
-                      - Author
-            title: Rodent studies survey
-            publication: Intelligence Research
-            volume: 33
-            issue: 9
-            publisher: Elsberg
-            pages: 233-244
-            date: 1.1.1998
-    dataset:
-        name: Rodent-Intelligence Brainscans
-        url: file:/bulk1:/data/ristudy
-        description:
-            Lorem ipsum dolor sit amet, consectetur adipisici elit, sed eiusmod tempor
-            incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis
-            nostrud exercitation ullamco laboris nisi ut aliquid ex ea commodi
-            Consequat
-        data_format: DICOM
-        keywords:
-            - fMRI
-            - Rodents
-        contributors:
-            - person: ig@fz-juelich.de
-              roles:
-                  - CorrespondingAuthor
-                  - DataCurator
+  name: Intelligence in Rodents
+  purpose:
+    Identify what determines intelligence
+    in rodents and whether it is related
+    to food.
+  start_date: 31.10.1990
+  end_date: 22.12.2010
+  keyword:
+    - Rodent
+    - Intelligence boost
+    - Food
+  principal_investigator: a@fz-juelich.de
+  contributor:
+    - b@fz-juelich.de
+    - c@fz-juelich.de
+
+dataset:
+  name: Rodent-Intelligence Brainscans
+  location: juseless:/data/project/riskystudy
+  description:
+    Lorem ipsum dolor sit amet,
+    incidunt ut labore et dolore
+    nostrud exercitation ullamco
+  standard:
+    - dicom
+    - nifti
+    - bids
+  keyword:
+    - fMRI
+    - Rodents
+  author:
+    - a@fz-juelich.de
+    - b@fz-juelich.de
+
+publication:
+  - title: Food-based intelligence
+    author:
+      - a@fz-juelich.de
+      - c@fz-juelich.de
+    year: 1995
+    corresponding_author: a@fz-juelich.de
+    doi: doi:example/p1
+    publication: Proceedings in rodents
+    volume: 23
+    issue: 4
+    pages: 11-15
+    publisher: Spraddison
+
+  - title: Rodent studies survey
+    author: a@fz-juelich.de
+    year: 2005
+
+person:
+  a@fz-juelich.de:
+    given_name: Hans
+    last_name: Glück
+    orcid-id: 1000-0002-4092-0601
+    title: Prof. Dr.
+    affiliation: FZ-Jülich
+    contact_information:
+      Used to work with X, but then went
+      to Australia to work with Koalas,
+      try calling +1 234 567 890
+
+  b@fz-juelich.de:
+     given_name: Irmgard
+     last_name: Glöckner
+     orcid-id: 2000-0002-4092-0249
+
+  c@fz-juelich.de:
+     given_name: Willy
+     last_name: Mann

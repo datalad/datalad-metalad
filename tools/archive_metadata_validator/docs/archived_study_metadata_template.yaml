@@ -81,85 +81,119 @@
 # example below in "additional_contact_information".
 #
 
+# information on the study the to-be-archived dataset was created for
 study:
-    name: <ex>Intelligence in Rodents</ex>
-    purpose:                                          # purpose can be deleted
-        <ex>Identify what determines intelligence
-        in rodents and whether it is related
-        to food.</ex>
-    start_date: <ex>1.1.1990</ex>                     # Can be deleted
-    end_date: <ex>1.1.2010</ex>                       # Can be deleted
+  # short name or label
+  name: <ex>Intelligence in Rodents</ex>
 
-    keywords:                                         # keywords can be deleted
-        - <ex>Rodent</ex>
-        - <ex>Intelligence</ex>
-        - <ex>Food</ex>                               # All but the first keyword entry can be deleted
+  # description of the study goals, optional
+  purpose:
+    <ex>Identify what determines intelligence
+    in rodents and whether it is related
+    to food.</ex>
 
-    persons:                                          # persons can be deleted
-        - person:
-            first_name: <ex>Hans</ex>
-            last_name: <ex>Glück</ex>
-            email: <ex>hg@fz-juelich.de</ex>
-            title: <ex>Prof. Dr.</ex>                                   # Can be deleted
-            affiliation: <ex>FZ-Jülich</ex>                             # Can be deleted
-            orcid-id: <ex>1000-0002-4092-0601</ex>                      # Can be deleted
-            additional_contact_information: "<ex>Tel: +49 111 5553433</ex>"       # Can be deleted
-        - person:
-            first_name: <ex>Irmgard</ex>
-            last_name: <ex>Glöckner</ex>
-            email: <ex>ig@fz-juelich.de</ex>
-            title: <ex>Dr. Dr.</ex>                                     # Can be deleted
-            affiliation: <ex>FZ-Jülich</ex>                             # Can be deleted
-            orcid-id: <ex>2000-0002-4092-0249</ex>                      # Can be deleted
+  # start of the study, optional
+  start_date: <ex>31.10.1990</ex>
+  # end of the study, if finished, optional
+  end_date: <ex>22.12.2010</ex>
 
-    contributors:                                                       # Can be deleted
-        - person: <ex>hg@fz-juelich.de</ex>
-          roles:
-              - <ex>StudyLeader</ex>
-              - <ex>CorrespondingAuthor</ex>
+  # at least one keyword/phrase must be given
+  keyword:
+    - <ex>Rodent</ex>
+    - <ex>Intelligence boost</ex>
+    - <ex>Food</ex>
 
-    publications:                                                       # publications can be deleted
-        - publication:
-            corresponding_author: <ex>hg@fz-juelich.de</ex>
-            title: <ex>Food-based intelligence induction in rodents</ex>
-            date: <ex>1.1.1995</ex>
-            authors:                                                    # authors can be deleted
-                - first_name: <ex>Irmgard</ex>
-                  last_name: <ex>Glöckner</ex>
-                - <ex>hg@fz-juelich.de</ex>
-            doi: <ex>doi:example/p1</ex>                                # Can be deleted
-            publication: <ex>Proceedings in rodent behavior</ex>        # Can be deleted
-            volume: <ex>23</ex>                                         # Can be deleted
-            issue: <ex>4</ex>                                           # Can be deleted
-            pages: <ex>11-15</ex>                                       # Can be deleted
-            publisher: <ex>Spraddison</ex>                              # Can be deleted
+  # email of the principal investigator
+  principal_investigator: <ex>a@fz-juelich.de</ex>
 
-        - publication:                                                  # All but the first publication entry can be deleted
-            corresponding_author: <ex>hg@fz-juelich.de</ex>
-            title: <ex>Rodent studies survey</ex>
-            date: <ex>1.1.1998</ex>
-            doi: <ex>doi:example/p2</ex>
-            publication: <ex>Intelligence Research</ex>
-            volume: <ex>33</ex>
-            issue: <ex>9</ex>
-            publisher: <ex>Elsberg</ex>
-            pages: <ex>233-244</ex>
+  # emails of additional contributors, optional
+  contributor:
+    - <ex>b@fz-juelich.de</ex>
+    - <ex>c@fz-juelich.de</ex>
 
-    dataset:
-        name: <ex>Rodent-Intelligence Brainscans</ex>
-        url: <ex>file:/bulk1:/data/ristudy</ex>
-        description:                                        # description can be deleted
-            <ex>Lorem ipsum dolor sit amet,
-            incidunt ut labore et dolore
-            nostrud exercitation ullamco</ex>
-        data_format: <ex>DICOM</ex>                         # Can be deleted
+# mandatory information on to-be-archived dataset
+dataset:
+  # short name or label
+  name: <ex>Rodent-Intelligence Brainscans</ex>
 
-        keywords:                                           # keywords can be deleted
-            - <ex>fMRI</ex>
-            - <ex>Rodents</ex>                              # All but the first keyword entry can be deleted
+  # current location of the dataset
+  location: <ex>juseless:/data/project/riskystudy</ex>
 
-        contributors:                                       # contributors can be deleted
-            - person: <ex>ig@fz-juelich.de</ex>
-              roles:
-                  - <ex>CorrespondingAuthor</ex>
-                  - <ex>DataCurator</ex>                    # All but the first role can be deleted
+  # summary of purpose and content of the dataset
+  description:
+    <ex>Lorem ipsum dolor sit amet,
+    incidunt ut labore et dolore
+    nostrud exercitation ullamco</ex>
+
+  # optional list of employed standard and format
+  # for automatic generation of rich metadata records
+  # (see handbook for full list)
+  standard:
+    - <ex>dicom</ex>
+    - <ex>nifti</ex>
+    - <ex>bids</ex>
+
+  # at least one keyword/phrase must be given
+  keyword:
+    - <ex>fMRI</ex>
+    - <ex>Rodents</ex>
+
+  # minimum of one dataset author required
+  author:
+    - <ex>a@fz-juelich.de</ex>
+    - <ex>b@fz-juelich.de</ex>
+
+# one or more publications on or using the dataset, optional
+publication:
+  - title: <ex>Food-based intelligence</ex>
+    author:
+      - <ex>a@fz-juelich.de</ex>
+      - <ex>c@fz-juelich.de</ex>
+    # when published
+    year: <ex>1995</ex>
+
+    # all other properties are optional
+
+    corresponding_author: <ex>a@fz-juelich.de</ex>
+    # highly recommended to provide a DOI
+    doi: <ex>doi:example/p1</ex>
+    # journal name or publication venue label
+    publication: <ex>Proceedings in rodents</ex>
+    volume: <ex>23</ex>
+    issue: <ex>4</ex>
+    pages: <ex>11-15</ex>
+    publisher: <ex>Spraddison</ex>
+
+  - title: <ex>Rodent studies survey</ex>
+    author: <ex>a@fz-juelich.de</ex>
+    year: <ex>2005</ex>
+    doi: <ex>doi:example/p2</ex>
+
+# person information, one record for every email-key used above
+person:
+  <ex>a@fz-juelich.de</ex>:
+    # given name(s), first name
+    given_name: <ex>Hans</ex>
+    last_name: <ex>Glück</ex>
+
+    # all other properties are optional
+
+    # highly recommended
+    orcid-id: <ex>1000-0002-4092-0601</ex>
+    title: <ex>Prof. Dr.</ex>
+    affiliation: <ex>FZ-Jülich</ex>
+
+    # additional information on how to reach this person
+    contact_information:
+      <ex>Used to work with X, but then went
+      to Australia to work with Koalas,
+      try calling +1 234 567 890</ex>
+
+  <ex>b@fz-juelich.de</ex>:
+     given_name: <ex>Irmgard</ex>
+     last_name: <ex>Glöckner</ex>
+     orcid-id: <ex>2000-0002-4092-0249</ex>
+
+  <ex>c@fz-juelich.de</ex>:
+     given_name: <ex>Willy</ex>
+     last_name: <ex>Mann</ex>
