@@ -39,7 +39,7 @@ class DateValidator(ContentValidator):
             _, is_faulty = self._check_optional_date("publication.date", publication_spec)
             if is_faulty:
                 errors.append(
-                    f"Date error: faulty date in study with title: "
+                    f"Date error: faulty date in publication with title: "
                     f"{publication_spec['publication']['title']}"
                 )
         return errors

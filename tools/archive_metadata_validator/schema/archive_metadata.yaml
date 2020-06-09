@@ -148,8 +148,6 @@ definitions:
         $ref: "#definitions/date"
       end_date:
         $ref: "#definitions/date"
-      persons:
-        $ref: "#definitions/person-set"
       contributor:
         $ref: "#definitions/person-ref-list"
       publications:
