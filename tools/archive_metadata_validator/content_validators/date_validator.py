@@ -26,20 +26,13 @@ class DateValidator(ContentValidator):
     def perform_validation(self, spec: dict) -> List:
         errors = []
 
-        start_date, is_faulty = self._check_optional_date("study.start_date", spec)
-        if is_faulty:
-            errors.append("Date error: study.start_date is invalid")
-        end_date, is_faulty = self._check_optional_date("study.end_date", spec)
-        if is_faulty:
-            errors.append("Date error: study.start_date is invalid")
-        if start_date and end_date and start_date > end_date:
-            errors.append("Date error: study.end_date is earlier than study.start_date")
-
-        for publication_spec in self.value_at("study.publications", spec, default=[]):
-            _, is_faulty = self._check_optional_date("publication.date", publication_spec)
+        previous_date = None
+        for context in ("study.start_date", "study.end_date"):
+            date, is_faulty = self._check_optional_date(context, spec)
             if is_faulty:
-                errors.append(
-                    f"Date error: faulty date in publication with title: "
-                    f"{publication_spec['publication']['title']}"
-                )
+                errors.append(f"Date error: {context} is invalid")
+            if previous_date and previous_date > date:
+                errors.append(f"Date error: {context} is earlier than {previous_context}")
+            previous_date, previous_context = date, context
+
         return errors
