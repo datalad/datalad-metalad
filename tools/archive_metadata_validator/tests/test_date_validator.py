@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from .common import BASE_SPEC, MINIMAL_SPEC
+from .common import BASE_SPEC
 from ..content_validators.date_validator import DateValidator
 
 

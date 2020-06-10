@@ -150,8 +150,6 @@ definitions:
         $ref: "#definitions/date"
       contributor:
         $ref: "#definitions/person-ref-list"
-      publications:
-        $ref: "#definitions/publication-list"
 
 type: object
 required:
@@ -165,8 +163,6 @@ properties:
   dataset:
     $ref: "#definitions/dataset"
   publication:
-    type: array
-    items:
-      $ref: "#definitions/publication"
+    $ref: "#definitions/publication-list"
   person:
     $ref: "#definitions/person-set"

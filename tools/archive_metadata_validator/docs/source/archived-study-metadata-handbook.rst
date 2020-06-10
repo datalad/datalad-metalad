@@ -1,7 +1,7 @@
 ..
     Long lines ahead!
-    In order to keep commits to this file comprehensible paragraphs
-    are written in a single line, i.e. no hard word wrap.
+    In order to keep commits to this file comprehensible, paragraphs
+    are written in a single line, i.e. there is no hard word wrap.
 
     If you work with a limited number of columns, please enable
     soft-wrap on your editor.
@@ -11,16 +11,16 @@
 Metadata for Archived Studies Handbook
 **************************************
 
-Version 1.3
+Version 1.4
 
 This document describes the metadata for archived studies. More precisely, it describes the metadata elements that can be used, and the machine-readable format in which they are specified. The schema is deliberately kept simple in order to facilitate quick metadata capturing, even from older studies. At the same time, it allows for more detailed information, if available.
 
 Metadata Elements
 =================
 
-The metadata for archived studies (MAS) contains only a few elements, most of which are optional. The top-level element is a Study. This element in turn contains a number of entries, which might themselves be elements.
+The metadata for archived studies (MAS) contains only a few elements, most of which are optional. There are four top-level elements: study, dataset, publication, and persons. These elements contain a number of possible entries, which might themselves be elements. Not all elements are mandatory, quite a number of them are in fact optional and don't have to be specified
 
-There are six high-level elements: study, dataset, person, contributor, publication, and person reference. This section gives an overview of the elements in MAS. For each sub-element we give the name, whether it is optional, the type of data that it should contain, e.g. text or integer, and optionally an explanation of what it should describe. So for example:
+This section gives an overview of the elements in MAS. For each element and sub-element we give the name, whether it is optional, the type of data that it should contain, e.g. text or integer, and optionally an explanation of what it should describe. So for example:
 
 - Purpose (optional): text, purpose of study
 
@@ -30,89 +30,67 @@ describes an element named Purpose, which is optional, its type is "text", and i
 Study
 -----
 
-These are the elements that comprise the study-element:
+The Study-element is required in the metadata specification. It consists of the following sub-elements:
 
 - Name: text, name of the study
-- Dataset: Dataset-element (cf. below)
+- Principal investigator: person-reference (cf. below), the name of the principal investigator, i.e. the person responsible for the study
+- Keyword: list of text, at least one keyword is required
 - Purpose: (optional): text, purpose of the study, could facilitate location of the study via search engines
 - Start date (optional): text, date on which the study was started, e.g. "23.1.2019"
-- End date (optional): text, date on which the study was ended, e.g. "25.3.2020"
-- Keywords (optional): list of texts
-- Persons (optional): list of Person-elements, persons that were involved in the study
-- Publications (optional): list of Publication-elements
-- Contributors (optional): list of Contributor-elements, which define persons and their role in the execution of the study
+- End date (optional): text, date on which the study was finished, if it was finished yet"
+- Contributor (optional): list of person-references, persons that contributed to the study
+
+Person references are emails. The Person-element described in the chapter `Person`_ contains a set of email-addresses and information about the person that is addressed by the email-address. A person-reference is one of the emails in the Person-element.
+
+Please see the section `Example 1: Complete Metadata Description`_ for an example.
 
 
 Dataset
 -------
 
-These are the elements that comprise the dataset-element:
+The dataset-element is required in the metadata specification. These are the elements that comprise the dataset-element:
 
-- Name of the dataset: text
-- URL of the dataset: text, where is the unarchived dataset stored
+- Name: text, the name of the dataset
+- Location: text, location where is the unarchived dataset stored
+- Keyword: list of text, at least one keyword is required
+- Author (optional): list of person-references, persons that have participated in the collection and creation of the dataset
 - Description (optional): text, could facilitate location of the dataset via search engines
-- Data format (optional): text
-- Keywords (optional): list of texts
-- Contributors (optional): list of Contributor-elements (cf. below), defines persons and their role in the creation of the data
+- Standard (optional): list of text, data format standards that are used in the dataset
+
+Standard should be taken from the following list of identified standards, if applicable at all: *dicom*, *nifti*, *bids*. Nevertheless, if none of the identified standards were used in your dataset, or if you used additional standards, you can provide your own description.
+
+Please see the section `Example 1: Complete Metadata Description`_ for an example.
+
 
 Person
 ------
 
-These are the elements that comprise the person-element:
+A person element consists of a set of email-addresses and associated information about the owners of the email-addresses. For each email-address, the following information has to be provided:
 
-- First name: text
+- Given name: text
 - Last name: text
-- Email: text, institutional email. Should globally uniquely identify the person.
+- ORCID ID (optional): text
 - Title (optional): text
 - Affiliation (optional): text
-- ORCID ID (optional): text
-- Additional contact information (optional): text
-
-Contributor
------------
-A Contributor-element combines a person reference with a role that this person held, e.g. the person might be the data curator for the dataset of a study. These are the elements that comprise the Contributor-element:
-
-- Person: person reference (cf. below), the person that contributed
-- Roles: list of text, the roles in which the person contributed.
-
-Roles should be taken from the following list of predefined roles, if applicable at all: *Author*, *CorrespondingAuthor*, *DataCurator*, *DataCollector*, *Maintainer*, *ProjectLeader*, *ProjectMember*, *Researcher*, *SoftwareDeveloper*.
-
-Nevertheless, if none of the predefined roles describes the role of the contributing person correctly, you can provide your own description.
-
+- Contact information (optional): text, additional contact information, e. g. a telephone number or an address
 
 Publication
 -----------
-These are the elements that comprise the publication-element:
+The publication-element contains a list of records with the following elements:
 
-- Corresponding Author: person reference (cf. below)
 - Title: text, the title of the publication
-- Date: text, date of the publication
-- Authors (optional): list of person references, additional authors
-- DOI (optional): text, if a DOI is present, it will be used as an authoritative source for the remaining properties in this element and for entries in the persons-list.
-- Publication (optional): text, the name of the publication
+- Author: list of person reference or a single person reference, authors of the publication
+- Year: Number, the year of the publication
+- DOI (optional): text, if a DOI is present, it will be used as an authoritative source for the remaining properties in this publication and for entries in the persons-list.
+- Corresponding author (optional): person-reference, one of the person references in the author-element of this publication
+- Publication (optional): text, journal name or publication venue label
 - Volume (optional): text, the volume number of the publication
 - Issue (optional): text, the issue number of the publication
 - Pages (optional): text, pages on which the publication appeared
 - Publisher (optional): text, entity that published the publication
 
-Person Reference
---------------------
-Person references are used in the Study-element, the Dataset-element and in the Publication-element. They reference persons that are contained in the persons-list of the Study-element. That means, person information is kept at a single place in MAS, i.e. in the persons list of the Study-element. Other places in MAS that require person information just refer to entries in this list.
+Please see the section `Example 1: Complete Metadata Description`_ for an example.
 
-Entries in the persons list are referred to either by the person’s email or by the person’s first and last name.
-
-Since there are two ways to reference a person (either by their email, or by their first and last name), a person reference can be either of the following elements:
-
-- Email: text
-
-or
-
-- First name: text
-
-  Last name: text
-
-
-Please check the section `Example 1: Complete Metadata Description`_ for an example.
 
 Metadata format
 ===============
@@ -130,10 +108,10 @@ Example for concept 1:
 An example for the first concept, i.e. names and content, is given here::
 
     name: This is a name
-    url: http://www.example.com/
+    location: http://www.example.com/
 
 
-The given code defines two entities, namely "name" and "url", with the respective content "This is a name" and "http://www.example.com/".
+The given code defines two entities, namely "name" and "location", with the respective content "This is a name" and "http://www.example.com/".
 
 Long context can also be written into multiple lines, for example, the following code snippet defines an element named "description" with the content "Lorem ipsum ... ullamco"::
 
@@ -144,13 +122,13 @@ Long context can also be written into multiple lines, for example, the following
 
 **Please note**: if the content of an element contains the character colon followed by space, you have to enclose the content into double-quotes. For example when you specify the element additional_contact_info like this::
 
-    addition_contact_info: Tel: +1 555 201-4444
+    contact_information: Tel: +1 555 201-4444
 
 you would see an error, because "Tel" would be mistaken for an element name, since it is followed by a colon and a space.
 
 To prevent this error, you have to enclose the string `Tel: +1 555 201-4444` into double-quotes like this::
 
-    addition_contact_info: "Tel: +1 555 201-4444"
+    contact_information: "Tel: +1 555 201-4444"
 
 
 Example for concept 2:
@@ -159,12 +137,12 @@ An example for the second concept, i.e. indentation of contained elements, is gi
 
     study:
       name: Navigational maps in rat brains
-      dataset:
-        name: fMRI rat navigation
-        url: http://www.example.com/studies/images/rat-navigation
       purpose: determine how rats learn to navigate in new environments
+      keyword:
+        - rodent
+        - navigation
 
-The code-snippet above defines an element called "study" that contains three sub-elements, i.e. "name", "dataset", and "purpose". Of which "dataset" itself contains two sub-elements, i.e. "name", and "url".
+The code-snippet above defines an element called "study" that contains three sub-elements, i.e. "name", "purpose", and "keyword". The "keyword" sub-element contains a list with the two entries "rodent", and "navigation".
 
 **Please note**: only use spaces for indentation, not tabulators!
 
@@ -180,16 +158,19 @@ The code snippet above defines an element named "keywords", that contains a list
 
 The content of list elements is not restricted to simple types like text strings or number. List elements themselves can be elements with sub-elements, as shown here::
 
-    study:
-      persons:
-        - person:
-            first_name: John
-            last_name: Harris
-        - person:
-            first_name: Ida
-            last_name: Miller
+    publication:
+      - title: Food-based intelligence
+        author: a@fz-juelich.de
+        # when published
+        year: 1995
 
-The code snippet above defines an element named "study", that contains an element named "persons", that contains a list with two entries. In this example each list entry is itself an element containing other elements. More specific each list entry is a "person" element, that contains two sub-elements, i.e. "first_name" and "last_name" with the respective first and last names.
+      - title: Rodent studies survey
+        author: a@fz-juelich.de
+        doi: doi:example/p2
+        year: 2005
+
+
+The code snippet above defines an element named "publication", that contains a element named "persons", that contains a list with two entries. In this example each list entry is itself an element containing other elements. More specific each list entry is a "person" element, that contains two sub-elements, i.e. "first_name" and "last_name" with the respective first and last names.
 
 Complete Metadata Definition
 ============================
