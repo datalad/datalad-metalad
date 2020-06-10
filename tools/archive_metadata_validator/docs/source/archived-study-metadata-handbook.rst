@@ -137,7 +137,7 @@ An example for the second concept, i.e. indentation of contained elements, is gi
 
     study:
       name: Navigational maps in rat brains
-      purpose: determine how rats learn to navigate in new environments
+      purpose: determine how rats learn to navigate
       keyword:
         - rodent
         - navigation
@@ -161,16 +161,14 @@ The content of list elements is not restricted to simple types like text strings
     publication:
       - title: Food-based intelligence
         author: a@fz-juelich.de
-        # when published
         year: 1995
 
       - title: Rodent studies survey
         author: a@fz-juelich.de
-        doi: doi:example/p2
         year: 2005
 
 
-The code snippet above defines an element named "publication", that contains a element named "persons", that contains a list with two entries. In this example each list entry is itself an element containing other elements. More specific each list entry is a "person" element, that contains two sub-elements, i.e. "first_name" and "last_name" with the respective first and last names.
+The code snippet above defines an element named "publication", that contains a list with two entries. Both entries have ths sub-elements "title", "author", and "year".
 
 Complete Metadata Definition
 ============================
@@ -189,107 +187,87 @@ Example 1: Complete Metadata Description
 ::
 
     study:
-        name: Intelligence in Rodents
-        purpose:                                 # purpose can be deleted
-            Identify what determines intelligence
-            in rodents and whether it is related
-            to food.
-        start_date: 1.1.1990                     # Can be deleted
-        end_date: 1.1.2010                       # Can be deleted
+      name: Intelligence in Rodents
+      purpose:
+        Identify what determines intelligence
+        in rodents and whether it is related
+        to food.
+      start_date: 31.10.1990
+      end_date: 22.12.2010
+      keyword:
+        - Rodent
+        - Intelligence boost
+        - Food
+      principal_investigator: a@fz-juelich.de
+      contributor:
+        - b@fz-juelich.de
+        - c@fz-juelich.de
 
-        keywords:                                # keywords can be deleted
-            - Rodent
-            - Intelligence
-            - Food                               # All but the first keyword entry can be deleted
+    dataset:
+      name: Rodent-Intelligence Brainscans
+      location: juseless:/data/project/riskystudy
+      description:
+        Lorem ipsum dolor sit amet,
+        incidunt ut labore et dolore
+        nostrud exercitation ullamco
+      standard:
+        - dicom
+        - nifti
+        - bids
+      keyword:
+        - fMRI
+        - Rodents
+      author:
+        - a@fz-juelich.de
+        - b@fz-juelich.de
 
-        persons:                                 # persons can be deleted
-            - person:
-                first_name: Hans
-                last_name: Glück
-                email: hg@fz-juelich.de
-                title: Prof. Dr.                                   # Can be deleted
-                affiliation: FZ-Jülich                             # Can be deleted
-                orcid-id: 1000-0002-4092-0601                      # Can be deleted
-                additional_contact_information: "Tel: +49 111 5553433"       # Can be deleted
-            - person:
-                first_name: Irmgard
-                last_name: Glöckner
-                email: ig@fz-juelich.de
-                title: Dr. Dr.                                     # Can be deleted
-                affiliation: FZ-Jülich                             # Can be deleted
-                orcid-id: 2000-0002-4092-0249                      # Can be deleted
+    publication:
+      - title: Food-based intelligence
+        author:
+          - a@fz-juelich.de
+          - c@fz-juelich.de
+        year: 1995
+        corresponding_author: a@fz-juelich.de
+        doi: doi:example/p1
+        publication: Proceedings in rodents
+        volume: 23
+        issue: 4
+        pages: 11-15
+        publisher: Spraddison
 
-        contributors:                                              # Can be deleted
-            - person: hg@fz-juelich.de
-              roles:
-                  - StudyLeader
-                  - CorrespondingAuthor
+      - title: Rodent studies survey
+        author: a@fz-juelich.de
+        year: 2005
 
-        publications:                                              # publications can be deleted
-            - publication:
-                corresponding_author: hg@fz-juelich.de
-                title: Food-based intelligence induction in rodents
-                date: 1.1.1995
-                authors:                                           # authors can be deleted
-                    - first_name: Irmgard
-                      last_name: Glöckner
-                    - hg@fz-juelich.de
-                doi: doi:example/p1                                # Can be deleted
-                publication: Proceedings in rodent behavior        # Can be deleted
-                volume: 23                                         # Can be deleted
-                issue: 4                                           # Can be deleted
-                pages: 11-15                                       # Can be deleted
-                publisher: Spraddison                              # Can be deleted
+    person:
+      a@fz-juelich.de:
+        given_name: Hans
+        last_name: Glück
+        orcid-id: 1000-0002-4092-0601
+        title: Prof. Dr.
+        affiliation: FZ-Jülich
+        contact_information:
+          Used to work with X, but then went
+          to Australia to work with Koalas,
+          try calling +1 234 567 890
 
-            - publication:                                         # All but the first publication entry can be deleted
-                corresponding_author: hg@fz-juelich.de
-                title: Rodent studies survey
-                date: 1.1.1998
-                doi: doi:example/p2
-                publication: Intelligence Research
-                volume: 33
-                issue: 9
-                publisher: Elsberg
-                pages: 233-244
+      b@fz-juelich.de:
+         given_name: Irmgard
+         last_name: Glöckner
+         orcid-id: 2000-0002-4092-0249
 
-        dataset:
-            name: Rodent-Intelligence Brainscans
-            url: file:/bulk1:/data/ristudy
-            description:                               # description can be deleted
-                Lorem ipsum dolor sit amet,
-                incidunt ut labore et dolore
-                nostrud exercitation ullamco
-            data_format: DICOM                         # Can be deleted
+      c@fz-juelich.de:
+         given_name: Willy
+         last_name: Mann
 
-            keywords:                                  # keywords can be deleted
-                - fMRI
-                - Rodents                              # All but the first keyword entry can be deleted
+The example above illustrates the purpose of the persons-element. It lists all persons that are referenced as author, contributor, corresponding authoer, or principal investigator. Detailed person information is listed under the email-addresses of the respective person.
 
-            contributors:                              # contributors can be deleted
-                - person: ig@fz-juelich.de
-                  roles:
-                      - CorrespondingAuthor
-                      - DataCurator                    # All but the first role can be deleted
-
-The example above illustrates the purpose of the persons-element. It lists all persons that have a role in the creation of the study, in the creation of the dataset, or in the creation of a publication. Detailed person information is listed in the persons-element of the study.
-
-This information is referred to within the author and corresponding_author-element of the publication-element. Persons are also referenced within the study-element and the dataset-element, where they are associated with a list of roles, that the person holds in the respective content. References allow you to use a person in several contexts without repeating the definition of him over and over.
-
-Within MAS persons are referred to by either their email, or their first and last name. For example in the authors list of the publication with the title "Food-based intelligence induction in rodents", we refer to the person with the first name "Irmgard" and the last name "Glöckner" as an author like this::
+Within MAS persons are referred to their email. For example in the authors list of the publication with the title "Food-based intelligence", we refer the corresponding author with his email-address::
 
     ...
-    authors:
-        - first_name: Irmgard
-          last_name: Glöckner
-        - ...
-    ...
+    corresponding_author: a@fz-juelich.de
 
-In the corresponding_author-element of the publication with the title "Rodent studies survey" we instead use the email of Irgmard Glöckner::
-
-    ...
-    corresponding_author: ig@fz-juelich.de
-
-You are free to use either form of reference. NB: you may or may not repeat the corresponding_author in the optional author-element, if a person apears as one of the authors and as corresponding author, this person is assumed to be the corresponding author.
+NB: the corresponding author has to be in the author-list of the respective publication.
 
 Example 2: Minimal Metadata Description
 ---------------------------------------
@@ -297,10 +275,25 @@ Example 2: Minimal Metadata Description
 The following show the minimal possible metadata description, i.e. the metadata description in which all optional elements are left out::
 
     study:
-        name: Intelligence in Rodents
-        dataset:
-            name: Rodent-Intelligence Brainscans
-            url: http://www.example.com/data/ristudy
+      name: Intelligence in Rodents
+      start_date: 31.10.1990
+      end_date: 22.12.2010
+      keyword:
+        - Rodent
+      principal_investigator: a@fz-juelich.de
+
+    dataset:
+      name: Rodent-Intelligence Brainscans
+      location: juseless:/data/project/riskystudy
+      keyword:
+        - fMRI
+      author:
+        - a@fz-juelich.de
+
+    person:
+      a@fz-juelich.de:
+        given_name: Hans
+        last_name: Glück
 
 Questions?
 ==========
