@@ -87,7 +87,10 @@ def test_ds_extraction(path):
     assert_repo_status(ds.path)
 
     # by default we get core and annex reports
-    res = meta_extract(dataset=ds)
+    res = meta_extract(dataset=ds,
+                       sources=[
+                           'metalad_core', 'metalad_annex', 'metalad_runprov'
+                        ])
     # dataset, plus two files (payload)
     assert_result_count(res, 3)
     assert_result_count(res, 1, type='dataset')
