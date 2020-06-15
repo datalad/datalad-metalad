@@ -1,7 +1,7 @@
 from datetime import date
 from collections import namedtuple
 from time import strptime, struct_time
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from .content_validator import ContentValidator
 

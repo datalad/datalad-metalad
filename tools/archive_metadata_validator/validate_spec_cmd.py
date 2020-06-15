@@ -4,6 +4,7 @@ from pathlib import PosixPath
 from typing import List
 
 from content_validators.date_validator import DateValidator
+from content_validators.doi_validator import DOIValidator
 from content_validators.reference_validator import ReferenceValidator
 from validator import SpecValidator
 
@@ -21,7 +22,7 @@ def validate_stream(character_stream, skip_content_validation: bool) -> List:
     if skip_content_validation is True:
         validator = SpecValidator(SCHEMA_SPEC_PATH, [])
     else:
-        validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(), ReferenceValidator()])
+        validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(), ReferenceValidator(), DOIValidator()])
     validator.validate_spec(character_stream.read())
     return validator.errors
 
