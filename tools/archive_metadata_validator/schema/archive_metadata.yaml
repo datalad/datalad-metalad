@@ -83,12 +83,20 @@ definitions:
       publisher:
         type: string
 
+  keyword-entry:
+    type: string
+
   keyword-list:
     type: array
     minItems: 1
     uniqueItems: true
     items:
-      type: string
+      $ref: "#definitions/keyword-entry"
+
+  keyword-spec:
+    oneOf:
+      - $ref: "#definitions/keyword-entry"
+      - $ref: "#definitions/keyword-list"
 
   publication-list:
     type: array
@@ -118,7 +126,7 @@ definitions:
         description: URL of the entry point for the data
         type: string
       keyword:
-        $ref: "#definitions/keyword-list"
+        $ref: "#definitions/keyword-spec"
       author:
         $ref: "#definitions/author-ref"
       description:
@@ -140,7 +148,7 @@ definitions:
       principal_investigator:
         $ref: "#definitions/person-ref"
       keyword:
-        $ref: "#definitions/keyword-list"
+        $ref: "#definitions/keyword-spec"
       purpose:
         description: Why was the study performed
         type: string

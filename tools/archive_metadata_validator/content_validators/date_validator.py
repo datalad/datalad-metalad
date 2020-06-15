@@ -1,38 +1,63 @@
-from typing import List, Optional
-
-from datetime import datetime
-from dateutil import parser as date_parser
+from datetime import date
+from collections import namedtuple
+from time import strptime, struct_time
+from typing import List, Optional, Tuple, Union
 
 from .content_validator import ContentValidator
 
 
+TIME_FORMATS = [
+    "%d.%m.%Y",
+    "%Y-%m-%d"
+]
+
+
+Date = Union[struct_time, struct_time]
+
+
+DateInfo = namedtuple("DateInfo", ("date", "is_faulty", "representation"))
+
+
 class DateValidator(ContentValidator):
     @staticmethod
-    def _parse_date(date_string: str) -> Optional[datetime]:
-        try:
-            return date_parser.parse(date_string)
-        except ValueError:
-            return None
+    def _parse_date(date_string: str) -> Optional[Date]:
+        for time_format in TIME_FORMATS:
+            try:
+                return strptime(date_string, time_format)
+            except ValueError:
+                continue
+        return None
 
-    def _check_optional_date(self, dotted_name, spec):
+    def _check_optional_date(self, dotted_name, spec) -> Union[DateInfo, None]:
         date_str = self.value_at(dotted_name, spec)
         if date_str:
             date = self._parse_date(date_str)
             if date is None:
-                return date, True
-            return date, False
-        return None, False
+                return DateInfo(date, True, date_str)
+            return DateInfo(date, False, date_str)
+        return None
 
     def perform_validation(self, spec: dict) -> List:
         errors = []
-
-        previous_date = None
+        dates = []
         for context in ("study.start_date", "study.end_date"):
-            date, is_faulty = self._check_optional_date(context, spec)
-            if is_faulty:
-                errors.append(f"Date error: {context} is invalid")
-            if previous_date and previous_date > date:
-                errors.append(f"Date error: {context} is earlier than {previous_context}")
-            previous_date, previous_context = date, context
+            date_info = self._check_optional_date(context, spec)
+            if date_info and date_info.is_faulty is True:
+                errors.append(f"Date error: {context} ('{date_info.representation}') is not valid")
+                dates.append(None)
+            else:
+                dates.append(date_info)
+        start_date, end_date = dates
+
+        if start_date is not None and end_date is not None:
+            if start_date.date > end_date.date:
+                errors.append(f"Date error: study.end_date ('{end_date.representation}') "
+                              f"is earlier than study.start_date ('{start_date.representation}')")
+
+        if start_date is None and end_date is not None:
+            errors.append("Date error: study.end_date given, but no valid study.start_date is given.")
+
+        if start_date and start_date.date > date.today().timetuple():
+            errors.append(f"Date error: study.start_date ('{start_date.representation}') is in the future.")
 
         return errors

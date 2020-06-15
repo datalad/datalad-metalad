@@ -22,7 +22,7 @@ def validate_stream(character_stream, skip_content_validation: bool) -> List:
         validator = SpecValidator(SCHEMA_SPEC_PATH, [])
     else:
         validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(), ReferenceValidator()])
-    validator.validate_spec(character_stream)
+    validator.validate_spec(character_stream.read())
     return validator.errors
 
 
@@ -44,7 +44,11 @@ def main(_):
         if errors:
             success = False
             for error in errors:
-                sys.stderr.write(f"{file_name}: {error}\n")
+                for index, line in enumerate(error.splitlines()):
+                    if index == 0:
+                        sys.stderr.write(f"{file_name}: {line}\n")
+                    else:
+                        sys.stderr.write(f"{' ' * len(file_name)}  {line}\n")
     return 0 if success is True else 1
 
 
