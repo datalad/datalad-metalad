@@ -2,12 +2,13 @@
 import yaml
 import yaml.constructor
 from collections import namedtuple
+from jsonschema import Draft7Validator
 from pathlib import PosixPath
 from typing import Any, List, Union
 from yaml.error import YAMLError, MarkedYAMLError, Mark
+from yaml.scanner import ScannerError
 
 from content_validators.content_validator import ContentValidator
-from jsonschema import Draft7Validator
 
 
 Typedef = namedtuple("SchemaTypedef", ["id", "schema"])
@@ -84,12 +85,15 @@ class SpecValidator(object):
         except MarkedYAMLError as e:
             self.errors = [self._get_error_description("YAML error", e)]
             return None
+        except ScannerError as e:
+            self.errors = [self._get_error_description("YAML error", e)]
+            return None
         except YAMLError as e:
             self.errors = [f"YAML error: unknown error{e}"]
             return None
 
     def validate_spec(self, yaml_string: str) -> bool:
-        spec_object = self._load_yaml_string(yaml_string)
+        spec_object = self.load_yaml_string(yaml_string)
         if spec_object is None:
             return False
         return self.validate_spec_object(spec_object)
