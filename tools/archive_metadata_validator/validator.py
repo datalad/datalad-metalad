@@ -1,10 +1,10 @@
 
 import yaml
+import yaml.constructor
 from collections import namedtuple
 from pathlib import PosixPath
 from typing import Any, List, Union
-from yaml.error import Mark
-from yaml.scanner import ScannerError
+from yaml.error import YAMLError, MarkedYAMLError, Mark
 
 from content_validators.content_validator import ContentValidator
 from jsonschema import Draft7Validator
@@ -13,13 +13,23 @@ from jsonschema import Draft7Validator
 Typedef = namedtuple("SchemaTypedef", ["id", "schema"])
 
 
+# Do not convert ISO-date strings in datetime.date objects during yaml.safe_load. To prevent
+# this, we overwrite the datetime constructor with the string constructor.
+YAML_TIMESTAMP_TAG = "tag:yaml.org,2002:timestamp"
+YAML_STRING_TAG = "tag:yaml.org,2002:str"
+YAML_CONSTRUCTORS = yaml.constructor.SafeConstructor.yaml_constructors
+YAML_CONSTRUCTORS[YAML_TIMESTAMP_TAG] = YAML_CONSTRUCTORS[YAML_STRING_TAG]
+
+
 class SpecValidator(object):
     @staticmethod
-    def _load_spec_object(path_to_schema_spec) -> Any:
-        with open(str(path_to_schema_spec), "rt") as spec_token_stream:
-            spec_object = yaml.safe_load(spec_token_stream.read())
-            return spec_object
+    def _load_yaml_string(yaml_string: str) -> dict:
+        return yaml.safe_load(yaml_string)
 
+    @staticmethod
+    def _load_spec_object(path_to_schema_spec: PosixPath) -> Any:
+        with open(str(path_to_schema_spec), "rt") as spec_token_stream:
+            return SpecValidator._load_yaml_string(spec_token_stream.read())
 
     @staticmethod
     def _get_mark_description(header: str, mark: Mark, problem: str) -> str:
@@ -40,12 +50,12 @@ class SpecValidator(object):
         return result
 
     @staticmethod
-    def _get_error_description(header: str, error: ScannerError) -> str:
+    def _get_error_description(header: str, error: MarkedYAMLError) -> str:
         result = ""
         for mark in (error.problem_mark, error.context_mark):
             if mark is not None:
-                result += SpecValidator._get_mark_description(
-                    header, error.problem_mark, error.problem or "Unknown problem")
+                problem = error.problem if hasattr(error, "problem") else "Unknown problem"
+                result += SpecValidator._get_mark_description(header, mark, problem)
         return result or f"{header}: {str(error)}"
 
     def __init__(self, path_to_schema_spec: PosixPath, validators: List[ContentValidator]):
@@ -68,10 +78,18 @@ class SpecValidator(object):
                 self.errors += content_validator.perform_validation(spec)
         return not self.errors
 
-    def validate_spec(self, yaml_token_stream: str) -> bool:
+    def load_yaml_string(self, yaml_string: str) -> Union[dict, None]:
         try:
-            spec_object = yaml.safe_load(yaml_token_stream)
-        except ScannerError as e:
+            return self._load_yaml_string(yaml_string)
+        except MarkedYAMLError as e:
             self.errors = [self._get_error_description("YAML error", e)]
+            return None
+        except YAMLError as e:
+            self.errors = [f"YAML error: unknown error{e}"]
+            return None
+
+    def validate_spec(self, yaml_string: str) -> bool:
+        spec_object = self._load_yaml_string(yaml_string)
+        if spec_object is None:
             return False
         return self.validate_spec_object(spec_object)
