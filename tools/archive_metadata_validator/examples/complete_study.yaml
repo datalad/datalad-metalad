@@ -6,7 +6,7 @@ study:
     in rodents and whether it is related
     to food.
   start_date: 31.10.1990
-  end_date: 22.12.2010
+  end_date: 2010-12-22
   keyword:
     - Rodent
     - Intelligence boost
@@ -56,7 +56,7 @@ person:
   a@fz-juelich.de:
     given_name: Hans
     last_name: Glück
-    orcid-id: 1000-0002-4092-0601
+    orcid-id: 1000-0002-4092-0609
     title: Prof. Dr.
     affiliation: FZ-Jülich
     contact_information:
@@ -67,7 +67,7 @@ person:
   b@fz-juelich.de:
      given_name: Irmgard
      last_name: Glöckner
-     orcid-id: 2000-0002-4092-0249
+     orcid-id: 2000-0002-4092-0247
 
   c@fz-juelich.de:
      given_name: Willy

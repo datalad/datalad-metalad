@@ -80,16 +80,17 @@ class SpecValidator(object):
         return not self.errors
 
     def load_yaml_string(self, yaml_string: str) -> Union[dict, None]:
+        self.errors = []
         try:
             return self._load_yaml_string(yaml_string)
         except ScannerError as e:
-            self.errors = [self._get_error_description("YAML error", e)]
+            self.errors += [self._get_error_description("YAML error", e)]
             return None
         except MarkedYAMLError as e:
-            self.errors = [self._get_error_description("YAML error", e)]
+            self.errors += [self._get_error_description("YAML error", e)]
             return None
         except YAMLError as e:
-            self.errors = [f"YAML error: unknown error{e}"]
+            self.errors += [f"YAML error: unknown error{e}"]
             return None
 
     def validate_spec(self, yaml_string: str) -> bool:
