@@ -15,10 +15,11 @@ study:
   contributor:
     - b@fz-juelich.de
     - c@fz-juelich.de
+  funding: NIH study funds
 
 dataset:
   name: Rodent-Intelligence Brainscans
-  location: juseless:/data/project/riskystudy
+  location: https://bulk1/data/project/riskystudy
   description:
     Lorem ipsum dolor sit amet,
     incidunt ut labore et dolore
@@ -33,6 +34,9 @@ dataset:
   author:
     - a@fz-juelich.de
     - b@fz-juelich.de
+  funding:
+    - DFG dataset funds
+    - NIH dataset funds
 
 publication:
   - title: Food-based intelligence
@@ -41,7 +45,7 @@ publication:
       - c@fz-juelich.de
     year: 1995
     corresponding_author: a@fz-juelich.de
-    doi: doi:example/p1
+    doi: doi:10.1002/0470841559.ch1
     publication: Proceedings in rodents
     volume: 23
     issue: 4

@@ -111,6 +111,12 @@ study:
     - <ex>b@fz-juelich.de</ex>
     - <ex>c@fz-juelich.de</ex>
 
+  # optional list of entities that funded the creation of
+  # the study. This might also be a single value, i.e.:
+  #`` funding: NIH´´.
+  funding:
+    - <ex>DFG</ex>
+
 # mandatory information on to-be-archived dataset
 dataset:
   # short name or label
@@ -142,6 +148,14 @@ dataset:
   author:
     - <ex>a@fz-juelich.de</ex>
     - <ex>b@fz-juelich.de</ex>
+
+  # optional list of entities that funded the creation of
+  # the dataset. This might also be a single value, i.e.:
+  #`` funding: NIH´´.
+  funding:
+    - <ex>NIH</ex>
+    - <ex>DFG</ex>
+
 
 # one or more publications on or using the dataset, optional
 publication:

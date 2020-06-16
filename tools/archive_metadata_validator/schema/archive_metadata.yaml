@@ -98,6 +98,21 @@ definitions:
       - $ref: "#definitions/keyword-entry"
       - $ref: "#definitions/keyword-list"
 
+  funding-entry:
+    type: string
+
+  funding-list:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      $ref: "#definitions/funding-entry"
+
+  funding-spec:
+    oneOf:
+      - $ref: "#definitions/funding-entry"
+      - $ref: "#definitions/funding-list"
+
   publication-list:
     type: array
     minItems: 1
@@ -132,6 +147,8 @@ definitions:
       description:
         description: Human-readable description of the data and what it describes
         type: string
+      funding:
+        $ref: "#definitions/funding-spec"
       standard:
         $ref: "#definitions/standard-list"
 
@@ -149,6 +166,8 @@ definitions:
         $ref: "#definitions/person-ref"
       keyword:
         $ref: "#definitions/keyword-spec"
+      funding:
+        $ref: "#definitions/funding-spec"
       purpose:
         description: Why was the study performed
         type: string

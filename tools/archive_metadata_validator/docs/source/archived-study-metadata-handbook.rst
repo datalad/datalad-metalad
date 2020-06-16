@@ -39,6 +39,7 @@ The Study-element is required in the metadata specification. It consists of the 
 - Start date (optional): text, date on which the study was started, e.g. "23.1.2019"
 - End date (optional): text, date on which the study was finished, if it was finished yet"
 - Contributor (optional): list of person-references, persons that contributed to the study
+- Funding (optional): text or list of texts, name(s) of entities that funded the study, e.g "DFG"
 
 Person references are emails. The Person-element described in the chapter `Person`_ contains a set of email-addresses and information about the person that is addressed by the email-address. A person-reference is one of the emails in the Person-element.
 
@@ -56,6 +57,7 @@ The dataset-element is required in the metadata specification. These are the ele
 - Author (optional): list of person-references, persons that have participated in the collection and creation of the dataset
 - Description (optional): text, could facilitate location of the dataset via search engines
 - Standard (optional): list of text, data format standards that are used in the dataset
+- Funding (optional): text or list of texts, name(s) of entities that funded the creation of the dataset, e.g "NIH"
 
 Standard should be taken from the following list of identified standards, if applicable at all: *dicom*, *nifti*, *bids*. Nevertheless, if none of the identified standards were used in your dataset, or if you used additional standards, you can provide your own description.
 
@@ -202,6 +204,9 @@ Example 1: Complete Metadata Description
       contributor:
         - b@fz-juelich.de
         - c@fz-juelich.de
+      funding:
+        - DFG Rodent Study Funds
+        - NIH International
 
     dataset:
       name: Rodent-Intelligence Brainscans
@@ -220,6 +225,7 @@ Example 1: Complete Metadata Description
       author:
         - a@fz-juelich.de
         - b@fz-juelich.de
+      funding: DFG data funds
 
     publication:
       - title: Food-based intelligence
