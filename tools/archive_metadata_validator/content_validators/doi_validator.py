@@ -7,6 +7,7 @@ from .content_validator import ContentValidator
 
 
 DOI_RESOLVER_BASE_URL = "https://doi.org/api/handles/"
+DOI_PREFIXES = ("doi", "https://doi.org/")
 
 
 class DOIValidator(ContentValidator):
@@ -23,8 +24,10 @@ class DOIValidator(ContentValidator):
         doi_str = self.value_at("doi", publication)
         if doi_str is not None:
             doi_str = doi_str.strip()
-            if doi_str.lower().startswith("doi:"):
-                doi_str = doi_str[4:].strip()
+            for prefix in DOI_PREFIXES:
+                if doi_str.lower().startswith(prefix):
+                    doi_str = doi_str[len(prefix):].strip()
+                    break
         return doi_str
 
     def perform_validation(self, spec: dict) -> List:
