@@ -76,6 +76,9 @@ A person element consists of a set of email-addresses and associated information
 - Affiliation (optional): text
 - Contact information (optional): text, additional contact information, e. g. a telephone number or an address
 
+Please see the section `Example 1: Complete Metadata Description`_ for an example.
+
+
 Publication
 -----------
 The publication-element contains a list of records with the following elements:
@@ -137,14 +140,16 @@ Example for concept 2:
 ----------------------
 An example for the second concept, i.e. indentation of contained elements, is given here::
 
-    study:
-      name: Navigational maps in rat brains
-      purpose: determine how rats learn to navigate
-      keyword:
-        - rodent
-        - navigation
+    person:
+      a@fz-juelich.de:
+        given_name: Hans
+        last_name: Glück
 
-The code-snippet above defines an element called "study" that contains three sub-elements, i.e. "name", "purpose", and "keyword". The "keyword" sub-element contains a list with the two entries "rodent", and "navigation".
+      b@fz-juelich.de:
+         given_name: Irmgard
+         last_name: Glöckner
+
+The code-snippet above defines an element called "person" that contains two sub-elements, i.e. "a@fz-juelich.de", and "b@fz-juelich.de". The "a@fz-juelich.de" sub-element contains two further sub-elements: "given_name", and "last_name" with the respective content "Hans", and "Glück". The "b@fz-juelich.de" sub-element also contains the sub-elements: "given_name", and "last_name" with the respective content "Irmgard", and "Glöckner".
 
 **Please note**: only use spaces for indentation, not tabulators!
 
