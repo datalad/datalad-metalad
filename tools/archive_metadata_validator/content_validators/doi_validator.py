@@ -7,7 +7,7 @@ from .content_validator import ContentValidator
 
 
 DOI_RESOLVER_BASE_URL = "https://doi.org/api/handles/"
-DOI_PREFIXES = ("doi", "https://doi.org/")
+DOI_PREFIXES = ("doi:", "https://doi.org/")
 
 
 class DOIValidator(ContentValidator):
