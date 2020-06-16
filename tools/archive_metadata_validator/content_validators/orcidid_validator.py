@@ -26,8 +26,6 @@ class ORCIDIDValidator(ContentValidator):
         return orcid_id
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List:
-        if len(orcid_id) != 19:
-            return [f"ORCID-ID error: ORCID-ID too short ('{orcid_id}') for person with email: {email}"]
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
             return [f"ORCID-ID error: ORCID-ID invalid format ('{orcid_id}') for person with email: {email}"]
         orcid_id_digits = orcid_id.replace("-", "")
