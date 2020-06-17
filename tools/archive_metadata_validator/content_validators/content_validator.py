@@ -36,3 +36,8 @@ class ContentValidator(ABC):
                 return default
             spec = value
         return value
+
+    @staticmethod
+    def publications(spec: Dict) -> Iterable:
+        for publication_spec in ContentValidator.value_at("publication", spec, default=[]):
+            yield publication_spec

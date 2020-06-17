@@ -28,18 +28,22 @@ class ORCIDIDValidator(ContentValidator):
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
-            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid format ('{orcid_id}') "
-                                     f"for person with email: {email}")]
+            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid ({orcid_id}) "
+                                     f"for person with email: {email}, format is not XXXX-XXXX-XXXX-XXXX")]
         orcid_id_digits = orcid_id.replace("-", "")
         if self._check_digit(orcid_id_digits[:15]) != orcid_id_digits[15]:
-            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid checksum ('{orcid_id}') "
-                                     f"for person with email: {email}")]
+            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid ({orcid_id}) "
+                                     f"for person with email: {email}, checksum failed.")]
         return []
 
     def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
         messages = []
+        seen_orcid_ids = []
         for (email, person_spec) in self.value_at("person", spec, default={}).items():
             orcid_id = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
+                if orcid_id in seen_orcid_ids:
+                    messages.append(ValidatorMessage(f"Warning: duplicated ORCID-ID: {orcid_id} "
+                                                     f"for person with email {email}"))
                 messages += self._check_orcidid(orcid_id, email)
         return messages
