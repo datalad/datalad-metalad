@@ -47,7 +47,7 @@ class SpecValidator(object):
         if problem.startswith("mapping values are not allowed here"):
             if ":" in source_lines[mark.line]:
                 result += (
-                        f"{' ' * len(header)}| please ensure that content with `:´ "
+                        f"{' ' * len(header)}| please ensure that content with `: ´, i.e. colon followed by space, "
                         f"is enclosed in double quotes, i.e. \".\n")
         return result
 
