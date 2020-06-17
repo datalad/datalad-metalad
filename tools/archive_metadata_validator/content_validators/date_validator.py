@@ -46,7 +46,7 @@ class DateValidator(ContentValidator):
     def _is_future_year(year: int):
         return year and year > date.today().year
 
-    def _check_publication_years(self, spec: dict, start_date: Date, end_date: Date):
+    def _check_publication_years(self, spec: dict, start_date: DateInfo, end_date: DateInfo):
         messages = []
         for publication in self.publications(spec):
             year = self.value_at("year", publication)
@@ -55,17 +55,18 @@ class DateValidator(ContentValidator):
                                                  f"of publication with title "
                                                  f"``{publication['title']}'' is in the future.",
                                                  ValidatorMessageSeverity.WARNING))
-            if year < start_date.tm_year:
-                messages.append(ValidatorMessage(f"Warning: publication.year {year} "
-                                                 f"of publication with title "
-                                                 f"``{publication['title']}'' is before study.start_date.",
-                                                 ValidatorMessageSeverity.WARNING))
+            if year:
+                if start_date and start_date.date and start_date.date.tm_year > year:
+                    messages.append(ValidatorMessage(f"Warning: publication.year {year} "
+                                                     f"of publication with title "
+                                                     f"``{publication['title']}'' is before study.start_date.",
+                                                     ValidatorMessageSeverity.WARNING))
 
-            if year > end_date.tm_year:
-                messages.append(ValidatorMessage(f"Warning: publication.year {year} "
-                                                 f"of publication with title "
-                                                 f"``{publication['title']}'' is after study.end_date.",
-                                                 ValidatorMessageSeverity.WARNIstartNG))
+                if end_date and end_date.date and end_date.date.tm_year < year:
+                    messages.append(ValidatorMessage(f"Warning: publication.year {year} "
+                                                     f"of publication with title "
+                                                     f"``{publication['title']}'' is after study.end_date.",
+                                                     ValidatorMessageSeverity.WARNING))
         return messages
 
     def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
