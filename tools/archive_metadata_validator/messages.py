@@ -9,7 +9,7 @@ class ValidatorMessageSeverity(Enum):
 
 
 class ValidatorMessage(object):
-    def __init__(self, text: str, severity: Optional[ValidatorMessageSeverity] = 1):
+    def __init__(self, text: str, severity: Optional[ValidatorMessageSeverity] = ValidatorMessageSeverity.ERROR):
         self.text = text
         self.severity = severity
 

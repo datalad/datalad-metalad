@@ -132,7 +132,6 @@ definitions:
     required:
       - name
       - location
-      - keyword
       - author
     properties:
       name:
@@ -140,10 +139,10 @@ definitions:
       location:
         description: URL of the entry point for the data
         type: string
-      keyword:
-        $ref: "#definitions/keyword-spec"
       author:
         $ref: "#definitions/author-ref"
+      keyword:
+        $ref: "#definitions/keyword-spec"
       description:
         description: Human-readable description of the data and what it describes
         type: string

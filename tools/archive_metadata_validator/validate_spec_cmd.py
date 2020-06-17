@@ -7,6 +7,7 @@ from content_validators.date_validator import DateValidator
 from content_validators.doi_validator import DOIValidator
 from content_validators.reference_validator import ReferenceValidator
 from content_validators.orcidid_validator import ORCIDIDValidator
+from content_validators.keyword_validator import KeywordValidator
 
 from validator import SpecValidator
 from messages import ValidatorMessageSeverity
@@ -28,7 +29,8 @@ def validate_stream(character_stream, skip_content_validation: bool) -> List:
         validator = SpecValidator(SCHEMA_SPEC_PATH, [DateValidator(),
                                                      ReferenceValidator(),
                                                      DOIValidator(),
-                                                     ORCIDIDValidator()])
+                                                     ORCIDIDValidator(),
+                                                     KeywordValidator()])
     validator.validate_spec(character_stream.read())
     return validator.messages
 

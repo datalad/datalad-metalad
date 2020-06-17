@@ -10,8 +10,6 @@ study:
 dataset:
   name: Rodent-Intelligence Brainscans
   location: juseless:/data/project/riskystudy
-  keyword:
-    - fMRI
   author:
     - a@fz-juelich.de
 
