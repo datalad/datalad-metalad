@@ -34,11 +34,11 @@ The Study-element is required in the metadata specification. It consists of the 
 
 - Name: text, name of the study
 - Principal investigator: person-reference (cf. below), the name of the principal investigator, i.e. the person responsible for the study
-- Keyword: list of text, at least one keyword is required
+- Keyword: text or list of text, at least one keyword is required
 - Purpose: (optional): text, purpose of the study, could facilitate location of the study via search engines
 - Start date (optional): text, date on which the study was started, e.g. "23.1.2019"
 - End date (optional): text, date on which the study was finished, if it was finished yet"
-- Contributor (optional): list of person-references, persons that contributed to the study
+- Contributor (optional): person-reference or list of person-references, persons that contributed to the study
 - Funding (optional): text or list of texts, name(s) of entities that funded the study, e.g "DFG"
 
 Person references are emails. The Person-element described in the chapter `Person`_ contains a set of email-addresses and information about the person that is addressed by the email-address. A person-reference is one of the emails in the Person-element.
@@ -53,8 +53,8 @@ The dataset-element is required in the metadata specification. These are the ele
 
 - Name: text, the name of the dataset
 - Location: text, location where is the unarchived dataset stored
-- Keyword: list of text, at least one keyword is required
-- Author (optional): list of person-references, persons that have participated in the collection and creation of the dataset
+- Author: person-reference or list of person-references, persons that have participated in the collection and creation of the dataset
+- Keyword: (optional): text or list of text
 - Description (optional): text, could facilitate location of the dataset via search engines
 - Standard (optional): list of text, data format standards that are used in the dataset
 - Funding (optional): text or list of texts, name(s) of entities that funded the creation of the dataset, e.g "NIH"
@@ -84,7 +84,7 @@ Publication
 The publication-element contains a list of records with the following elements:
 
 - Title: text, the title of the publication
-- Author: list of person reference or a single person reference, authors of the publication
+- Author: person reference or list of person reference, authors of the publication
 - Year: Number, the year of the publication
 - DOI (optional): text, if a DOI is present, it will be used as an authoritative source for the remaining properties in this publication and for entries in the persons-list.
 - Corresponding author (optional): person-reference, one of the person references in the author-element of this publication
