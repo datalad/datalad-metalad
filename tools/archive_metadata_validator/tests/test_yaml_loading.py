@@ -23,5 +23,5 @@ class TestYAMLLoading(TestCase):
             validator = SpecValidator(PosixPath(schema_file.name), [])
             spec = validator.load_yaml_string("date: x: 2000-01-01")
             self.assertIsNone(spec)
-            self.assertEqual(len(validator.errors), 1)
-            self.assertTrue(validator.errors[0].startswith("YAML error: line: 1: column: 8: mapping"))
+            self.assertEqual(len(validator.messages), 1)
+            self.assertTrue(validator.messages[0].text.startswith("YAML error: line: 1: column: 8: mapping"))

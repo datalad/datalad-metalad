@@ -2,6 +2,7 @@ import re
 from functools import reduce
 from typing import List, Union
 
+from messages import ValidatorMessage
 from .content_validator import ContentValidator
 
 
@@ -25,18 +26,20 @@ class ORCIDIDValidator(ContentValidator):
                 orcid_id = orcid_id[len(ORCID_ID_PREFIX):].strip()
         return orcid_id
 
-    def _check_orcidid(self, orcid_id: str, email: str) -> List:
+    def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
-            return [f"ORCID-ID error: ORCID-ID invalid format ('{orcid_id}') for person with email: {email}"]
+            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid format ('{orcid_id}') "
+                                     f"for person with email: {email}")]
         orcid_id_digits = orcid_id.replace("-", "")
         if self._check_digit(orcid_id_digits[:15]) != orcid_id_digits[15]:
-            return [f"ORCID-ID error: ORCID-ID invalid checksum ('{orcid_id}') for person with email: {email}"]
+            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid checksum ('{orcid_id}') "
+                                     f"for person with email: {email}")]
         return []
 
-    def perform_validation(self, spec: dict) -> List:
-        errors = []
+    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+        messages = []
         for (email, person_spec) in self.value_at("person", spec, default={}).items():
             orcid_id = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
-                errors += self._check_orcidid(orcid_id, email)
-        return errors
+                messages += self._check_orcidid(orcid_id, email)
+        return messages

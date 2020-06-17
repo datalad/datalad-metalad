@@ -8,6 +8,7 @@ from typing import Any, List, Union
 from yaml.error import YAMLError, MarkedYAMLError, Mark
 from yaml.scanner import ScannerError
 
+from messages import ValidatorMessage
 from content_validators.content_validator import ContentValidator
 
 
@@ -64,33 +65,34 @@ class SpecValidator(object):
         Draft7Validator.check_schema(self.schema)
         self.draft7_validator = Draft7Validator(self.schema)
         self.content_validators = validators
-        self.errors = []
+        self.messages = []
 
     def _validate_spec(self, spec):
-        errors = []
+        messages = []
         for error in self.draft7_validator.iter_errors(instance=spec):
-            errors.append(f"Schema error: in {'.'.join(map(str, error.absolute_path))}: {error.message}")
-        return errors
+            messages.append(
+                ValidatorMessage(f"Schema error: in {'.'.join(map(str, error.absolute_path))}: {error.message}"))
+        return messages
 
     def validate_spec_object(self, spec) -> bool:
-        self.errors = self._validate_spec(spec)
-        if not self.errors:
+        self.messages = self._validate_spec(spec)
+        if not self.messages:
             for content_validator in self.content_validators:
-                self.errors += content_validator.perform_validation(spec)
-        return not self.errors
+                self.messages += content_validator.perform_validation(spec)
+        return not self.messages
 
     def load_yaml_string(self, yaml_string: str) -> Union[dict, None]:
-        self.errors = []
+        self.messages = []
         try:
             return self._load_yaml_string(yaml_string)
         except ScannerError as e:
-            self.errors += [self._get_error_description("YAML error", e)]
+            self.messages += [ValidatorMessage(self._get_error_description("YAML error", e))]
             return None
         except MarkedYAMLError as e:
-            self.errors += [self._get_error_description("YAML error", e)]
+            self.messages += [ValidatorMessage(self._get_error_description("YAML error", e))]
             return None
         except YAMLError as e:
-            self.errors += [f"YAML error: unknown error{e}"]
+            self.messages += [ValidatorMessage(f"YAML error: unknown error{e}")]
             return None
 
     def validate_spec(self, yaml_string: str) -> bool:

@@ -9,6 +9,7 @@ from content_validators.reference_validator import ReferenceValidator
 from content_validators.orcidid_validator import ORCIDIDValidator
 
 from validator import SpecValidator
+from messages import ValidatorMessageSeverity
 
 
 SCRIPT_PATH = PosixPath(sys.argv[0]).parents[0]
@@ -29,7 +30,7 @@ def validate_stream(character_stream, skip_content_validation: bool) -> List:
                                                      DOIValidator(),
                                                      ORCIDIDValidator()])
     validator.validate_spec(character_stream.read())
-    return validator.errors
+    return validator.messages
 
 
 def validate_file(path, skip_content_validation: bool) -> List:
@@ -44,17 +45,15 @@ def main(_):
     for file_name in arguments.spec_files:
         if file_name == '-':
             file_name = "STDIN"
-            errors = validate_stream(sys.stdin, arguments.skip_content_validation)
+            messages = validate_stream(sys.stdin, arguments.skip_content_validation)
         else:
-            errors = validate_file(file_name, arguments.skip_content_validation)
-        if errors:
-            success = False
-            for error in errors:
-                for index, line in enumerate(error.splitlines()):
-                    if index == 0:
-                        sys.stderr.write(f"{file_name}: {line}\n")
-                    else:
-                        sys.stderr.write(f"{' ' * len(file_name)}  {line}\n")
+            messages = validate_file(file_name, arguments.skip_content_validation)
+
+        for message in messages:
+            message.write_to(sys.stderr, file_name)
+            if message.severity == ValidatorMessageSeverity.ERROR:
+                success = False
+
     return 0 if success is True else 1
 
 

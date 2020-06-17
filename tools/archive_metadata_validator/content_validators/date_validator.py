@@ -3,6 +3,7 @@ from collections import namedtuple
 from time import strptime, struct_time
 from typing import List, Optional, Union
 
+from messages import ValidatorMessage
 from .content_validator import ContentValidator
 
 
@@ -37,13 +38,15 @@ class DateValidator(ContentValidator):
             return DateInfo(date, False, date_str)
         return None
 
-    def perform_validation(self, spec: dict) -> List:
-        errors = []
+    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+        messages = []
         dates = []
         for context in ("study.start_date", "study.end_date"):
             date_info = self._check_optional_date(context, spec)
             if date_info and date_info.is_faulty is True:
-                errors.append(f"Date error: {context} ('{date_info.representation}') is not valid")
+                messages.append(ValidatorMessage(f"Date error: {context} "
+                                                 f"('{date_info.representation}') "
+                                                 f"is not valid"))
                 dates.append(None)
             else:
                 dates.append(date_info)
@@ -51,13 +54,16 @@ class DateValidator(ContentValidator):
 
         if start_date is not None and end_date is not None:
             if start_date.date > end_date.date:
-                errors.append(f"Date error: study.end_date ('{end_date.representation}') "
-                              f"is earlier than study.start_date ('{start_date.representation}')")
+                messages.append(ValidatorMessage(f"Date error: study.end_date ('{end_date.representation}') "
+                                                 f"is earlier than study.start_date ('{start_date.representation}')"))
 
         if start_date is None and end_date is not None:
-            errors.append("Date error: study.end_date given, but no valid study.start_date is given.")
+            messages.append(ValidatorMessage("Date error: study.end_date given, "
+                                             "but no valid study.start_date is given."))
 
         if start_date and start_date.date > date.today().timetuple():
-            errors.append(f"Date error: study.start_date ('{start_date.representation}') is in the future.")
+            messages.append(ValidatorMessage(f"Date error: study.start_date "
+                                             f"('{start_date.representation}') "
+                                             f"is in the future."))
 
-        return errors
+        return messages
