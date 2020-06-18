@@ -1,7 +1,7 @@
 from collections import namedtuple
 from typing import Iterable, List
 
-from messages import ValidatorMessage
+from messages import ValidatorMessage, ErrorMessage, ObjectLocation, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -9,15 +9,18 @@ PersonInfo = namedtuple("PersonInfo", ["first_name", "last_name", "id"])
 
 
 class ReferenceValidator(ContentValidator):
-    @staticmethod
-    def _validate_person_reference(person_ref: str, spec: dict, context="") -> List[ValidatorMessage]:
+    def _validate_person_reference(self, person_ref: str, spec: dict, context="") -> List[ValidatorMessage]:
         if person_ref not in spec["person"]:
             if context:
-                return [ValidatorMessage(f"Reference error: reference to undefined "
-                                         f"person ({person_ref}) in {context}")]
+                return [
+                    ErrorMessage(
+                        f"reference to undefined person ({person_ref})",
+                        ObjectLocation(self.file_name, context))]
             else:
-                return [ValidatorMessage(f"Reference error: reference to undefined "
-                                         f"person ({person_ref})")]
+                return [
+                    ErrorMessage(
+                        f"reference to undefined person ({person_ref})",
+                        StringLocation(self.file_name))]
         return []
 
     def _validate_nullable_person_reference(self, person_ref, spec: dict, context="") -> List[ValidatorMessage]:
@@ -43,8 +46,10 @@ class ReferenceValidator(ContentValidator):
 
             corresponding_author_ref = self.value_at("corresponding_author", publication_spec)
             if corresponding_author_ref and corresponding_author_ref not in author_list:
-                messages += [ValidatorMessage(f"Reference error: reference to undefined person "
-                                              f"({corresponding_author_ref}) in {context}")]
+                messages += [
+                    ErrorMessage(
+                        f"reference to undefined person ({corresponding_author_ref})",
+                        StringLocation(f"{self.file_name}:{context}"))]
         return messages
 
     def validate_dataset_authors(self, spec: dict) -> List[ValidatorMessage]:

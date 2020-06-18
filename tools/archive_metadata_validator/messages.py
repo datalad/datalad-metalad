@@ -1,21 +1,87 @@
-import sys
-from enum import Enum
-from typing import Optional
+from abc import ABC, abstractmethod
+from itertools import count, zip_longest
 
 
-class ValidatorMessageSeverity(Enum):
-    ERROR = 1
-    WARNING = 2
+class LocationInfo(object):
+    pass
 
 
-class ValidatorMessage(object):
-    def __init__(self, text: str, severity: Optional[ValidatorMessageSeverity] = ValidatorMessageSeverity.ERROR):
+class FileLocation(LocationInfo):
+    def __init__(self, file_name: str, line: int, column: int):
+        self.file_name = file_name
+        self.line = line
+        self.column = column
+
+    def __repr__(self):
+        return f"CodeLocation({self.file_name}, {self.line}, {self.column})"
+
+    def __str__(self):
+        return f"{self.file_name}:{self.line}:{self.column}"
+
+
+class ObjectLocation(LocationInfo):
+    def __init__(self, file_name: str, dotted_name: str):
+        self.file_name = file_name
+        self.dotted_name = dotted_name
+
+    def __repr__(self):
+        return f"ObjectLocation({repr(self.file_name)}, {self.dotted_name})"
+
+    def __str__(self):
+        return f"{self.file_name}:{self.dotted_name}"
+
+
+class StringLocation(LocationInfo):
+    def __init__(self, location: str):
+        self.location = location
+
+    def __repr__(self):
+        return f"StringLocation({self.location})"
+
+    def __str__(self):
+        return f"{self.location}"
+
+
+class ValidatorMessage(ABC):
+    def __init__(self, text: str, location: LocationInfo):
         self.text = text
-        self.severity = severity
+        self.location = location
 
-    def write_to(self, stream, header: str):
-        for index, line in enumerate(self.text.splitlines()):
-            if index == 0:
-                stream.write(f"{header}: {line}\n")
-            else:
-                stream.write(f"{' ' * len(header)}  {line}\n")
+    def __repr__(self):
+        return f"ValidatorMessage({repr(self.text)}, {repr(self.location)})"
+
+    def __str__(self):
+        context = f"{self.location}: {self.level_description()}"
+        lines = [f"{context}: {line}" if line_number == 1 else f"{' ' * len(context)}  {line}"
+                 for line_number, line in zip(count(1), self.text.splitlines())]
+        return "\n".join(lines) + "\n"
+
+    @abstractmethod
+    def error_score(self) -> int:
+        pass
+
+    @abstractmethod
+    def level_description(self) -> int:
+        pass
+
+
+class ErrorMessage(ValidatorMessage):
+    def __repr__(self):
+        return f"ErrorMessage({repr(self.text)}, {repr(self.location)})"
+
+    def error_score(self) -> int:
+        return 1
+
+    def level_description(self) -> str:
+        return "error"
+
+
+class WarningMessage(ValidatorMessage):
+    def __repr__(self):
+        return f"WarningMessage({repr(self.text)}, {repr(self.location)})"
+
+    def error_score(self) -> int:
+        return 0
+
+    def level_description(self) -> str:
+        return "warning"

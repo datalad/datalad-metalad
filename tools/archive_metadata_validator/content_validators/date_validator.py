@@ -3,7 +3,7 @@ from collections import namedtuple
 from time import strptime, struct_time
 from typing import List, Optional, Union
 
-from messages import ValidatorMessage, ValidatorMessageSeverity
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -50,23 +50,21 @@ class DateValidator(ContentValidator):
         messages = []
         for publication in self.publications(spec):
             year = self.value_at("year", publication)
+            location = StringLocation(f"publication with title ``{publication['title']}''")
             if self._is_future_year(year):
-                messages.append(ValidatorMessage(f"Warning: publication.year {year} "
-                                                 f"of publication with title "
-                                                 f"``{publication['title']}'' is in the future.",
-                                                 ValidatorMessageSeverity.WARNING))
+                messages.append(
+                    WarningMessage(
+                        f"publication.year {year} is in the future", location))
             if year:
                 if start_date and start_date.date and start_date.date.tm_year > year:
-                    messages.append(ValidatorMessage(f"Warning: publication.year {year} "
-                                                     f"of publication with title "
-                                                     f"``{publication['title']}'' is before study.start_date.",
-                                                     ValidatorMessageSeverity.WARNING))
+                    messages.append(
+                        WarningMessage(
+                            f"publication.year {year} is before study.start_date", location))
 
                 if end_date and end_date.date and end_date.date.tm_year < year:
-                    messages.append(ValidatorMessage(f"Warning: publication.year {year} "
-                                                     f"of publication with title "
-                                                     f"``{publication['title']}'' is after study.end_date.",
-                                                     ValidatorMessageSeverity.WARNING))
+                    messages.append(
+                        WarningMessage(
+                            f"publication.year {year} is is after study.end_date", location))
         return messages
 
     def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
@@ -75,9 +73,9 @@ class DateValidator(ContentValidator):
         for context in ("study.start_date", "study.end_date"):
             date_info = self._check_optional_date(context, spec)
             if date_info and date_info.is_faulty is True:
-                messages.append(ValidatorMessage(f"Date error: {context} "
-                                                 f"('{date_info.representation}') "
-                                                 f"is not valid"))
+                messages.append(
+                    ErrorMessage(
+                        f"date invalid ({date_info.representation})", ObjectLocation(self.file_name, context)))
                 dates.append(None)
             else:
                 dates.append(date_info)
@@ -85,23 +83,29 @@ class DateValidator(ContentValidator):
 
         if start_date is not None and end_date is not None:
             if start_date.date > end_date.date:
-                messages.append(ValidatorMessage(f"Date error: study.end_date ('{end_date.representation}') "
-                                                 f"is earlier than study.start_date ('{start_date.representation}')"))
+                messages.append(
+                    ErrorMessage(
+                        f"study.end_date ({end_date.representation}) is earlier "
+                        f"than study.start_date ({start_date.representation})",
+                        ObjectLocation(self.file_name, "study")))
 
         if start_date is None and end_date is not None:
-            messages.append(ValidatorMessage("Date error: study.end_date given, "
-                                             "but no valid study.start_date is given."))
+            messages.append(
+                ErrorMessage(
+                    f"study.end_date given, but no valid study.start_date is given",
+                    ObjectLocation(self.file_name, "study")))
 
         if self._is_future(start_date):
-            messages.append(ValidatorMessage(f"Date error: study.start_date "
-                                             f"('{start_date.representation}') "
-                                             f"is in the future."))
+            messages.append(
+                ErrorMessage(
+                    f"study.start_date ({start_date.representation}) is in the future",
+                    ObjectLocation(self.file_name, "study")))
 
         if self._is_future(end_date):
-            messages.append(ValidatorMessage(f"Warning: study.end_date "
-                                             f"('{end_date.representation}') "
-                                             f"is in the future.",
-                                             ValidatorMessageSeverity.WARNING))
+            messages.append(
+                WarningMessage(
+                    f"study.end_date ({end_date.representation}) is in the future",
+                    ObjectLocation(self.file_name, "study")))
 
         messages += self._check_publication_years(spec, start_date, end_date)
         return messages

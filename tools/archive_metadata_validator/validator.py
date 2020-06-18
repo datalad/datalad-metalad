@@ -2,13 +2,12 @@
 import yaml
 import yaml.constructor
 from collections import namedtuple
-from jsonschema import Draft7Validator
+from jsonschema import Draft7Validator, ValidationError
 from pathlib import PosixPath
 from typing import Any, List, Union
-from yaml.error import YAMLError, MarkedYAMLError, Mark
-from yaml.scanner import ScannerError
+from yaml.error import YAMLError
 
-from messages import ValidatorMessage
+from messages import ErrorMessage, FileLocation
 from content_validators.content_validator import ContentValidator
 
 
@@ -33,45 +32,45 @@ class SpecValidator(object):
         with open(str(path_to_schema_spec), "rt") as spec_token_stream:
             return SpecValidator._load_yaml_string(spec_token_stream.read())
 
-    @staticmethod
-    def _get_mark_description(header: str, mark: Mark, problem: str) -> str:
-        if mark is None:
-            return f"{header}: line: ???: {problem}\n"
-
-        source_lines = mark.buffer.splitlines()
-        result = (
-            f"{header}: line: {mark.line + 1}: column: {mark.column + 1}: {problem}\n"
-            f"{' ' * len(header)}| {source_lines[mark.line]}\n"
-            f"{' ' * len(header)}| {'-' * mark.column}^\n")
-
-        if problem.startswith("mapping values are not allowed here"):
-            if ":" in source_lines[mark.line]:
-                result += (
-                        f"{' ' * len(header)}| please ensure that content with `: ´, i.e. colon followed by space, "
-                        f"is enclosed in double quotes, i.e. \".\n")
-        return result
-
-    @staticmethod
-    def _get_error_description(header: str, error: MarkedYAMLError) -> str:
-        result = ""
-        for mark in (error.problem_mark, error.context_mark):
+    def _get_error_location(self, error: YAMLError) -> FileLocation:
+        if hasattr(error, "problem_mark"):
+            mark = error.problem_mark
             if mark is not None:
-                problem = error.problem if hasattr(error, "problem") else "Unknown problem"
-                result += SpecValidator._get_mark_description(header, mark, problem)
-        return result or f"{header}: {str(error)}"
+                return FileLocation(self.file_name, mark.line + 1, mark.column + 1)
+        return FileLocation(self.file_name, 0, 0)
 
-    def __init__(self, path_to_schema_spec: PosixPath, validators: List[ContentValidator]):
+    def _create_yaml_error(self, error: YAMLError) -> ErrorMessage:
+        problem = error.problem if hasattr(error, "problem") else "unknown error"
+        location = self._get_error_location(error)
+        description = f"YAML parsing error: {problem}\n"
+        if location.line != 0 and location.column != 0 and error.mark.buffer is not None:
+            mark = error.mark
+            source_lines = mark.buffer.splitlines()
+            description += (
+                f"| {source_lines[mark.line]}\n"
+                f"| {'-' * mark.column}^\n")
+            if problem.startswith("mapping values are not allowed here"):
+                if ":" in source_lines[mark.line]:
+                    description += (
+                        f"| please ensure that content with `: ´, i.e. colon followed by space, "
+                        f"is enclosed in double quotes, i.e. ` \"´.\n")
+        return ErrorMessage(description, location)
+
+    def _create_schema_error(self, error: ValidationError) -> ErrorMessage:
+        return ErrorMessage(f"schema violation: {error.message}", FileLocation(self.file_name, 0, 0))
+
+    def __init__(self, path_to_schema_spec: PosixPath, validators: List[ContentValidator], file_name: str):
         self.schema = self._load_spec_object(path_to_schema_spec)
         Draft7Validator.check_schema(self.schema)
         self.draft7_validator = Draft7Validator(self.schema)
         self.content_validators = validators
+        self.file_name = file_name
         self.messages = []
 
     def _validate_spec(self, spec):
         messages = []
         for error in self.draft7_validator.iter_errors(instance=spec):
-            messages.append(
-                ValidatorMessage(f"Schema error: in {'.'.join(map(str, error.absolute_path))}: {error.message}"))
+            messages += [self._create_schema_error(error)]
         return messages
 
     def validate_spec_object(self, spec) -> bool:
@@ -85,14 +84,8 @@ class SpecValidator(object):
         self.messages = []
         try:
             return self._load_yaml_string(yaml_string)
-        except ScannerError as e:
-            self.messages += [ValidatorMessage(self._get_error_description("YAML error", e))]
-            return None
-        except MarkedYAMLError as e:
-            self.messages += [ValidatorMessage(self._get_error_description("YAML error", e))]
-            return None
         except YAMLError as e:
-            self.messages += [ValidatorMessage(f"YAML error: unknown error{e}")]
+            self.messages += [self._create_yaml_error(e)]
             return None
 
     def validate_spec(self, yaml_string: str) -> bool:

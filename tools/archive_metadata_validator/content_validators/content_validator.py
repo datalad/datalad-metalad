@@ -41,3 +41,6 @@ class ContentValidator(ABC):
     def publications(spec: Dict) -> Iterable:
         for publication_spec in ContentValidator.value_at("publication", spec, default=[]):
             yield publication_spec
+
+    def __init__(self, file_name: str):
+        self.file_name = file_name

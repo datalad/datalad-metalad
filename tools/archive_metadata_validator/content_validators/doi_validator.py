@@ -3,7 +3,7 @@ from typing import List, Union
 
 import json
 
-from messages import ValidatorMessage
+from messages import ValidatorMessage, ErrorMessage, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -36,6 +36,8 @@ class DOIValidator(ContentValidator):
         for publication_spec in self.value_at("publication", spec, default=[]):
             doi_str = self._get_doi_for_publication(publication_spec)
             if doi_str and self._doi_is_resolvable(doi_str) is False:
-                messages += [ValidatorMessage(f"DOI error: unresolvable DOI ('{doi_str}') in "
-                                              f'publication with title: "{publication_spec["title"]}"')]
+                messages.append(
+                    ErrorMessage(
+                        f"DOI unresolvable ({doi_str})",
+                        StringLocation(f'publication with title: {publication_spec["title"]}')))
         return messages

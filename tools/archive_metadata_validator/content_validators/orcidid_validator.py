@@ -2,7 +2,7 @@ import re
 from functools import reduce
 from typing import List, Union
 
-from messages import ValidatorMessage
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -27,13 +27,17 @@ class ORCIDIDValidator(ContentValidator):
         return orcid_id
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
+        location = StringLocation(f"person with email: {email}")
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
-            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid ({orcid_id}) "
-                                     f"for person with email: {email}, format is not XXXX-XXXX-XXXX-XXXX")]
+            return [
+                ErrorMessage(
+                    f"ORCID-ID invalid ({orcid_id}), format is not XXXX-XXXX-XXXX-XXXX", location)]
+
         orcid_id_digits = orcid_id.replace("-", "")
         if self._check_digit(orcid_id_digits[:15]) != orcid_id_digits[15]:
-            return [ValidatorMessage(f"ORCID-ID error: ORCID-ID invalid ({orcid_id}) "
-                                     f"for person with email: {email}, checksum failed.")]
+            return [
+                ErrorMessage(
+                    f"ORCID-ID invalid ({orcid_id}), checksum failed", location)]
         return []
 
     def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
@@ -43,7 +47,9 @@ class ORCIDIDValidator(ContentValidator):
             orcid_id = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
                 if orcid_id in seen_orcid_ids:
-                    messages.append(ValidatorMessage(f"Warning: duplicated ORCID-ID: {orcid_id} "
-                                                     f"for person with email {email}"))
+                    messages.append(
+                        WarningMessage(
+                            f"duplicated ORCID-ID ({orcid_id})",
+                            StringLocation(f"person with email {email}")))
                 messages += self._check_orcidid(orcid_id, email)
         return messages
