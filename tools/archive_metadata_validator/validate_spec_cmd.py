@@ -9,6 +9,7 @@ from content_validators.doi_validator import DOIValidator
 from content_validators.reference_validator import ReferenceValidator
 from content_validators.orcidid_validator import ORCIDIDValidator
 from content_validators.keyword_validator import KeywordValidator
+from content_validators.extag_validator import ExTagValidator
 
 from validator import SpecValidator
 
@@ -31,7 +32,8 @@ def validate_stream(character_stream, file_name, arguments) -> List:
                                    ReferenceValidator(file_name),
                                    DOIValidator(file_name),
                                    ORCIDIDValidator(file_name),
-                                   KeywordValidator(file_name)],
+                                   KeywordValidator(file_name),
+                                   ExTagValidator(file_name)],
                                   file_name)
     validator.validate_spec(character_stream.read())
     return validator.messages

@@ -43,8 +43,8 @@ class SpecValidator(object):
         problem = error.problem if hasattr(error, "problem") else "unknown error"
         location = self._get_error_location(error)
         description = f"YAML parsing error: {problem}\n"
-        if location.line != 0 and location.column != 0 and error.mark.buffer is not None:
-            mark = error.mark
+        mark = error.problem_mark
+        if location.line != 0 and location.column != 0 and mark.buffer is not None:
             source_lines = mark.buffer.splitlines()
             description += (
                 f"| {source_lines[mark.line]}\n"
