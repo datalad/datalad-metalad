@@ -1,8 +1,8 @@
 import re
 from functools import reduce
-from typing import List, Union
+from typing import List, Tuple, Union
 
-from messages import ValidatorMessage, ErrorMessage, WarningMessage, StringLocation
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -18,13 +18,14 @@ class ORCIDIDValidator(ContentValidator):
         result = (12 - (total % 11)) % 11
         return str(result) if result < 10 else "X"
 
-    def _get_orcidid_for_person(self, person: dict) -> Union[str, None]:
+    def _get_orcidid_for_person(self, person: dict) -> Tuple[Union[str, None], bool]:
         orcid_id = self.value_at("orcid-id", person)
         if orcid_id is not None:
             orcid_id = orcid_id.strip()
             if orcid_id.lower().startswith(ORCID_ID_PREFIX):
                 orcid_id = orcid_id[len(ORCID_ID_PREFIX):].strip()
-        return orcid_id
+                return orcid_id, True
+        return orcid_id, False
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
         location = StringLocation(f"person with email: {email}")
@@ -44,12 +45,16 @@ class ORCIDIDValidator(ContentValidator):
         messages = []
         seen_orcid_ids = []
         for (email, person_spec) in self.value_at("person", spec, default={}).items():
-            orcid_id = self._get_orcidid_for_person(person_spec)
+            orcid_id, has_prefix = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
+                location = ObjectLocation(self.file_name, f"person.{email}.orcid-id")
                 if orcid_id in seen_orcid_ids:
                     messages.append(
                         WarningMessage(
-                            f"duplicated ORCID-ID ({orcid_id})",
-                            StringLocation(f"person with email {email}")))
+                            f"duplicated ORCID-ID ({orcid_id})", location))
+                if has_prefix is False:
+                    messages.append(
+                        WarningMessage(
+                            f"ORCID-ID is missing prefix ({ORCID_ID_PREFIX})", location))
                 messages += self._check_orcidid(orcid_id, email)
         return messages
