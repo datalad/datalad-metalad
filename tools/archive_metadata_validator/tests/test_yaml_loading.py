@@ -20,8 +20,8 @@ class TestYAMLLoading(TestCase):
         with NamedTemporaryFile() as schema_file:
             schema_file.write(SCHEMA.encode())
             schema_file.seek(0)
-            validator = SpecValidator(PosixPath(schema_file.name), [])
+            validator = SpecValidator(PosixPath(schema_file.name), [], "test.yaml")
             spec = validator.load_yaml_string("date: x: 2000-01-01")
             self.assertIsNone(spec)
             self.assertEqual(len(validator.messages), 1)
-            self.assertTrue(validator.messages[0].text.startswith("YAML error: line: 1: column: 8: mapping"))
+            self.assertTrue(validator.messages[0].text.startswith("YAML parsing error: mapping"))
