@@ -57,7 +57,7 @@ def main():
         errors += reduce(lambda summed_score, message: summed_score + message.error_score(), messages, 0)
         tuple(map(lambda message: sys.stderr.write(str(message)), messages))
 
-    return 0 if errors > 0 else 1
+    return 0 if errors == 0 else 1
 
 
 if __name__ == "__main__":
