@@ -28,7 +28,7 @@ class ORCIDIDValidator(ContentValidator):
         return orcid_id, False
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
-        location = StringLocation(f"person with email: {email}")
+        location = StringLocation(f"{self.file_name}:person with email: {email}")
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
             return [
                 ErrorMessage(

@@ -50,7 +50,7 @@ class DateValidator(ContentValidator):
         messages = []
         for publication in self.publications(spec):
             year = self.value_at("year", publication)
-            location = StringLocation(f"publication with title ``{publication['title']}''")
+            location = StringLocation(f"{self.file_name}:publication with title ``{publication['title']}''")
             if self._is_future_year(year):
                 messages.append(
                     WarningMessage(

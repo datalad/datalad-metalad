@@ -39,5 +39,5 @@ class DOIValidator(ContentValidator):
                 messages.append(
                     ErrorMessage(
                         f"DOI unresolvable ({doi_str})",
-                        StringLocation(f'publication with title: {publication_spec["title"]}')))
+                        StringLocation(f'{self.file_name}:publication with title: {publication_spec["title"]}')))
         return messages
