@@ -4,7 +4,7 @@ from messages import ValidatorMessage, WarningMessage, ObjectLocation, StringLoc
 from .content_validator import ContentValidator
 
 
-MAX_EXTAG_WARNINGS = 5
+MAX_EXTAG_REPORTS = 5
 
 
 class ExTagValidator(ContentValidator):
@@ -22,18 +22,16 @@ class ExTagValidator(ContentValidator):
         return result
 
     def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
-        extag_locations = self._validate(spec)
-        if len(extag_locations) <= MAX_EXTAG_WARNINGS:
-            return list([
-                WarningMessage(
-                    f"ex-tags in ({content}), did you forget to remove them?",
-                    ObjectLocation(self.file_name, dotted_name))
-                for content, dotted_name in extag_locations])
-        else:
-            example_content, example_dotted_name = extag_locations[0]
-            return [
-                WarningMessage(
-                    f"ex-tags found in {len(extag_locations)} text strings, "
-                    f"for example ``{example_dotted_name}: {example_content}´´, "
-                    f"did you forget to remove them?",
-                    StringLocation(f"{self.file_name}:<multiple places>"))]
+        ex_tag_locations = self._validate(spec)
+        if ex_tag_locations:
+            return [WarningMessage((
+                f"ex-tags found in {len(ex_tag_locations)} text strings"
+                + (":\n"
+                   if len(ex_tag_locations) <= MAX_EXTAG_REPORTS
+                   else f" (showing the first {MAX_EXTAG_REPORTS}):\n")
+                + ("\n".join([
+                    f"{example_dotted_name}: {example_content}"
+                    for example_content, example_dotted_name in ex_tag_locations[:MAX_EXTAG_REPORTS]]))
+                + ("\n  ..." if len(ex_tag_locations) > MAX_EXTAG_REPORTS else "")),
+                StringLocation(f"{self.file_name}:<multiple places>"))]
+        return []

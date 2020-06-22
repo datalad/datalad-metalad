@@ -5,7 +5,7 @@ from collections import namedtuple
 from jsonschema import Draft7Validator, ValidationError
 from pathlib import PosixPath
 from typing import Any, List, Union
-from yaml.error import YAMLError
+from yaml.error import YAMLError, MarkedYAMLError
 
 from messages import ErrorMessage, FileLocation
 from content_validators.content_validator import ContentValidator
@@ -33,7 +33,7 @@ class SpecValidator(object):
             return SpecValidator._load_yaml_string(spec_token_stream.read())
 
     def _get_error_location(self, error: YAMLError) -> FileLocation:
-        if hasattr(error, "problem_mark"):
+        if isinstance(error, MarkedYAMLError):
             mark = error.problem_mark
             if mark is not None:
                 return FileLocation(self.file_name, mark.line + 1, mark.column + 1)
@@ -43,17 +43,18 @@ class SpecValidator(object):
         problem = error.problem if hasattr(error, "problem") else "unknown error"
         location = self._get_error_location(error)
         description = f"YAML parsing error: {problem}\n"
-        mark = error.problem_mark
-        if location.line != 0 and location.column != 0 and mark.buffer is not None:
-            source_lines = mark.buffer.splitlines()
-            description += (
-                f"| {source_lines[mark.line]}\n"
-                f"| {'-' * mark.column}^\n")
-            if problem.startswith("mapping values are not allowed here"):
-                if ":" in source_lines[mark.line]:
-                    description += (
-                        f"| please ensure that content with `: ´, i.e. colon followed by space, "
-                        f"is enclosed in double quotes, i.e. ` \"´.\n")
+        if isinstance(error, MarkedYAMLError):
+            mark = error.problem_mark
+            if mark and mark.buffer and location.line != 0 and location.column != 0:
+                source_lines = mark.buffer.splitlines()
+                description += (
+                    f"| {source_lines[mark.line]}\n"
+                    f"| {'-' * mark.column}^\n")
+                if problem.startswith("mapping values are not allowed here"):
+                    if ":" in source_lines[mark.line]:
+                        description += (
+                            f"| please ensure that content with `: ´, i.e. colon followed by space, "
+                            f"is enclosed in double quotes, i.e. ` \"´.\n")
         return ErrorMessage(description, location)
 
     def _create_schema_error(self, error: ValidationError) -> ErrorMessage:
