@@ -52,6 +52,8 @@ class ORCIDIDValidator(ContentValidator):
                     messages.append(
                         WarningMessage(
                             f"duplicated ORCID-ID ({orcid_id})", location))
+                else:
+                    seen_orcid_ids.append(orcid_id)
                 if has_prefix is False:
                     messages.append(
                         WarningMessage(
