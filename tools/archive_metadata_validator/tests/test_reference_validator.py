@@ -64,6 +64,13 @@ class TestReferenceValidator(TestCase):
         errors = validator.perform_validation(spec)
         self.assertEqual(len(errors), 2)
 
+    def test_study_contributor_fail_validation(self):
+        validator = ReferenceValidator("test.yaml")
+        spec = deepcopy(BASE_SPEC)
+        spec["study"]["contributor"] = "x@example.com"
+        errors = validator.perform_validation(spec)
+        self.assertEqual(len(errors), 1)
+
     def test_minimal_study(self):
         validator = ReferenceValidator("test.yaml")
         errors = validator.perform_validation(MINIMAL_SPEC)

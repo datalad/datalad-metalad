@@ -11,21 +11,10 @@ PersonInfo = namedtuple("PersonInfo", ["first_name", "last_name", "id"])
 class ReferenceValidator(ContentValidator):
     def _validate_person_reference(self, person_ref: str, spec: dict, context="") -> List[ValidatorMessage]:
         if person_ref not in spec["person"]:
-            if context:
-                return [
-                    ErrorMessage(
-                        f"reference to undefined person ({person_ref})",
-                        ObjectLocation(self.file_name, context))]
-            else:
-                return [
-                    ErrorMessage(
-                        f"reference to undefined person ({person_ref})",
-                        StringLocation(self.file_name))]
-        return []
-
-    def _validate_nullable_person_reference(self, person_ref, spec: dict, context="") -> List[ValidatorMessage]:
-        if person_ref is not None:
-            return self._validate_person_reference(person_ref, spec, context)
+            return [
+                ErrorMessage(
+                    f"reference to undefined person ({person_ref})",
+                    ObjectLocation(self.file_name, context))]
         return []
 
     def _person_ref_list(self, dotted_name: str, spec: dict) -> Iterable:
