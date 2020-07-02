@@ -76,3 +76,11 @@ person:
   c@fz-juelich.de:
      given_name: Willy
      last_name: Mann
+
+additional_information:
+  "Provide additional information that the requester wants to provide.
+
+   For example, additional info to publications.
+
+   Use as many lines as necessary
+  "

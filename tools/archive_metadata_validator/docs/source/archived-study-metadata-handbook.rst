@@ -97,6 +97,15 @@ The publication-element contains a list of records with the following elements:
 Please see the section `Example 1: Complete Metadata Description`_ for an example.
 
 
+Additional Information
+----------------------
+The additional_information-element is optional. It serves to provide additional information
+that ypu feel should be provided and archived, but does not fit into the other elements.
+The format is: text.
+
+Please see the section `Example 1: Complete Metadata Description`_ for an example.
+
+
 Metadata format
 ===============
 This section describes how the elements described in the previous section can be specified in a digital document. We use a text-based format, i.e. YAML, that is rather intuitive. The three main concepts to keep in mind are:
@@ -270,6 +279,12 @@ Example 1: Complete Metadata Description
       c@fz-juelich.de:
          given_name: Willy
          last_name: Mann
+
+    additional_information:
+      "This is additional information that does not fit in
+       other provided elements, but is important enough
+       to be archived."
+
 
 The example above illustrates the purpose of the persons-element. It lists all persons that are referenced as author, contributor, corresponding authoer, or principal investigator. Detailed person information is listed under the email-addresses of the respective person.
 

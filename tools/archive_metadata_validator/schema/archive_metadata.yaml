@@ -192,3 +192,5 @@ properties:
     $ref: "#definitions/publication-list"
   person:
     $ref: "#definitions/person-set"
+  additional_information:
+    type: string
