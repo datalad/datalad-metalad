@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple, Union
 
-from messages import ValidatorMessage, WarningMessage, ObjectLocation, StringLocation
+from messages import ValidatorMessage, WarningMessage, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -33,5 +33,5 @@ class ExTagValidator(ContentValidator):
                     f"{example_dotted_name}: {example_content}"
                     for example_content, example_dotted_name in ex_tag_locations[:MAX_EXTAG_REPORTS]]))
                 + ("\n  ..." if len(ex_tag_locations) > MAX_EXTAG_REPORTS else "")),
-                StringLocation(f"{self.file_name}:<multiple places>"))]
+                StringLocation(f"{self.file_name}"))]
         return []

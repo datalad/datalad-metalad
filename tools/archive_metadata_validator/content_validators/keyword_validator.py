@@ -1,6 +1,6 @@
 from typing import List
 
-from messages import ValidatorMessage, WarningMessage, ObjectLocation
+from messages import ValidatorMessage, WarningMessage, StringLocation
 from .content_validator import ContentValidator
 
 
@@ -14,7 +14,7 @@ class KeywordValidator(ContentValidator):
         if not keywords:
             return [
                 WarningMessage(
-                    "no keywords given for dataset, please consider adding some "
+                    f"{context}: no keywords given for dataset, please consider adding some "
                     f"(see <{KEYWORD_LOOKUP_URL}> for a list of possible keywords)",
-                    ObjectLocation(self.file_name, context))]
+                    StringLocation(self.file_name))]
         return []

@@ -10,7 +10,7 @@ PersonInfo = namedtuple("PersonInfo", ["first_name", "last_name", "id"])
 
 class ReferenceValidator(ContentValidator):
     def _validate_person_reference(self, person_ref: str, spec: dict, context="") -> List[ValidatorMessage]:
-        if person_ref not in spec["person"]:
+        if "person" not in spec or person_ref not in spec["person"]:
             return [
                 ErrorMessage(
                     f"reference to undefined person ({person_ref})",
@@ -60,6 +60,11 @@ class ReferenceValidator(ContentValidator):
         messages += self.validate_study_contributors(spec)
 
         pi_path = "study.principal_investigator"
-        messages += self._validate_person_reference(self.value_at(pi_path, spec), spec, pi_path)
-
+        if not self.has_path_element(pi_path, spec):
+            messages += [
+                ErrorMessage(
+                    f"missing key '{pi_path}'",
+                    StringLocation(self.file_name))]
+        else:
+            messages += self._validate_person_reference(self.value_at(pi_path, spec), spec, pi_path)
         return messages

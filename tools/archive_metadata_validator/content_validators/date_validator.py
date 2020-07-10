@@ -5,6 +5,7 @@ from typing import List, Optional, Union
 
 from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation, StringLocation
 from .content_validator import ContentValidator
+from error_processor import InvalidYear
 
 
 TIME_FORMATS = [
@@ -48,9 +49,14 @@ class DateValidator(ContentValidator):
 
     def _check_publication_years(self, spec: dict, start_date: DateInfo, end_date: DateInfo):
         messages = []
-        for publication in self.publications(spec):
+        for dotted_name, publication in self.publications(spec):
             year = self.value_at("year", publication)
-            location = StringLocation(f"{self.file_name}:publication with title ``{publication['title']}''")
+            year_path = (dotted_name + ".year").split(".")
+            try:
+                year = int(year)
+            except ValueError:
+                messages.append(InvalidYear(year, year_path))
+                continue
             if self._is_future_year(year):
                 messages.append(
                     WarningMessage(

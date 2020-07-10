@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from itertools import count, zip_longest
+from itertools import count
+from typing import Optional
 
 
 class LocationInfo(object):
@@ -43,17 +44,22 @@ class StringLocation(LocationInfo):
 
 
 class ValidatorMessage(ABC):
-    def __init__(self, text: str, location: LocationInfo):
+    def __init__(self, text: str, location: LocationInfo, indent_output: Optional[bool] = True):
         self.text = text
         self.location = location
+        self.indent_output = indent_output
 
     def __repr__(self):
-        return f"ValidatorMessage({repr(self.text)}, {repr(self.location)})"
+        return f"ValidatorMessage({repr(self.text)}, {repr(self.location)}, {repr(self.indent_output)})"
 
     def __str__(self):
         context = f"{self.location}: {self.level_description()}"
-        lines = [f"{context}: {line}" if line_number == 1 else f"{' ' * len(context)}  {line}"
-                 for line_number, line in zip(count(1), self.text.splitlines())]
+        if self.indent_output:
+            lines = [f"{context}: {line}" if index == 0 else f"{' ' * len(context)}  {line}"
+                     for index, line in enumerate(self.text.splitlines())]
+        else:
+            lines = [f"{context}: {line}" if index == 0 else f"{line}"
+                     for index, line in enumerate(self.text.splitlines())]
         return "\n".join(lines) + "\n"
 
     @abstractmethod
