@@ -51,11 +51,10 @@ class DateValidator(ContentValidator):
         messages = []
         for dotted_name, publication in self.publications(spec):
             year = self.value_at("year", publication)
-            year_path = (dotted_name + ".year").split(".")
+            location = StringLocation(f"{self.file_name}: publication with title ``{publication['title']}''")
             try:
                 year = int(year)
             except ValueError:
-                messages.append(InvalidYear(year, year_path))
                 continue
             if self._is_future_year(year):
                 messages.append(
