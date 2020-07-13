@@ -1,8 +1,12 @@
 import re
-from typing import Any, List, Optional, Union
+from collections import namedtuple
+from typing import List, Optional
 
 import yaml
 from error_processor import DuplicatedKey
+
+
+Location = namedtuple("Location", ("line", "column"))
 
 
 class YamlMiniParser(object):
@@ -64,7 +68,8 @@ class YamlMiniParser(object):
                 self.add_error(DuplicatedKey(key, path))
             new_path = path + [key]
             result[key] = self.parse_value(new_path)
-            self.source_position[".".join(new_path)] = key_token
+            self.source_position[".".join(new_path)] = Location(
+                key_token.start_mark.line, key_token.start_mark.column)
 
         self.consume_token(yaml.BlockEndToken)
         return result
@@ -72,7 +77,8 @@ class YamlMiniParser(object):
     def parse_value(self, path: List[str]):
         if self.matches(yaml.ScalarToken):
             result = self.current_token.value
-            self.source_position[".".join(path)] = self.current_token
+            self.source_position[".".join(path)] = Location(
+                self.current_token.start_mark.line, self.current_token.start_mark.column)
             self.get_token()
             return result
         elif self.matches(yaml.BlockMappingStartToken):

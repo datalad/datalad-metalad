@@ -217,6 +217,7 @@ class SpecValidator(object):
         corrected_yaml_string, source_position = self.sanitize_yaml(yaml_string, list(all_keys(OBJECT_HIERARCHY)))
         if source_position is not None:
             self.source_position = source_position
+            tuple(map(lambda v: v.set_source_positions(self.source_position), self.content_validators))
         spec_object = self.load_yaml_string(corrected_yaml_string)
         if spec_object is None:
             return False

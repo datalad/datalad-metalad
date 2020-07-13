@@ -13,8 +13,8 @@ class ReferenceValidator(ContentValidator):
         if "person" not in spec or person_ref not in spec["person"]:
             return [
                 ErrorMessage(
-                    f"reference to undefined person ({person_ref})",
-                    ObjectLocation(self.file_name, context))]
+                    f"reference to undefined person ({person_ref}) in {context}",
+                    ObjectLocation(self.file_name, context, self.source_positions))]
         return []
 
     def _person_ref_list(self, dotted_name: str, spec: dict) -> Iterable:

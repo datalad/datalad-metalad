@@ -80,7 +80,8 @@ class DateValidator(ContentValidator):
             if date_info and date_info.is_faulty is True:
                 messages.append(
                     ErrorMessage(
-                        f"date invalid ({date_info.representation})", ObjectLocation(self.file_name, context)))
+                        f"date invalid ({date_info.representation})",
+                        ObjectLocation(self.file_name, context, self.source_positions)))
                 dates.append(None)
             else:
                 dates.append(date_info)
@@ -92,25 +93,25 @@ class DateValidator(ContentValidator):
                     ErrorMessage(
                         f"study.end_date ({end_date.representation}) is earlier "
                         f"than study.start_date ({start_date.representation})",
-                        ObjectLocation(self.file_name, "study")))
+                        ObjectLocation(self.file_name, "study.end_date", self.source_positions)))
 
         if start_date is None and end_date is not None:
             messages.append(
                 ErrorMessage(
                     f"study.end_date given, but no valid study.start_date is given",
-                    ObjectLocation(self.file_name, "study")))
+                    ObjectLocation(self.file_name, "study.end_date", self.source_positions)))
 
         if self._is_future(start_date):
             messages.append(
                 ErrorMessage(
                     f"study.start_date ({start_date.representation}) is in the future",
-                    ObjectLocation(self.file_name, "study")))
+                    ObjectLocation(self.file_name, "study.start_date", self.source_positions)))
 
         if self._is_future(end_date):
             messages.append(
                 WarningMessage(
                     f"study.end_date ({end_date.representation}) is in the future",
-                    ObjectLocation(self.file_name, "study")))
+                    ObjectLocation(self.file_name, "study.end_data", self.source_positions)))
 
         messages += self._check_publication_years(spec, start_date, end_date)
         return messages

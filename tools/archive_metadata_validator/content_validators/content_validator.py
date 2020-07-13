@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterable, List, Union
 
 
 ATTACHED_INDEX_PATTERN = r"([a-z_@A-Z0-9\-])*\[([0-9]+)\]"
+INDEX_PATTERN = r"\[([0-9]+)\]"
 
 
 class NoneElement(object):
@@ -34,9 +35,8 @@ class ContentValidator(ABC):
 
     @staticmethod
     def path_to_dotted_name(path: List[Union[int, str]]) -> str:
-        return "".join([
-            (f"{path_element}" if index == 0 else f".{path_element}")
-            if isinstance(path_element, str) else f"[{path_element}]"
+        return ".".join([
+            f"{path_element}" if isinstance(path_element, str) else f"[{path_element}]"
             for index, path_element in enumerate(path)])
 
     @staticmethod
@@ -44,12 +44,9 @@ class ContentValidator(ABC):
         result = []
         parts = dotted_name.split(".")
         for part in parts:
-            match = re.match(ATTACHED_INDEX_PATTERN, part)
+            match = re.match(INDEX_PATTERN, part)
             if match:
-                if match.group(1):
-                    result += [match.group(1), int(match.group(2))]
-                else:
-                    result += [int(match.group(2))]
+                result += [int(match.group(1))]
             else:
                 result += [part]
         return result
@@ -102,3 +99,7 @@ class ContentValidator(ABC):
 
     def __init__(self, file_name: str):
         self.file_name = file_name
+        self.source_positions = None
+
+    def set_source_positions(self, source_positions):
+        self.source_positions = source_positions

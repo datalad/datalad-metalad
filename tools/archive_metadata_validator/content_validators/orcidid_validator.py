@@ -47,16 +47,17 @@ class ORCIDIDValidator(ContentValidator):
         for (email, person_spec) in self.value_at("person", spec, default={}).items():
             orcid_id, has_prefix = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
-                location = ObjectLocation(self.file_name, f"person.{email}.orcid-id")
+                dotted_name = f"person.{email}.orcid-id"
+                location = ObjectLocation(self.file_name, dotted_name, self.source_positions)
                 if orcid_id in seen_orcid_ids:
                     messages.append(
                         WarningMessage(
-                            f"duplicated ORCID-ID ({orcid_id})", location))
+                            f"duplicated ORCID-ID ({orcid_id}) in {dotted_name}", location))
                 else:
                     seen_orcid_ids.append(orcid_id)
                 if has_prefix is False:
                     messages.append(
                         WarningMessage(
-                            f"ORCID-ID is missing prefix ({ORCID_ID_PREFIX})", location))
+                            f"ORCID-ID is missing prefix ({ORCID_ID_PREFIX}) in {dotted_name}", location))
                 messages += self._check_orcidid(orcid_id, email)
         return messages

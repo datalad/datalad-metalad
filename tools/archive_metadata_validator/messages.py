@@ -21,15 +21,17 @@ class FileLocation(LocationInfo):
 
 
 class ObjectLocation(LocationInfo):
-    def __init__(self, file_name: str, dotted_name: str):
+    def __init__(self, file_name: str, dotted_name: str, locations: dict):
         self.file_name = file_name
         self.dotted_name = dotted_name
+        self.line = locations[dotted_name].line
+        self.column = locations[dotted_name].column
 
     def __repr__(self):
         return f"ObjectLocation({repr(self.file_name)}, {self.dotted_name})"
 
     def __str__(self):
-        return f"{self.file_name}:{self.dotted_name}"
+        return f"{self.file_name}:{self.line + 1}:{self.column + 1}"
 
 
 class StringLocation(LocationInfo):
