@@ -4,7 +4,7 @@ language: python
 
 python:
   - 3.5
-  - 3.6
+  - 3.7
 
 cache:
   - apt
@@ -21,9 +21,6 @@ env:
     # Special settings/helper for combined coverage from special remotes execution
     - COVERAGE=coverage
     - DATALAD_DATASETS_TOPURL=http://datasets-tests.datalad.org
-  matrix:
-    - DATALAD_REPO_VERSION=5
-    - DATALAD_REPO_VERSION=6
 
 matrix:
   include:
