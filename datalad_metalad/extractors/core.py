@@ -347,12 +347,13 @@ def _get_commit_info(ds, refcommit, status):
     #    present paths that may not have existed previously at all
 
     # grab the history until the refcommit
-    stdout, stderr = ds.repo._git_custom_command(
-        None,
-        # name, email, timestamp, shasum
-        ['git', 'log', '--pretty=format:%aN%x00%aE%x00%aI%x00%H', refcommit]
-    )
-    commits = [line.split('\0') for line in stdout.splitlines()]
+    commits = [
+        line.split('\0')
+        for line in ds.repo.call_git_items_(
+            # name, email, timestamp, shasum
+            ['log', '--pretty=format:%aN%x00%aE%x00%aI%x00%H', refcommit]
+        )
+    ]
     # version, always anchored on the first commit (tags could move and
     # make the integer commit count ambigous, and subtantially complicate
     # version comparisons
