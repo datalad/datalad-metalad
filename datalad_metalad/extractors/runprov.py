@@ -193,14 +193,6 @@ class RunProvenanceExtractor(MetadataExtractor):
 
 
 def yield_run_records(ds):
-    stdout, stderr = ds.repo._git_custom_command(
-        None,
-        ['git', 'log', '-F',
-         '--grep', '=== Do not change lines below ===',
-         "--pretty=tformat:%x00%x00record%x00%n%H%x00%aN%x00%aE%x00%aI%n%B%x00%x00diff%x00",
-         "--raw", "--no-abbrev",
-        ]
-    )
 
     def _finalize_record(r):
         msg, rec = _split_record_message(r.pop('body', []))
@@ -222,7 +214,11 @@ def yield_run_records(ds):
 
     record = None
     indiff = False
-    for line in stdout.splitlines():
+    for line in ds.repo.call_git_items_(
+            ['log', '-F',
+             '--grep', '=== Do not change lines below ===',
+             "--pretty=tformat:%x00%x00record%x00%n%H%x00%aN%x00%aE%x00%aI%n%B%x00%x00diff%x00",
+             "--raw", "--no-abbrev"]):
         if line == '\0\0record\0':
             indiff = False
             # fresh record
