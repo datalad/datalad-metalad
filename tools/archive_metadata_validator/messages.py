@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from itertools import count
 from typing import Optional
 
 
@@ -14,7 +13,7 @@ class FileLocation(LocationInfo):
         self.column = column
 
     def __repr__(self):
-        return f"CodeLocation({self.file_name}, {self.line}, {self.column})"
+        return f"FileLocation({repr(self.file_name)}, {self.line}, {self.column})"
 
     def __str__(self):
         return f"{self.file_name}:{self.line}:{self.column}"
@@ -28,7 +27,7 @@ class ObjectLocation(LocationInfo):
         self.column = locations[dotted_name].column
 
     def __repr__(self):
-        return f"ObjectLocation({repr(self.file_name)}, {self.dotted_name})"
+        return f"ObjectLocation({repr(self.file_name)}, {repr(self.dotted_name)})"
 
     def __str__(self):
         return f"{self.file_name}:{self.line + 1}:{self.column + 1}"
@@ -39,7 +38,7 @@ class StringLocation(LocationInfo):
         self.location = location
 
     def __repr__(self):
-        return f"StringLocation({self.location})"
+        return f"StringLocation({repr(self.location)})"
 
     def __str__(self):
         return f"{self.location}"
@@ -52,7 +51,7 @@ class ValidatorMessage(ABC):
         self.indent_output = indent_output
 
     def __repr__(self):
-        return f"ValidatorMessage({repr(self.text)}, {repr(self.location)}, {repr(self.indent_output)})"
+        return f"{self._class_repr()}({repr(self.text)}, {repr(self.location)}, {repr(self.indent_output)})"
 
     def __str__(self):
         context = f"{self.location}: {self.level_description()}"
@@ -64,6 +63,9 @@ class ValidatorMessage(ABC):
                      for index, line in enumerate(self.text.splitlines())]
         return "\n".join(lines) + "\n"
 
+    def _class_repr(self) -> str:
+        return "ValidatorMessage"
+
     @abstractmethod
     def error_score(self) -> int:
         pass
@@ -74,8 +76,8 @@ class ValidatorMessage(ABC):
 
 
 class ErrorMessage(ValidatorMessage):
-    def __repr__(self):
-        return f"ErrorMessage({repr(self.text)}, {repr(self.location)})"
+    def _class_repr(self) -> str:
+        return "ErrorMessage"
 
     def error_score(self) -> int:
         return 1
@@ -85,8 +87,8 @@ class ErrorMessage(ValidatorMessage):
 
 
 class WarningMessage(ValidatorMessage):
-    def __repr__(self):
-        return f"WarningMessage({repr(self.text)}, {repr(self.location)})"
+    def _class_repr(self) -> str:
+        return "WarningMessage"
 
     def error_score(self) -> int:
         return 0
