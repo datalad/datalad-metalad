@@ -48,6 +48,7 @@ class ContentValidator(ABC):
                     current_path_element += "\\"
                 else:
                     raise Exception(f"Encoding error in dotted name: {dotted_name}")
+                previous_character = ""
             else:
                 if character == ".":
                     match = re.match(ContentValidator.IndexPattern, current_path_element)
@@ -58,7 +59,7 @@ class ContentValidator(ABC):
                     current_path_element = ""
                 elif character != "\\":
                     current_path_element += character
-            previous_character = character
+                previous_character = character
         result.append(current_path_element)
         return result
 
@@ -129,7 +130,10 @@ class ContentValidator(ABC):
             return default
         return value
 
-    def value_at_path_in_spec(self, path: List[Union[int, str]], spec: Union[dict, str], default=None) -> Union[Any, None]:
+    def value_at_path_in_spec(self,
+                              path: List[Union[int, str]],
+                              spec: Union[dict, str],
+                              default=None) -> Union[Any, None]:
         """
         Return the value stored in spec at the path.
         If the path does not exist in spec, "default" is returned.
