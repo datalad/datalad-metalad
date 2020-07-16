@@ -22,7 +22,7 @@ class DOIValidator(ContentValidator):
         return False
 
     def _get_doi_for_publication(self, publication: dict) -> Union[str, None]:
-        doi_str = self.value_at("doi", publication)
+        doi_str = self.value_at_in_spec("doi", publication)
         if doi_str is not None:
             doi_str = doi_str.strip()
             for prefix in DOI_PREFIXES:
@@ -31,9 +31,9 @@ class DOIValidator(ContentValidator):
                     break
         return doi_str
 
-    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+    def perform_validation(self) -> List[ValidatorMessage]:
         messages = []
-        for publication_spec in self.value_at("publication", spec, default=[]):
+        for publication_spec in self.value_at("publication", default=[]):
             doi_str = self._get_doi_for_publication(publication_spec)
             if doi_str and self._doi_is_resolvable(doi_str) is False:
                 messages.append(

@@ -10,8 +10,8 @@ class TestKeywordValidator(ValidatorTestCase):
             "dataset": {
             }
         }
-        validator = KeywordValidator("test.yaml")
-        errors = validator.perform_validation(spec)
+        validator = KeywordValidator("test.yaml", spec)
+        errors = validator.perform_validation()
         self.check_warning_and_error_count(errors, 1, 0)
 
     def test_empty_keywords(self):
@@ -21,8 +21,8 @@ class TestKeywordValidator(ValidatorTestCase):
                 "keyword": []
             }
         }
-        validator = KeywordValidator("test.yaml")
-        errors = validator.perform_validation(spec)
+        validator = KeywordValidator("test.yaml", spec)
+        errors = validator.perform_validation()
         self.check_warning_and_error_count(errors, 1, 0)
 
     def test_single_keyword_list(self):
@@ -32,8 +32,8 @@ class TestKeywordValidator(ValidatorTestCase):
                 "keyword": ["a"]
             }
         }
-        validator = KeywordValidator("test.yaml")
-        errors = validator.perform_validation(spec)
+        validator = KeywordValidator("test.yaml", spec)
+        errors = validator.perform_validation()
         self.assertEqual(len(errors), 0)
 
     def test_single_keyword(self):
@@ -43,6 +43,6 @@ class TestKeywordValidator(ValidatorTestCase):
                 "keyword": "a"
             }
         }
-        validator = KeywordValidator("test.yaml")
-        errors = validator.perform_validation(spec)
+        validator = KeywordValidator("test.yaml", spec)
+        errors = validator.perform_validation()
         self.assertEqual(len(errors), 0)

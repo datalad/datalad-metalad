@@ -4,13 +4,13 @@ from messages import ValidatorMessage, WarningMessage, StringLocation
 from .content_validator import ContentValidator
 
 
-KEYWORD_LOOKUP_URL = "https://jugit.fz-juelich.de/c.moench/datasets_repo/-/wikis/Dataset-Keywords"
+KEYWORD_LOOKUP_URL = "https://jugit.fz-juelich.de/inm7/datasets/datasets_repo/-/wikis/Dataset-Keywords"
 
 
 class KeywordValidator(ContentValidator):
-    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+    def perform_validation(self) -> List[ValidatorMessage]:
         context = "dataset.keyword"
-        keywords = self.value_at(context, spec)
+        keywords = self.value_at(context)
         if not keywords:
             return [
                 WarningMessage(

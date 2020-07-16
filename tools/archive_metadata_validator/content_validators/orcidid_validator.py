@@ -2,7 +2,7 @@ import re
 from functools import reduce
 from typing import List, Tuple, Union
 
-from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation, StringLocation
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation
 from .content_validator import ContentValidator
 
 
@@ -19,7 +19,7 @@ class ORCIDIDValidator(ContentValidator):
         return str(result) if result < 10 else "X"
 
     def _get_orcidid_for_person(self, person: dict) -> Tuple[Union[str, None], bool]:
-        orcid_id = self.value_at("orcid-id", person)
+        orcid_id = self.value_at_in_spec("orcid-id", person)
         if orcid_id is not None:
             orcid_id = orcid_id.strip()
             if orcid_id.lower().startswith(ORCID_ID_PREFIX):
@@ -28,7 +28,7 @@ class ORCIDIDValidator(ContentValidator):
         return orcid_id, False
 
     def _check_orcidid(self, orcid_id: str, email: str) -> List[ValidatorMessage]:
-        location = StringLocation(f"{self.file_name}:person with email: {email}")
+        location = ObjectLocation(self.file_name, f"person.{email}.orcid-id", self.object_locations)
         if re.match(ORCID_ID_REGEX_PATTERN, orcid_id) is None:
             return [
                 ErrorMessage(
@@ -41,14 +41,14 @@ class ORCIDIDValidator(ContentValidator):
                     f"ORCID-ID invalid ({orcid_id}), checksum failed", location)]
         return []
 
-    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+    def perform_validation(self) -> List[ValidatorMessage]:
         messages = []
         seen_orcid_ids = []
-        for (email, person_spec) in self.value_at("person", spec, default={}).items():
+        for (email, person_spec) in self.value_at("person", default={}).items():
             orcid_id, has_prefix = self._get_orcidid_for_person(person_spec)
             if orcid_id is not None:
                 dotted_name = f"person.{email}.orcid-id"
-                location = ObjectLocation(self.file_name, dotted_name, self.source_positions)
+                location = ObjectLocation(self.file_name, dotted_name, self.object_locations)
                 if orcid_id in seen_orcid_ids:
                     messages.append(
                         WarningMessage(

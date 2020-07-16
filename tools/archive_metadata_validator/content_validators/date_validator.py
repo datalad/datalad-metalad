@@ -3,7 +3,7 @@ from collections import namedtuple
 from time import strptime, struct_time
 from typing import List, Optional, Union
 
-from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation, StringLocation
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation
 from .content_validator import ContentValidator
 
 
@@ -29,15 +29,6 @@ class DateValidator(ContentValidator):
                 continue
         return None
 
-    def _check_optional_date(self, dotted_name, spec) -> Union[DateInfo, None]:
-        date_str = self.value_at(dotted_name, spec)
-        if date_str:
-            _date = self._parse_date(date_str)
-            if _date is None:
-                return DateInfo(_date, True, date_str)
-            return DateInfo(_date, False, date_str)
-        return None
-
     @staticmethod
     def _is_future(_date):
         return _date and _date.date > date.today().timetuple()
@@ -46,12 +37,22 @@ class DateValidator(ContentValidator):
     def _is_future_year(year: int):
         return year and year > date.today().year
 
-    def _check_publication_years(self, spec: dict, start_date: DateInfo, end_date: DateInfo):
+    def _check_optional_date(self, dotted_name) -> Union[DateInfo, None]:
+        date_str = self.value_at(dotted_name)
+        if date_str:
+            _date = self._parse_date(date_str)
+            if _date is None:
+                return DateInfo(_date, True, date_str)
+            return DateInfo(_date, False, date_str)
+        return None
+
+    def _check_publication_years(self, start_date: DateInfo, end_date: DateInfo):
         messages = []
-        for dotted_name, publication in self.publications(spec):
-            year = self.value_at("year", publication)
+        for dotted_name, publication in self.publications():
+            year_dotted_name = f"{dotted_name}.year"
+            year = self.value_at(year_dotted_name, None)
             if year:
-                location = StringLocation(f"{self.file_name}: publication with title ``{publication['title']}''")
+                location = ObjectLocation(self.file_name, year_dotted_name, self.object_locations)
                 try:
                     year = int(year)
                 except ValueError:
@@ -59,29 +60,31 @@ class DateValidator(ContentValidator):
                 if self._is_future_year(year):
                     messages.append(
                         WarningMessage(
-                            f"publication.year {year} is in the future", location))
+                            f"{year_dotted_name} {year} is in the future", location))
 
                 if start_date and start_date.date and start_date.date.tm_year > year:
                     messages.append(
                         WarningMessage(
-                            f"publication.year {year} is before study.start_date", location))
+                            f"{year_dotted_name} {year} is before study.start_date", location))
 
                 if end_date and end_date.date and end_date.date.tm_year < year:
                     messages.append(
                         WarningMessage(
-                            f"publication.year {year} is is after study.end_date", location))
+                            f"{year_dotted_name} {year} is is after study.end_date", location))
         return messages
 
-    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
+    def perform_validation(self) -> List[ValidatorMessage]:
         messages = []
         dates = []
-        for context in ("study.start_date", "study.end_date"):
-            date_info = self._check_optional_date(context, spec)
+        start_date_name = "study.start_date"
+        end_date_name = "study.end_date"
+        for dotted_name in (start_date_name, end_date_name):
+            date_info = self._check_optional_date(dotted_name)
             if date_info and date_info.is_faulty is True:
                 messages.append(
                     ErrorMessage(
                         f"date invalid ({date_info.representation})",
-                        ObjectLocation(self.file_name, context, self.source_positions)))
+                        ObjectLocation(self.file_name, dotted_name, self.object_locations)))
                 dates.append(None)
             else:
                 dates.append(date_info)
@@ -93,25 +96,25 @@ class DateValidator(ContentValidator):
                     ErrorMessage(
                         f"study.end_date ({end_date.representation}) is earlier "
                         f"than study.start_date ({start_date.representation})",
-                        ObjectLocation(self.file_name, "study.end_date", self.source_positions)))
+                        ObjectLocation(self.file_name, end_date_name, self.object_locations)))
 
         if start_date is None and end_date is not None:
             messages.append(
                 ErrorMessage(
                     f"study.end_date given, but no valid study.start_date is given",
-                    ObjectLocation(self.file_name, "study.end_date", self.source_positions)))
+                    ObjectLocation(self.file_name, end_date_name, self.object_locations)))
 
         if self._is_future(start_date):
             messages.append(
                 ErrorMessage(
                     f"study.start_date ({start_date.representation}) is in the future",
-                    ObjectLocation(self.file_name, "study.start_date", self.source_positions)))
+                    ObjectLocation(self.file_name, start_date_name, self.object_locations)))
 
         if self._is_future(end_date):
             messages.append(
                 WarningMessage(
                     f"study.end_date ({end_date.representation}) is in the future",
-                    ObjectLocation(self.file_name, "study.end_data", self.source_positions)))
+                    ObjectLocation(self.file_name, end_date_name, self.object_locations)))
 
-        messages += self._check_publication_years(spec, start_date, end_date)
+        messages += self._check_publication_years(start_date, end_date)
         return messages

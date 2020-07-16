@@ -20,7 +20,7 @@ class YamlMiniParser(object):
         self.key_list = key_list
         self.current_token = None
         self.errors = []
-        self.source_position = {}
+        self.object_locations = {}
 
     def add_error(self, error):
         self.errors.append(error)
@@ -68,7 +68,7 @@ class YamlMiniParser(object):
                 self.add_error(DuplicatedKey(key, path))
             new_path = path + [key]
             result[key] = self.parse_value(new_path)
-            self.source_position[".".join(new_path)] = Location(
+            self.object_locations[".".join(new_path)] = Location(
                 key_token.start_mark.line, key_token.start_mark.column)
 
         self.consume_token(yaml.BlockEndToken)
@@ -77,7 +77,7 @@ class YamlMiniParser(object):
     def parse_value(self, path: List[str]):
         if self.matches(yaml.ScalarToken):
             result = self.current_token.value
-            self.source_position[".".join(path)] = Location(
+            self.object_locations[".".join(path)] = Location(
                 self.current_token.start_mark.line, self.current_token.start_mark.column)
             self.get_token()
             return result
@@ -115,7 +115,7 @@ class YamlMiniParser(object):
     def parse_stream(self):
         self.get_token(yaml.StreamStartToken)
         self.get_token()
-        self.source_position = {}
+        self.object_locations = {}
         result = self.parse_document([])
         self.consume_token(yaml.StreamEndToken)
         return result

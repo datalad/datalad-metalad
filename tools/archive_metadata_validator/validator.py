@@ -1,7 +1,6 @@
 
 import yaml
 import yaml.constructor
-from collections import namedtuple
 
 from jsonschema import Draft7Validator, ValidationError
 from pathlib import PosixPath
@@ -10,12 +9,9 @@ from yaml.error import YAMLError, MarkedYAMLError
 
 import error_processor
 from messages import ErrorMessage, FileLocation, StringLocation, WarningMessage
-from content_validators.content_validator import ContentValidator
+from content_validators.content_validator import ContentValidator, ContentValidatorInfo
 from indent_sanitizer import YamlIndentationSanitizer
 from yaml_mini_parser import YamlMiniParser
-
-
-Typedef = namedtuple("SchemaTypedef", ["id", "schema"])
 
 
 # Do not convert ISO-date strings in datetime.date objects during yaml.safe_load. To prevent
@@ -144,11 +140,11 @@ class SpecValidator(object):
         # TODO: invoke error interpretation in error_processor.
         self.schema_errors.append(error_processor.classify_validation_error(error))
 
-    def __init__(self, path_to_schema_spec: PosixPath, validators: List[ContentValidator], file_name: str):
+    def __init__(self, path_to_schema_spec: PosixPath, validator_infos: List[ContentValidatorInfo], file_name: str):
         self.schema = self._load_spec_object(path_to_schema_spec)
         Draft7Validator.check_schema(self.schema)
         self.draft7_validator = Draft7Validator(self.schema)
-        self.content_validators = validators
+        self.content_validator_infos = validator_infos
         self.file_name = file_name
         self.messages = []
         self.yaml_errors = []
@@ -168,18 +164,6 @@ class SpecValidator(object):
                 result.append(
                     ErrorMessage(str(error), StringLocation(self.file_name)))
         return result
-
-    def _validate_spec(self, spec) -> List[ErrorMessage]:
-        for error in self.draft7_validator.iter_errors(instance=spec):
-            self._create_schema_error(error)
-        return self._create_schema_error_messages()
-
-    def validate_spec_object(self, spec) -> bool:
-        self.messages += self._validate_spec(spec)
-        for content_validator in self.content_validators:
-            self.messages += content_validator.perform_validation(spec)
-
-        return not self.messages
 
     def load_yaml_string(self, yaml_string: str) -> Union[dict, None]:
         try:
@@ -209,16 +193,24 @@ class SpecValidator(object):
                         False)]
             parser = YamlMiniParser(yaml.BaseLoader(sanitizer.document), key_list)
             parser.parse_stream()
-            return sanitizer.document, parser.source_position
+            return sanitizer.document, parser.object_locations
         return yaml_string, None
+
+    def _validate_spec(self, spec) -> List[ErrorMessage]:
+        for error in self.draft7_validator.iter_errors(instance=spec):
+            self._create_schema_error(error)
+        return self._create_schema_error_messages()
+
+    def validate_spec_object(self, spec, object_locations: dict) -> bool:
+        self.messages += self._validate_spec(spec)
+        for content_validator_info in self.content_validator_infos:
+            self.messages += content_validator_info.create(self.file_name, spec, object_locations).perform_validation()
+        return not self.messages
 
     def validate_spec(self, yaml_string: str) -> bool:
         self.messages = []
-        corrected_yaml_string, source_position = self.sanitize_yaml(yaml_string, list(all_keys(OBJECT_HIERARCHY)))
-        if source_position is not None:
-            self.source_position = source_position
-            tuple(map(lambda v: v.set_source_positions(self.source_position), self.content_validators))
+        corrected_yaml_string, object_locations = self.sanitize_yaml(yaml_string, list(all_keys(OBJECT_HIERARCHY)))
         spec_object = self.load_yaml_string(corrected_yaml_string)
         if spec_object is None:
             return False
-        return self.validate_spec_object(spec_object)
+        return self.validate_spec_object(spec_object, object_locations)

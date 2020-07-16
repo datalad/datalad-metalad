@@ -23,14 +23,19 @@ class ObjectLocation(LocationInfo):
     def __init__(self, file_name: str, dotted_name: str, locations: dict):
         self.file_name = file_name
         self.dotted_name = dotted_name
-        self.line = locations[dotted_name].line if locations else -1
-        self.column = locations[dotted_name].column if locations else -1
+        self.locations = locations
+        if locations and dotted_name in locations:
+            self.line_representation = str(locations[dotted_name].line + 1)
+            self.column_representation = str(locations[dotted_name].column + 1)
+        else:
+            self.line_representation = "?"
+            self.column_representation = "?"
 
     def __repr__(self):
-        return f"ObjectLocation({repr(self.file_name)}, {repr(self.dotted_name)})"
+        return f"ObjectLocation({repr(self.file_name)}, {repr(self.dotted_name)}, {repr(self.locations)})"
 
     def __str__(self):
-        return f"{self.file_name}:{self.line + 1 if self.line >= 0 else '?'}:{self.column + 1 if self.line >= 0 else '?'}"
+        return f"{self.file_name}:{self.line_representation}:{self.column_representation}"
 
 
 class StringLocation(LocationInfo):

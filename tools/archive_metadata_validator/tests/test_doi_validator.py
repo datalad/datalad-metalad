@@ -13,12 +13,12 @@ class TestDOIValidator(ValidatorTestCase):
     def test_prefix_handling(self, get):
         """ Expect that all known prefixes are removed before trying to resolve the DOI """
         get.configure_mock(return_value=Mock(text='{"responseCode": 1}'))
-        validator = DOIValidator("test.yaml")
         spec = deepcopy(BASE_SPEC)
+        validator = DOIValidator("test.yaml", spec)
         publication = spec["publication"][0]
         for prefix in ("doi:", "doi: ", "https://doi.org/"):
             publication["doi"] = f"{prefix}{TEST_DOI}"
-            errors = validator.perform_validation(spec)
+            errors = validator.perform_validation()
             self.assertEqual(get.call_args, call(DOI_RESOLVER_BASE_URL + TEST_DOI))
             self.assertEqual(len(errors), 0)
             get.reset_mock()
@@ -27,8 +27,8 @@ class TestDOIValidator(ValidatorTestCase):
     def test_unresolvable_doi(self, get):
         """ Expect an error for unresolvable DOI """
         get.configure_mock(return_value=Mock(text='{"responseCode": 100}'))
-        validator = DOIValidator("test.yaml")
         spec = deepcopy(BASE_SPEC)
-        publication = spec["publication"][0]["doi"] = TEST_DOI
-        errors = validator.perform_validation(spec)
+        spec["publication"][0]["doi"] = TEST_DOI
+        validator = DOIValidator("test.yaml", spec)
+        errors = validator.perform_validation()
         self.check_warning_and_error_count(errors, 0, 1)

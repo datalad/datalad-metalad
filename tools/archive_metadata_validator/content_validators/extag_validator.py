@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+from typing import List, Tuple, Union
 
 from messages import ValidatorMessage, WarningMessage, StringLocation
 from .content_validator import ContentValidator
@@ -8,21 +8,22 @@ MAX_EXTAG_REPORTS = 5
 
 
 class ExTagValidator(ContentValidator):
-    def _validate(self, spec: Union[Dict, List], prefix: str = "") -> List[Tuple[str, str]]:
+    @staticmethod
+    def _validate(spec: Union[dict, list], prefix: str = "") -> List[Tuple[str, str]]:
         result = []
         if isinstance(spec, dict):
             for key, value in spec.items():
-                result += self._validate(value, f"{prefix}.{key}" if prefix else f"{key}")
+                result += ExTagValidator._validate(value, f"{prefix}.{key}" if prefix else f"{key}")
         elif isinstance(spec, list):
             for index, item in enumerate(spec):
-                result += self._validate(item, f"{prefix}[{index}]" if prefix else f"[{index}]")
+                result += ExTagValidator._validate(item, f"{prefix}[{index}]" if prefix else f"[{index}]")
         elif isinstance(spec, str):
             if spec.startswith("<ex>") or spec.endswith("</ex>"):
                 result += [(spec, prefix)]
         return result
 
-    def perform_validation(self, spec: dict) -> List[ValidatorMessage]:
-        ex_tag_locations = self._validate(spec)
+    def perform_validation(self) -> List[ValidatorMessage]:
+        ex_tag_locations = self._validate(self.spec)
         if ex_tag_locations:
             return [WarningMessage((
                 f"ex-tags found in {len(ex_tag_locations)} text strings"

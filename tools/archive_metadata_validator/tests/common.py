@@ -16,6 +16,7 @@ PERSON_SPEC = {
     }
 }
 
+
 BASE_SPEC = {
     "person": PERSON_SPEC,
     "study": {
