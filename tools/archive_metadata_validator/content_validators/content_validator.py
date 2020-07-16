@@ -162,10 +162,14 @@ class ContentValidator(ABC):
 
 
 class ContentValidatorInfo(object):
-    def __init__(self, validator_class: type(ContentValidator), args: list, kwargs: dict):
+    def __init__(self,
+                 validator_class: type(ContentValidator),
+                 args: Optional[list] = None,
+                 kwargs: Optional[dict] = None):
+
         self.validator_class = validator_class
-        self.args = args
-        self.kwargs = kwargs
+        self.args = args if args else []
+        self.kwargs = kwargs if kwargs else {}
 
     def create(self, file_name: str, spec: Union[dict, list], object_locations: dict) -> type(ContentValidator):
         return self.validator_class(file_name, spec, object_locations, *self.args, **self.kwargs)

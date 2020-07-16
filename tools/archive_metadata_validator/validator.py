@@ -8,7 +8,7 @@ from typing import Any, List, Optional, Tuple, Union
 from yaml.error import YAMLError, MarkedYAMLError
 
 import error_processor
-from messages import ErrorMessage, FileLocation, StringLocation, WarningMessage
+from messages import ErrorMessage, FileLocation, ObjectLocation, WarningMessage
 from content_validators.content_validator import ContentValidator, ContentValidatorInfo
 from indent_sanitizer import YamlIndentationSanitizer
 from yaml_mini_parser import YamlMiniParser
@@ -151,18 +151,12 @@ class SpecValidator(object):
         self.source_position = {}
         self.schema_errors = []
 
-    def _create_schema_error_messages(self) -> List[ErrorMessage]:
+    def _create_schema_error_messages(self, object_locations) -> List[ErrorMessage]:
         result = []
         for error in self.schema_errors:
-            dotted_path_name = ".".join(error.path)
-            location = self.source_position.get(dotted_path_name, None)
-            if location:
-                line, column = location.start_mark.line + 1, location.start_mark.column + 1
-                result.append(
-                    ErrorMessage(str(error), FileLocation(self.file_name, line, column)))
-            else:
-                result.append(
-                    ErrorMessage(str(error), StringLocation(self.file_name)))
+            dotted_path_name = ContentValidator.path_to_dotted_name(error.path)
+            result.append(
+                ErrorMessage(str(error), ObjectLocation(self.file_name, dotted_path_name, object_locations)))
         return result
 
     def load_yaml_string(self, yaml_string: str) -> Union[dict, None]:
@@ -189,22 +183,23 @@ class SpecValidator(object):
                     WarningMessage(
                         f"using corrected document as input:\n{'------8<' * 10}------\n"
                         f"{sanitizer.document}\n{'------8<' * 10}------\n",
-                        StringLocation(""),
+                        FileLocation(self.file_name, 0, 0),
                         False)]
             parser = YamlMiniParser(yaml.BaseLoader(sanitizer.document), key_list)
             parser.parse_stream()
             return sanitizer.document, parser.object_locations
         return yaml_string, None
 
-    def _validate_spec(self, spec) -> List[ErrorMessage]:
+    def _validate_spec(self, spec, object_locations) -> List[ErrorMessage]:
         for error in self.draft7_validator.iter_errors(instance=spec):
             self._create_schema_error(error)
-        return self._create_schema_error_messages()
+        return self._create_schema_error_messages(object_locations)
 
     def validate_spec_object(self, spec, object_locations: dict) -> bool:
-        self.messages += self._validate_spec(spec)
+        self.messages += self._validate_spec(spec, object_locations)
         for content_validator_info in self.content_validator_infos:
             self.messages += content_validator_info.create(self.file_name, spec, object_locations).perform_validation()
+        self.messages.sort(key=lambda m: m.location.line)
         return not self.messages
 
     def validate_spec(self, yaml_string: str) -> bool:

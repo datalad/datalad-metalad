@@ -40,7 +40,17 @@ class UnexpectedKey(object):
         self.additional_message = additional_message
 
     def __str__(self):
-        return f"unexpected key '{'.'.join(self. path + [self.key])}'"
+        return f"unexpected key '{'.'.join(self. path)}'"
+
+
+class UnexpectedIntegerKey(object):
+    def __init__(self, key_representation: str, path: List[str], additional_message: Optional[str] = None):
+        self.key = int(key_representation)
+        self.path = path
+        self.additional_message = additional_message
+
+    def __str__(self):
+        return f"unexpected key '{'.'.join(self. path)}'"
 
 
 class MissingKey(object):
@@ -96,13 +106,13 @@ class ValueWarning(object):
 
 def classify_validation_error(error: ValidationError):
     if error.validator == ADDITIONAL_PROPERTIES_VALIDATOR and error.validator_value is False:
-        match = re.match(r"Additional properties are not allowed \('([a-z_@\-]*)'", error.message)
+        match = re.match(r"Additional properties are not allowed \('([a-z_@0-9\-]*)'", error.message)
         if match:
-            return UnexpectedKey(match.group(1), list(map(str, error.path)))
+            return UnexpectedKey(match.group(1), list(map(str, error.path)) + [match.group(1)])
         else:
             match = re.match(r"Additional properties are not allowed \(([0-9]+)", error.message)
             if match:
-                return UnexpectedKey(match.group(1), list(map(str, error.path)))
+                return UnexpectedIntegerKey(int(match.group(1)), list(map(str, error.path)) + [match.group(1)])
             return UnexpectedKey(
                 "<unknown>",
                 list(error.path),
@@ -111,7 +121,7 @@ def classify_validation_error(error: ValidationError):
     elif error.validator == REQUIRED_VALIDATOR:
         match = re.match(r"'([a-z_@\-]*)' is a required property", error.message)
         if match:
-            return MissingKey(match.group(1), list(map(str, error.path)))
+            return MissingKey(match.group(1), list(map(str, error.path)) + [match.group(1)])
         else:
             return MissingKey(
                 "<unknown>",

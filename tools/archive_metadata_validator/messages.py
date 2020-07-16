@@ -2,11 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
-class LocationInfo(object):
-    pass
-
-
-class FileLocation(LocationInfo):
+class FileLocation(object):
     def __init__(self, file_name: str, line: int, column: int):
         self.file_name = file_name
         self.line = line
@@ -16,41 +12,27 @@ class FileLocation(LocationInfo):
         return f"FileLocation({repr(self.file_name)}, {self.line}, {self.column})"
 
     def __str__(self):
-        return f"{self.file_name}:{self.line}:{self.column}"
+        return f"{self.file_name}:{self.line if self.line >= 0 else '?'}:{self.column if self.column >= 0 else '?'}"
 
 
-class ObjectLocation(LocationInfo):
+class ObjectLocation(FileLocation):
     def __init__(self, file_name: str, dotted_name: str, locations: dict):
-        self.file_name = file_name
         self.dotted_name = dotted_name
         self.locations = locations
         if locations and dotted_name in locations:
-            self.line_representation = str(locations[dotted_name].line + 1)
-            self.column_representation = str(locations[dotted_name].column + 1)
+            line = locations[dotted_name].line + 1
+            column = locations[dotted_name].column + 1
         else:
-            self.line_representation = "?"
-            self.column_representation = "?"
+            line = 0
+            column = 0
+        super(ObjectLocation, self).__init__(file_name, line, column)
 
     def __repr__(self):
         return f"ObjectLocation({repr(self.file_name)}, {repr(self.dotted_name)}, {repr(self.locations)})"
 
-    def __str__(self):
-        return f"{self.file_name}:{self.line_representation}:{self.column_representation}"
-
-
-class StringLocation(LocationInfo):
-    def __init__(self, location: str):
-        self.location = location
-
-    def __repr__(self):
-        return f"StringLocation({repr(self.location)})"
-
-    def __str__(self):
-        return f"{self.location}"
-
 
 class ValidatorMessage(ABC):
-    def __init__(self, text: str, location: LocationInfo, indent_output: Optional[bool] = True):
+    def __init__(self, text: str, location: FileLocation, indent_output: Optional[bool] = True):
         self.text = text
         self.location = location
         self.indent_output = indent_output

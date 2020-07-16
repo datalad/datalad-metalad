@@ -4,6 +4,7 @@ from functools import reduce
 from pathlib import PosixPath
 from typing import List
 
+from content_validators.content_validator import ContentValidatorInfo
 from content_validators.date_validator import DateValidator
 from content_validators.doi_validator import DOIValidator
 from content_validators.reference_validator import ReferenceValidator
@@ -28,13 +29,16 @@ def validate_stream(character_stream, file_name, arguments) -> List:
         validator = SpecValidator(SCHEMA_SPEC_PATH, [], file_name)
     else:
         validator = SpecValidator(SCHEMA_SPEC_PATH,
-                                  [DateValidator(file_name),
-                                   ReferenceValidator(file_name),
-                                   DOIValidator(file_name),
-                                   ORCIDIDValidator(file_name),
-                                   KeywordValidator(file_name),
-                                   ExTagValidator(file_name)],
+                                  [
+                                      ContentValidatorInfo(DateValidator),
+                                      ContentValidatorInfo(ReferenceValidator),
+                                      ContentValidatorInfo(DOIValidator),
+                                      ContentValidatorInfo(ORCIDIDValidator),
+                                      ContentValidatorInfo(KeywordValidator),
+                                      ContentValidatorInfo(ExTagValidator)
+                                  ],
                                   file_name)
+
     validator.validate_spec(character_stream.read())
     return validator.messages
 
