@@ -155,6 +155,11 @@ class ContentValidator(ABC):
             publication_dotted_name = self.path_to_dotted_name([publication_key, index])
             yield publication_dotted_name, publication_spec
 
+    def persons(self) -> Iterable:
+        person_key = "person"
+        for email, person_spec in self.value_at(person_key, default={}).items():
+            yield [person_key, email], person_spec
+
     def __init__(self, file_name: str, spec: Union[dict, list], object_locations: Optional[dict] = None):
         self.file_name = file_name
         self.spec = spec

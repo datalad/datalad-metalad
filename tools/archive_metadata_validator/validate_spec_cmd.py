@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import sys
 from argparse import ArgumentParser
 from functools import reduce
@@ -11,6 +14,7 @@ from content_validators.reference_validator import ReferenceValidator
 from content_validators.orcidid_validator import ORCIDIDValidator
 from content_validators.keyword_validator import KeywordValidator
 from content_validators.extag_validator import ExTagValidator
+from content_validators.email_validator import EmailValidator
 
 from validator import SpecValidator
 
@@ -35,7 +39,8 @@ def validate_stream(character_stream, file_name, arguments) -> List:
                                       ContentValidatorInfo(DOIValidator),
                                       ContentValidatorInfo(ORCIDIDValidator),
                                       ContentValidatorInfo(KeywordValidator),
-                                      ContentValidatorInfo(ExTagValidator)
+                                      ContentValidatorInfo(ExTagValidator),
+                                      ContentValidatorInfo(EmailValidator)
                                   ],
                                   file_name)
 
