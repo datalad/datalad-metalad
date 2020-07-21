@@ -183,8 +183,7 @@ class SpecValidator(object):
                     WarningMessage(
                         f"using corrected document as input:\n{'------8<' * 10}------\n"
                         f"{sanitizer.document}\n{'------8<' * 10}------\n",
-                        FileLocation(self.file_name, 0, 0),
-                        False)]
+                        FileLocation(self.file_name, 0, 0))]
             parser = YamlMiniParser(yaml.BaseLoader(sanitizer.document), key_list)
             parser.parse_stream()
             return sanitizer.document, parser.object_locations
