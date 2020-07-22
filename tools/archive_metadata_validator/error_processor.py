@@ -114,11 +114,11 @@ def classify_validation_error(error: ValidationError):
     if error.validator == ADDITIONAL_PROPERTIES_VALIDATOR and error.validator_value is False:
         match = re.match(r"Additional properties are not allowed \('([a-z_@0-9\-]*)'", error.message)
         if match:
-            return UnexpectedKey(match.group(1), list(map(str, error.path)) + [match.group(1)])
+            return UnexpectedKey(match.group(1), list(error.path) + [match.group(1)])
         else:
             match = re.match(r"Additional properties are not allowed \(([0-9]+)", error.message)
             if match:
-                return UnexpectedIntegerKey(match.group(1), list(map(str, error.path)) + [match.group(1)])
+                return UnexpectedIntegerKey(match.group(1), list(error.path) + [match.group(1)])
             return UnexpectedKey(
                 "<unknown>",
                 list(error.path),
@@ -127,7 +127,7 @@ def classify_validation_error(error: ValidationError):
     elif error.validator == REQUIRED_VALIDATOR:
         match = re.match(r"'([a-z_@\-0-9]*)' is a required property", error.message)
         if match:
-            return MissingKey(match.group(1), list(map(str, error.path)) + [match.group(1)])
+            return MissingKey(match.group(1), list(error.path) + [match.group(1)])
         else:
             return MissingKey(
                 "<unknown>",
@@ -135,6 +135,6 @@ def classify_validation_error(error: ValidationError):
                 f"one of: {','.join(error.validator_value)} is required")
 
     elif error.validator == TYPE_VALIDATOR:
-        return InvalidType(error.instance, list(map(str, error.path)), error.validator_value)
+        return InvalidType(error.instance, list(error.path), error.validator_value)
 
     raise Exception("implement yaml error classifier")
