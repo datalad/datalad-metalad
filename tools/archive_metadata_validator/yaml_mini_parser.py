@@ -65,7 +65,7 @@ class YamlMiniParser(object):
             self.get_token()
             key = key_token.value
             if key in result:
-                self.add_error(DuplicatedKey(key, path))
+                self.add_error(DuplicatedKey(key, path + [key]))
             new_path = path + [key]
             result[key] = self.parse_value(new_path)
             self.object_locations[".".join(new_path)] = Location(

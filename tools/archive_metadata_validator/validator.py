@@ -150,6 +150,7 @@ class SpecValidator(object):
         self.yaml_errors = []
         self.source_position = {}
         self.schema_errors = []
+        self.mini_parser_errors = []
 
     def _create_schema_error_messages(self, object_locations) -> List[ErrorMessage]:
         result = []
@@ -171,6 +172,14 @@ class SpecValidator(object):
             self.messages += [self._create_yaml_error(e)]
             return None
 
+    def _create_mini_parser_error_messages(self, errors: list, object_locations) -> List[ErrorMessage]:
+        result = []
+        for error in errors:
+            dotted_path_name = ContentValidator.unescape_name(ContentValidator.path_to_dotted_name(error.path))
+            result.append(
+                ErrorMessage(str(error), ObjectLocation(self.file_name, dotted_path_name, object_locations)))
+        return result
+
     def sanitize_yaml(self, yaml_string: str, key_list: List) -> Tuple[str, Optional[dict]]:
         sanitizer = YamlIndentationSanitizer(yaml_string, key_list)
         if sanitizer.sanitize() is True:
@@ -186,6 +195,7 @@ class SpecValidator(object):
                         FileLocation(self.file_name, 0, 0))]
             parser = YamlMiniParser(yaml.BaseLoader(sanitizer.document), key_list)
             parser.parse_stream()
+            self.messages += self._create_mini_parser_error_messages(parser.errors, parser.object_locations)
             return sanitizer.document, parser.object_locations
         return yaml_string, None
 

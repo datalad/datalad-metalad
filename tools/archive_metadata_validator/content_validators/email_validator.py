@@ -10,8 +10,9 @@ class EmailValidator(ContentValidator):
         messages = []
         for path, _ in self.persons():
             if path[-1].endswith("@example.com"):
+                dotted_name = ContentValidator.unescape_name(ContentValidator.path_to_dotted_name(path))
                 messages += [
                     WarningMessage(
-                        f"dummy email address found: '{path}'",
-                        ObjectLocation(self.file_name, path, self.object_locations))]
+                        f"dummy email address found: '{path[-1]}'",
+                        ObjectLocation(self.file_name, dotted_name, self.object_locations))]
         return messages

@@ -21,6 +21,12 @@ class ContentValidator(ABC):
         return name.replace(".", "\\.")
 
     @staticmethod
+    def unescape_name(name: str) -> str:
+        """ Escape . and backslashes in the name in the dotted name format """
+        name = name.replace("\\.", ".")
+        return name.replace("\\\\", "\\")
+
+    @staticmethod
     def path_to_dotted_name(path: List[Union[int, str]]) -> str:
         """ Convert a path to a dotted name, escape . and backslashes """
         dotted_name_elements = []

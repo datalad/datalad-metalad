@@ -3,7 +3,7 @@ from typing import List, Union
 
 import json
 
-from messages import ValidatorMessage, ErrorMessage, ObjectLocation
+from messages import ValidatorMessage, ErrorMessage, WarningMessage, ObjectLocation
 from .content_validator import ContentValidator
 
 
@@ -33,14 +33,20 @@ class DOIValidator(ContentValidator):
 
     def perform_validation(self) -> List[ValidatorMessage]:
         messages = []
+        seen_doi_str = []
         for index, publication_spec in enumerate(self.value_at("publication", default=[])):
             doi_str = self._get_doi_for_publication(publication_spec)
-            if doi_str and self._doi_is_resolvable(doi_str) is False:
-                messages.append(
-                    ErrorMessage(
-                        f"DOI unresolvable ({doi_str})",
-                        ObjectLocation(
-                            self.file_name,
-                            ContentValidator.path_to_dotted_name(["publication", index, "doi"]),
-                            self.object_locations)))
+            if doi_str:
+                dotted_name = ContentValidator.path_to_dotted_name(["publication", index, "doi"])
+                if doi_str in seen_doi_str:
+                    messages.append(
+                        WarningMessage(
+                            f"identical doi ({doi_str}) already used in other publication",
+                            ObjectLocation(self.file_name, dotted_name, self.object_locations)))
+                if self._doi_is_resolvable(doi_str) is False:
+                    messages.append(
+                        ErrorMessage(
+                            f"DOI unresolvable ({doi_str})",
+                            ObjectLocation(self.file_name, dotted_name, self.object_locations)))
+                seen_doi_str.append(doi_str)
         return messages
