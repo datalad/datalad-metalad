@@ -106,20 +106,24 @@ class LDCreator(object):
         issue = publication.get(ISSUE_KEY, None)
         if volume and issue:
             return {
+                "@id": "_issue",
                 "@type": "PublicationIssue",
                 "issueNumber": issue,
                 "isPartOf": {
+                    "@id": "_volume",
                     "@type": "PublicationVolume",
                     "volumeNumber": volume,
                 }
             }
         if issue:
             return {
+                "@id": "_issue",
                 "@type": "PublicationIssue",
                 "issueNumber": issue
         }
         if volume:
             return {
+                "@id": "_volume",
                 "@type": "PublicationVolume",
                 "volumeNumber": volume
             }
@@ -127,7 +131,7 @@ class LDCreator(object):
 
     def _create_study_ld(self, study: dict) -> dict:
         return {
-            "@id": self._get_local_id_with_part("study"),
+            "@id": "_study",
             "@type": "CreativeWork",
             **self._get_translated_dict(study, STUDY_TRANSLATION_TABLE),
             **{
@@ -199,7 +203,7 @@ class LDCreator(object):
     def _create_publication_list_ld(self, publication_list: list) -> list:
         return [
             {
-                "@id": self._get_local_id_with_part(f"publication[{publication_index}]"),
+                "@id": f"_publication[{publication_index}]",
                 "@type": "ScholarlyArticle",
                 **self._get_translated_dict(publication, PUBLICATION_TRANSLATION_TABLE),
                 **{
@@ -249,7 +253,7 @@ class LDCreator(object):
                 **self._get_translated_dict(details, PERSON_TRANSLATION_TABLE),
                 **{
                     "contactPoint": {
-                        "@id": f"{self._get_person_id(email)}.contactPoint",
+                        "@id": "_contactPoint",
                         "@type": "ContactPoint",
                         "description": value
                     }
@@ -270,13 +274,13 @@ class LDCreator(object):
         }
 
         graph_elements["person"] = {
-            "@id": self._get_local_id_with_part("personList"),
+            "@id": "_personList",
             "@list": graph_elements["person"]
         }
 
         if "publication" in graph_elements:
             graph_elements["publication"] = {
-                "@id": self._get_local_id_with_part("publicationList"),
+                "@id": "_publicationList",
                 "@list": graph_elements["publication"]
             }
 
