@@ -30,6 +30,7 @@ Additional metadata extractor implementations
   a dataset and/or any file in a dataset.
 - `metalad_runprov` -- report provenance metadata for `datalad run` records
   following the [W3C PROV](https://www.w3.org/TR/prov-overview) model
+- `metalad_ministudy` -- read pre-crafted metadata from mini study metadata files.
 
 
 ## Installation
