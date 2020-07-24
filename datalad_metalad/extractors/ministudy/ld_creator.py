@@ -66,7 +66,6 @@ class LDCreator(object):
     def __init__(self, dataset_id: str, metadata_file_name: str):
         self.dataset_id = dataset_id
         self.base_id = self._get_dataset_jsonld_id(dataset_id) + f"/{metadata_file_name}"
-        self.local_base_id = f"_{dataset_id}/{metadata_file_name}"
 
     def _get_person_name(self, spec: dict):
         return f'{spec["title"] if "title" in spec else ""} {spec["given_name"]} {spec["last_name"]}'
@@ -78,7 +77,7 @@ class LDCreator(object):
         }
 
     def _get_local_id_with_part(self, local_part: str) -> str:
-        return f"{self.local_base_id}#{local_part}"
+        return f"#{local_part}"
 
     def _get_datalad_global_id(self, category: str, name: str):
         return f"{DATALAD_SCHEMA_BASE}/{category}#{name}"
@@ -106,24 +105,24 @@ class LDCreator(object):
         issue = publication.get(ISSUE_KEY, None)
         if volume and issue:
             return {
-                "@id": "_issue",
+                "@id": f"#issue({issue})",
                 "@type": "PublicationIssue",
                 "issueNumber": issue,
                 "isPartOf": {
-                    "@id": "_volume",
+                    "@id": f"#volume({volume})",
                     "@type": "PublicationVolume",
                     "volumeNumber": volume,
                 }
             }
         if issue:
             return {
-                "@id": "_issue",
+                "@id": f"#issue({issue})",
                 "@type": "PublicationIssue",
                 "issueNumber": issue
         }
         if volume:
             return {
-                "@id": "_volume",
+                "@id": f"#volume({volume})",
                 "@type": "PublicationVolume",
                 "volumeNumber": volume
             }
@@ -131,7 +130,7 @@ class LDCreator(object):
 
     def _create_study_ld(self, study: dict) -> dict:
         return {
-            "@id": "_study",
+            "@id": "#study",
             "@type": "CreativeWork",
             **self._get_translated_dict(study, STUDY_TRANSLATION_TABLE),
             **{
@@ -185,7 +184,7 @@ class LDCreator(object):
             },
             **{
                 "hasPart": {
-                    "@id": "_standards",
+                    "@id": "#standards",
                     "@type": "DefinedTermSet",
                     "hasDefinedTerm": [
                         {
@@ -203,7 +202,7 @@ class LDCreator(object):
     def _create_publication_list_ld(self, publication_list: list) -> list:
         return [
             {
-                "@id": f"_publication[{publication_index}]",
+                "@id": f"#publication[{publication_index}]",
                 "@type": "ScholarlyArticle",
                 **self._get_translated_dict(publication, PUBLICATION_TRANSLATION_TABLE),
                 **{
@@ -253,7 +252,7 @@ class LDCreator(object):
                 **self._get_translated_dict(details, PERSON_TRANSLATION_TABLE),
                 **{
                     "contactPoint": {
-                        "@id": "_contactPoint",
+                        "@id": f"#contactPoint({email})",
                         "@type": "ContactPoint",
                         "description": value
                     }
@@ -274,13 +273,13 @@ class LDCreator(object):
         }
 
         graph_elements["person"] = {
-            "@id": "_personList",
+            "@id": "#personList",
             "@list": graph_elements["person"]
         }
 
         if "publication" in graph_elements:
             graph_elements["publication"] = {
-                "@id": "_publicationList",
+                "@id": "#publicationList",
                 "@list": graph_elements["publication"]
             }
 
