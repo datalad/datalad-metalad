@@ -25,10 +25,6 @@ import yaml
 from datalad_metalad.extractors.base import MetadataExtractor
 from datalad_metalad.extractors.ministudy.ld_creator import LDCreator
 from datalad.log import log_progress
-from datalad.support.json_py import load as jsonload
-from datalad.dochelpers import exc_str
-from datalad.utils import Path, PurePosixPath, assure_list
-
 
 
 lgr = logging.getLogger('datalad.metadata.extractors.ministudy')
@@ -47,6 +43,8 @@ class MiniStudyExtractor(MetadataExtractor):
             str(dataset.pathobj / '.metadata' / 'ministudy.yaml'))
 
     def __call__(self, dataset, refcommit, process_type, status):
+        if process_type not in ('all', 'dataset'):
+            return None
         ds = dataset
         log_progress(
             lgr.info,
@@ -58,16 +56,26 @@ class MiniStudyExtractor(MetadataExtractor):
         )
 
         source_file = self._get_ministudy_srcfile(dataset)
-        with open(source_file, "rt") as input_stream:
-            metadata_object = yaml.safe_load(input_stream)
+        try:
+            with open(source_file, "rt") as input_stream:
+                metadata_object = yaml.safe_load(input_stream)
+        except FileNotFoundError:
+            yield {
+                "status": "failed",
+                "metadata": {},
+                "type": "dataset"
+            }
+            return
 
         ld_creator_result = LDCreator(
-            f"datalad://{dataset.id}", ",metadata/ministudy.yaml").create_ld_from_spec(metadata_object)
+            dataset.id,
+            refcommit,
+            ".metadata/ministudy.yaml").create_ld_from_spec(metadata_object)
 
         yield {
             "status": "ok",
             "metadata": ld_creator_result.json_ld_object,
-            "type": "dataset",
+            "type": "dataset"
         }
 
         log_progress(
