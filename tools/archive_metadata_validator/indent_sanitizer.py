@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 import yaml
 import yaml.scanner
 
@@ -20,13 +22,16 @@ class YamlIndentationSanitizer(object):
         self.missing_colons_fixed = True
 
     def sanitize(self) -> bool:
-        fixed = False
-        while not fixed:
-            fixed = True
-            fixed &= self._fix_missing_colons()
-            fixed &= self._fix_over_indentation()
-            fixed &= self._fix_under_indentation()
-        return True
+        changed_performed = True
+        while changed_performed:
+            changed_performed = False
+            changed_performed |= self._fix_missing_colons()
+            changed_performed |= self._fix_over_indentation()
+            changed_performed |= self._fix_under_indentation()
+        return (
+            self.over_indentation_fixed and
+            self.under_indentation_fixed and
+            self.missing_colons_fixed)
 
     def _possible_key(self, word: str) -> bool:
         if word.endswith(":"):
@@ -78,17 +83,19 @@ class YamlIndentationSanitizer(object):
         return None
 
     def _fix_over_indentation(self) -> bool:
+        changed = False
+        self.over_indentation_fixed = True
         try:
             over_indented = self._find_over_indentation()
             while over_indented:
                 if not self._fix_mapping(*over_indented):
                     self.over_indentation_fixed = False
-                    return True
+                    return changed
+                changed = True
                 over_indented = self._find_over_indentation()
-            self.over_indentation_fixed = True
-            return True
         except yaml.YAMLError:
-            return False
+            self.over_indentation_fixed = False
+        return changed
 
     def _find_missing_colons(self):
         loader = yaml.BaseLoader(self.document)
@@ -116,18 +123,23 @@ class YamlIndentationSanitizer(object):
         return True
 
     def _fix_missing_colons(self):
+        changed = False
+        self.missing_colons_fixed = True
         try:
             missing_colon_line = self._find_missing_colons()
             while missing_colon_line:
                 if not self._fix_missing_colon_in_document(missing_colon_line):
+                    # We did not change anything
                     self.missing_colons_fixed = False
-                    return True
+                    return changed
+                changed = True
                 missing_colon_line = self._find_missing_colons()
-            return True
-        except yaml.YAMLError:
-            return False
+        except yaml.YAMLError as error:
+            # We did not change anything
+            self.missing_colons_fixed = False
+        return changed
 
-    def _find_under_indentation(self):
+    def _throwing_find_under_indentation(self):
         loader = yaml.SafeLoader(self.document)
         current_level = []
         token = loader.get_token()
@@ -143,27 +155,35 @@ class YamlIndentationSanitizer(object):
             token = loader.get_token()
         return None
 
-    def _throwing_fix_under_indentation(self):
-        under_indented = self._find_under_indentation()
+    def _find_under_indentation(self) -> Tuple[Any, bool]:
+        try:
+            return self._throwing_find_under_indentation(), True
+        except yaml.scanner.ScannerError:
+            return None, False
+
+    def _fix_under_indentation(self) -> bool:
+        changed = False
+        self.under_indentation_fixed = True
+        under_indented, valid = self._find_under_indentation()
         while under_indented:
             line, columns_to_add = under_indented
             self.corrections.add((line, f"assuming line is under-indented by {columns_to_add} columns."))
             lines = self.document.splitlines()
             lines[line] = " " * columns_to_add + lines[line]
             self.document = "\n".join(lines)
-            under_indented = self._find_under_indentation()
-
-    def _fix_under_indentation(self) -> bool:
-        try:
-            self._throwing_fix_under_indentation()
-            self.under_indentation_fixed = True
-            return True
-        except yaml.scanner.ScannerError as error:
-            return False
+            changed = True
+            under_indented, valid = self._find_under_indentation()
+        if not valid:
+            self.under_indentation_fixed = False
+        return changed
 
 
 if __name__ == "__main__":
     test_doc = """
+metadata line 0
+metadata line 1
+metadata line 2
+metadata line 3
 
 dataset:
   name: Rodent-Intelligence Brainscans
@@ -209,7 +229,7 @@ publication:
         "keyword"])
 
     if not sanitizer.sanitize():
-        print("Cant sanitize")
+        print("Could not sanitize")
 
     for line, correction in sorted(list(sanitizer.corrections), key=lambda e: e[0]):
         print(f"line: {line + 1}: {correction}")

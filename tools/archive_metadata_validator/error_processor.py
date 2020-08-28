@@ -49,6 +49,16 @@ class UnexpectedKey(object):
         return f"unexpected key '{path_to_str(self.path)}'"
 
 
+class UnexpectedToken(object):
+    def __init__(self, token: str, path: List[Union[int, str]], additional_message: Optional[str] = None):
+        self.token = token
+        self.path = path
+        self.additional_message = additional_message
+
+    def __str__(self):
+        return f"unexpected token '{self.token}' at '{path_to_str(self.path)}'"
+
+
 class UnexpectedIntegerKey(object):
     def __init__(self, key_representation: str, path: List[Union[int, str]], additional_message: Optional[str] = None):
         self.key = int(key_representation)

@@ -8,7 +8,7 @@ from typing import Any, List, Optional, Tuple, Union
 from yaml.error import YAMLError, MarkedYAMLError
 
 import error_processor
-from messages import ErrorMessage, FileLocation, ObjectLocation, WarningMessage
+from messages import ValidatorMessage, ErrorMessage, FileLocation, ObjectLocation, WarningMessage
 from content_validators.content_validator import ContentValidator, ContentValidatorInfo
 from indent_sanitizer import YamlIndentationSanitizer
 from yaml_mini_parser import YamlMiniParser
@@ -175,9 +175,12 @@ class SpecValidator(object):
     def _create_mini_parser_error_messages(self, errors: list, object_locations) -> List[ErrorMessage]:
         result = []
         for error in errors:
-            dotted_path_name = ContentValidator.unescape_name(ContentValidator.path_to_dotted_name(error.path))
-            result.append(
-                ErrorMessage(str(error), ObjectLocation(self.file_name, dotted_path_name, object_locations)))
+            if isinstance(error, ValidatorMessage):
+                result.append(error)
+            else:
+                dotted_path_name = ContentValidator.unescape_name(ContentValidator.path_to_dotted_name(error.path))
+                result.append(
+                    ErrorMessage(str(error), ObjectLocation(self.file_name, dotted_path_name, object_locations)))
         return result
 
     def sanitize_yaml(self, yaml_string: str, key_list: List) -> Tuple[str, Optional[dict]]:
@@ -193,7 +196,7 @@ class SpecValidator(object):
                         f"using corrected document as input:\n{'------8<' * 10}------\n"
                         f"{sanitizer.document}\n{'------8<' * 10}------\n",
                         FileLocation(self.file_name, 0, 0))]
-            parser = YamlMiniParser(yaml.BaseLoader(sanitizer.document), key_list)
+            parser = YamlMiniParser(self.file_name, yaml.BaseLoader(sanitizer.document), key_list)
             parser.parse_stream()
             self.messages += self._create_mini_parser_error_messages(parser.errors, parser.object_locations)
             return sanitizer.document, parser.object_locations

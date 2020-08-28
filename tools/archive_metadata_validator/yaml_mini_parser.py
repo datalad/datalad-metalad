@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import yaml
 from error_processor import DuplicatedKey
+from messages import ErrorMessage, FileLocation
 
 
 Location = namedtuple("Location", ("line", "column"))
@@ -15,7 +16,8 @@ class YamlMiniParser(object):
     fault tolerant parsing and identification of additional errors and
     warnings.
     """
-    def __init__(self, loader: type(yaml.Loader), key_list: List[str]):
+    def __init__(self, file_name: str, loader: type(yaml.Loader), key_list: List[str]):
+        self.file_name = file_name
         self.loader = loader
         self.key_list = key_list
         self.current_token = None
@@ -88,7 +90,15 @@ class YamlMiniParser(object):
             self.get_token()
             return self.parse_sequence(path)
         else:
-            raise Exception(f"Unexpected token: {self.current_token}")
+            self.add_error(
+                ErrorMessage(
+                    f"unexpected token: {self.current_token.value}",
+                    FileLocation(
+                        self.file_name,
+                        self.current_token.start_mark.line + 1,
+                        self.current_token.start_mark.column + 1)))
+
+            raise ValueError(f"Unexpected token: {self.current_token.value} at path {'.'.join(path)}")
 
     def parse_sequence(self, path: List[str]):
         result = []
@@ -110,12 +120,23 @@ class YamlMiniParser(object):
                 self.get_token()
                 return self.parse_sequence(path)
             else:
-                raise Exception(f"Unexpected token: {self.current_token} at path {'.'.join(path)}")
+                self.add_error(
+                    ErrorMessage(
+                        f"unexpected token: {self.current_token.value}",
+                        FileLocation(
+                            self.file_name,
+                            self.current_token.start_mark.line + 1,
+                            self.current_token.start_mark.column + 1)))
+
+                raise ValueError(f"Unexpected token: {self.current_token.value} at path {'.'.join(path)}")
 
     def parse_stream(self):
         self.get_token(yaml.StreamStartToken)
         self.get_token()
         self.object_locations = {}
-        result = self.parse_document([])
-        self.consume_token(yaml.StreamEndToken)
-        return result
+        try:
+            result = self.parse_document([])
+            self.consume_token(yaml.StreamEndToken)
+            return result
+        except ValueError:
+            return None
