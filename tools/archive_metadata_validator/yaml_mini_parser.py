@@ -92,13 +92,14 @@ class YamlMiniParser(object):
         else:
             self.add_error(
                 ErrorMessage(
-                    f"unexpected token: {self.current_token.value}",
+                    f"expected scalar, mapping-start, or list-start token, but got: {self.current_token.value}",
                     FileLocation(
                         self.file_name,
                         self.current_token.start_mark.line + 1,
                         self.current_token.start_mark.column + 1)))
 
-            raise ValueError(f"Unexpected token: {self.current_token.value} at path {'.'.join(path)}")
+            raise ValueError(f"expected scalar, mapping-start, or list-start token, but got: "
+                             f"{self.current_token.value} at path {'.'.join(path)}")
 
     def parse_sequence(self, path: List[str]):
         result = []
@@ -122,13 +123,14 @@ class YamlMiniParser(object):
             else:
                 self.add_error(
                     ErrorMessage(
-                        f"unexpected token: {self.current_token.value}",
+                        f"expected scalar, mapping-start or list-start token, but got: {self.current_token.value}",
                         FileLocation(
                             self.file_name,
                             self.current_token.start_mark.line + 1,
                             self.current_token.start_mark.column + 1)))
 
-                raise ValueError(f"Unexpected token: {self.current_token.value} at path {'.'.join(path)}")
+                raise ValueError(f"expected mapping-start or list-start token, but got: "
+                                 f"{self.current_token.value} at path {'.'.join(path)}")
 
     def parse_stream(self):
         self.get_token(yaml.StreamStartToken)
