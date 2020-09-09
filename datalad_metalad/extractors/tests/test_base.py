@@ -40,8 +40,8 @@ from ...tests import (
 
 
 @with_tree(tree={'file.dat': ''})
-def check_api(no_annex, path):
-    ds = Dataset(path).create(force=True, no_annex=no_annex)
+def check_api(annex, path):
+    ds = Dataset(path).create(force=True, annex=annex)
     ds.save()
     assert_repo_status(ds.path)
 
@@ -87,11 +87,11 @@ def check_api(no_annex, path):
 
 def test_api_git():
     # should tollerate both pure git and annex repos
-    yield check_api, True
+    yield check_api, False
 
 
 def test_api_annex():
-    yield check_api, False
+    yield check_api, True
 
 
 @with_tempfile(mkdir=True)
