@@ -24,6 +24,12 @@ class YamlMiniParser(object):
         self.errors = []
         self.object_locations = {}
 
+    def _get_current_token_value(self):
+        if hasattr(self.current_token, "value"):
+            return self.current_token.value
+        else:
+            return type(self.current_token).__name__
+
     def add_error(self, error):
         self.errors.append(error)
 
@@ -36,23 +42,39 @@ class YamlMiniParser(object):
             return f"{match.group(1)}" in self.key_list
         return value in self.key_list
 
-    def categorize(self, value: Optional[str] = None) -> str:
-        value = self.current_token.value if value is None else value
-        parts = value.split("@")
-        if len(parts) == 2 and len(parts[0]) > 0 and len(parts[1]) > 0:
-            return f"<email value='{value}'>"
-        if self.is_key(value):
-            return value
-        return f"<word value='{value}'>"
+    def _assert_token_type(self, token_type: type(yaml.Token)):
+        if not isinstance(self.current_token, token_type):
+            self.add_error(
+                ErrorMessage(
+                    f"expected {token_type.__name__}, but got: {type(self.current_token).__name__}",
+                    FileLocation(
+                        self.file_name,
+                        self.current_token.start_mark.line + 1,
+                        self.current_token.start_mark.column + 1)))
+
+            raise ValueError(
+                f"expected {token_type.__name__}, but got: {type(self.current_token).__name__}")
+
+    def _report_expected_error(self, expected: str, path):
+        self.add_error(
+            ErrorMessage(
+                f"expected {expected} token, but got {self._get_current_token_value()}",
+                FileLocation(
+                    self.file_name,
+                    self.current_token.start_mark.line + 1,
+                    self.current_token.start_mark.column + 1)))
+        raise ValueError(
+            f"expected {expected} token, but got "
+            f"{self._get_current_token_value()} at path {'.'.join(path)}")
 
     def get_token(self, expect_token: Optional[type(yaml.Token)] = None) -> yaml.Token:
         self.current_token = self.loader.get_token()
         if expect_token:
-            assert isinstance(self.current_token, expect_token)
+            self._assert_token_type(expect_token)
         return self.current_token
 
     def consume_token(self, expect_token: type(yaml.Token)):
-        assert isinstance(self.current_token, expect_token)
+        self._assert_token_type(expect_token)
         self.get_token()
 
     def matches(self, expected_token: type(yaml.Token)):
@@ -90,16 +112,7 @@ class YamlMiniParser(object):
             self.get_token()
             return self.parse_sequence(path)
         else:
-            self.add_error(
-                ErrorMessage(
-                    f"expected scalar, mapping-start, or list-start token, but got: {self.current_token.value}",
-                    FileLocation(
-                        self.file_name,
-                        self.current_token.start_mark.line + 1,
-                        self.current_token.start_mark.column + 1)))
-
-            raise ValueError(f"expected scalar, mapping-start, or list-start token, but got: "
-                             f"{self.current_token.value} at path {'.'.join(path)}")
+            self._report_expected_error("scalar, mapping-start, or list-start", path)
 
     def parse_sequence(self, path: List[str]):
         result = []
@@ -121,16 +134,7 @@ class YamlMiniParser(object):
                 self.get_token()
                 return self.parse_sequence(path)
             else:
-                self.add_error(
-                    ErrorMessage(
-                        f"expected scalar, mapping-start or list-start token, but got: {self.current_token.value}",
-                        FileLocation(
-                            self.file_name,
-                            self.current_token.start_mark.line + 1,
-                            self.current_token.start_mark.column + 1)))
-
-                raise ValueError(f"expected mapping-start or list-start token, but got: "
-                                 f"{self.current_token.value} at path {'.'.join(path)}")
+                self._report_expected_error("mapping-start, or list-start", path)
 
     def parse_stream(self):
         self.get_token(yaml.StreamStartToken)
