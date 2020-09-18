@@ -387,7 +387,7 @@ if __name__ == "__main__":
         "standard": ["dicom", "ebdsi"],
     }
 
-    ldc = LDCreator("a02312398324778972389472834", ".metadata/ministudy.yaml")
+    ldc = LDCreator("a02312398324778972389472834", ".metadata/studyminimeta.yaml")
     result = ldc.create_ld_from_spec({
         "study": metadata_study,
         "dataset": metadata_dataset,

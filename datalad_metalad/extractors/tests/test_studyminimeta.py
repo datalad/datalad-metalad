@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from datalad_metalad.extractors.ministudy.ld_creator import LDCreator, LDCreatorResult
+from datalad_metalad.extractors.studyminimeta.ld_creator import LDCreator, LDCreatorResult
 
 
-MINISTUDY_METADATA_SPEC = {
+STUDYMINIMETA_METADATA_SPEC = {
     "study": {
         "name": "An example study",
         "purpose": "a short description of the study",
@@ -83,4 +83,4 @@ MINISTUDY_METADATA_SPEC = {
 if __name__ == "__main__":
     import yaml
 
-    print(yaml.dump(MINISTUDY_METADATA_SPEC))
+    print(yaml.dump(STUDYMINIMETA_METADATA_SPEC))

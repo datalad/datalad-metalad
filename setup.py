@@ -57,7 +57,7 @@ setup(
             'metalad_annex=datalad_metalad.extractors.annex:AnnexMetadataExtractor',
             'metalad_custom=datalad_metalad.extractors.custom:CustomMetadataExtractor',
             'metalad_runprov=datalad_metalad.extractors.runprov:RunProvenanceExtractor',
-            'metalad_ministudy=datalad_metalad.extractors.ministudy.main:MiniStudyExtractor',
+            'metalad_studyminimeta=datalad_metalad.extractors.studyminimeta.main:StudyMiniMetaExtractor',
         ],
     },
 )
