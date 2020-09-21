@@ -45,7 +45,7 @@ setup(
     install_requires=[
         'datalad>=0.12.3',
     ],
-    entry_points = {
+    entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
         ],
@@ -57,6 +57,7 @@ setup(
             'metalad_annex=datalad_metalad.extractors.annex:AnnexMetadataExtractor',
             'metalad_custom=datalad_metalad.extractors.custom:CustomMetadataExtractor',
             'metalad_runprov=datalad_metalad.extractors.runprov:RunProvenanceExtractor',
+            'metalad_studyminimeta=datalad_metalad.extractors.studyminimeta.main:StudyMiniMetaExtractor',
         ],
     },
 )
