@@ -44,6 +44,7 @@ setup(
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
     install_requires=[
         'datalad>=0.12.3',
+        'pyyaml',
     ],
     entry_points={
         'datalad.extensions': [
