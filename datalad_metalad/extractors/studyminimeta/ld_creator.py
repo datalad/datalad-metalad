@@ -72,8 +72,10 @@ class LDCreator(object):
             metadata_file_name=metadata_file_name)
 
     def _get_person_name(self, spec: dict):
-        return '{spec["title"] if "title" in spec else ""} {spec["given_name"]} {spec["last_name"]}'.format(
-            spec=spec)
+        return '{title} {given_name} {last_name}'.format(
+            title=spec["title"] + " " if "title" in spec else "",
+            given_name=spec["given_name"],
+            last_name=spec["last_name"])
 
     def _get_translated_dict(self, spec: Dict, translation_table: Dict[str, str]) -> Dict:
         return {
