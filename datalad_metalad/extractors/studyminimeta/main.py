@@ -49,7 +49,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
         log_progress(
             lgr.info,
             'extractorstudyminimeta',
-            f'Start studyminimeta metadata extraction from {ds.path}',
+            'Start studyminimeta metadata extraction from {path}'.format(path=ds.path),
             total=len(tuple(status)) + 1,
             label='Studyminimeta metadata extraction',
             unit=' Files',
@@ -76,7 +76,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             log_progress(
                 lgr.info,
                 'extractorstudyminimeta',
-                f'Finished studyminimeta metadata extraction from {ds.path}'
+                'Finished studyminimeta metadata extraction from {path}'.format(path=ds.path)
             )
             yield {
                 "status": "ok",
@@ -88,7 +88,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             log_progress(
                 lgr.error,
                 'extractorstudyminimeta',
-                f'Error in studyminimeta metadata extraction from {ds.path}'
+                'Error in studyminimeta metadata extraction from {path}'.format(path=ds.path)
             )
             yield {
                 "status": "failed",
