@@ -20,9 +20,9 @@ import logging
 
 import yaml
 
-from datalad_metalad.extractors.base import MetadataExtractor
-from datalad_metalad.extractors.studyminimeta.ld_creator import LDCreator
 from datalad.log import log_progress
+from ..base import MetadataExtractor
+from .ld_creator import LDCreator
 
 
 lgr = logging.getLogger('datalad.metadata.extractors.studyminimeta')

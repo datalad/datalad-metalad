@@ -81,7 +81,7 @@ script:
       $TESTS_TO_PERFORM
   # Imports should be relative
   - if grep -r -e '\(from\|import\)\s\s*datalad_metalad' datalad_metalad; then
-      echo Convert absolute imports to relative;
+      echo ERROR you must not use absolute imports >&2;
       exit 1;
     fi
   #- if [ ! "${DATALAD_LOG_LEVEL:-}" = 2 ]; then
