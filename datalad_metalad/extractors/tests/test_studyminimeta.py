@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from datalad_metalad.extractors.studyminimeta.ld_creator import LDCreator, LDCreatorResult
-
 
 STUDYMINIMETA_METADATA_SPEC = {
     "study": {
@@ -78,9 +76,3 @@ STUDYMINIMETA_METADATA_SPEC = {
         }
     ]
 }
-
-
-if __name__ == "__main__":
-    import yaml
-
-    print(yaml.dump(STUDYMINIMETA_METADATA_SPEC))
