@@ -1,14 +1,17 @@
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 from .base import MetadataIndexer
 
 
+STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'
+
+
 class StudyMiniMetaIndexer(MetadataIndexer):
-    def __call__(self, metadata_format_name: str, study_mini_meta: Union[Dict, List]) -> Dict:
+    def __init__(self, metadata_format_name: str):
+        super(StudyMiniMetaIndexer, self).__init__(metadata_format_name)
+        assert metadata_format_name == STUDYMINIMETA_FORMAT_NAME
 
-        # This is the only format, this indexer currently understands
-        assert metadata_format_name == "metalad_studyminimeta"
-
+    def create_index(self, study_mini_meta: Union[Dict, List]) -> Dict[str, Any]:
         persons = [element for element in study_mini_meta["@graph"] if element.get("@id", None) == "#personList"][0]
         study = [element for element in study_mini_meta["@graph"] if element.get("@id", None) == "#study"][0]
         dataset = [element for element in study_mini_meta["@graph"] if element.get("@type", None) == "Dataset"][0]
@@ -35,12 +38,6 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         if "description" in dataset:
             yield ("dataset.description", dataset["description"])
-
-        if "funder" in dataset:
-            yield (
-                "dataset.funder",
-                ", ".join([funder["name"] for funder in dataset["funder"]])
-            )
 
         if "keywords" in dataset:
             yield ("dataset.keywords", ", ".join(dataset["keywords"]))
@@ -86,3 +83,9 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         if "keywords" in study:
             yield ("keywords", ", ".join(study.get("keywords", [])))
+
+        if "funder" in study:
+            yield (
+                "funder",
+                ", ".join([funder["name"] for funder in study["funder"]])
+            )

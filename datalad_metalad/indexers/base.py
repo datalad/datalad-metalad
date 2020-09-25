@@ -1,14 +1,22 @@
 """ Metadata indexer base class """
 
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 class MetadataIndexer(object):
-    """ Defines the indexer protocol """
-
-    def __call__(self, metadata_format_name: str, metadata: Union[Dict, List] ) -> Dict:
+    """ Defines the indexer interface """
+    def __init__(self, metadata_format_name: str):
         """
-        Create a metadata index from metadata.
+        Create a metadata indexer
+
+        The format name is passed to the constructor to allow
+        a single indexer to process multiple extractor results
+        """
+        self.metadata_format_name = metadata_format_name
+
+    def create_index(self, metadata: Union[Dict, List]) -> Dict[str, Any]:
+        """
+        Create an index from metadata.
 
         The input is a list or dictionary that contains metadata
         in the format identified by metadata_format_name.
@@ -18,9 +26,6 @@ class MetadataIndexer(object):
 
         Parameters
         ----------
-        metadata_format_name: str
-          The name of the metadata object, as emitted by the extractor
-
         metadata : Dict or List
           Metadata created by an extractor.
 
