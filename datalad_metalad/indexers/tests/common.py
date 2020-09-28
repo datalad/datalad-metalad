@@ -56,6 +56,18 @@ MOCKED_STUDYMINIMETA_JSONLD = {
                     "@id": "https://schema.datalad.org/person#b@example.com"
                 }
             ],
+            "funder": [
+                {
+                    "@id": "https://schema.datalad.org/organization#DFG",
+                    "@type": "Organization",
+                    "name": "ds-funder-1"
+                },
+                {
+                    "@id": "https://schema.datalad.org/organization#NHO",
+                    "@type": "Organization",
+                    "name": "ds-funder-2"
+                }
+            ],
             "hasPart": {
                 "@id": "#standards",
                 "@type": "DefinedTermSet",

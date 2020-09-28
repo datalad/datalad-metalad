@@ -42,6 +42,12 @@ class StudyMiniMetaIndexer(MetadataIndexer):
         if "keywords" in dataset:
             yield ("dataset.keywords", ", ".join(dataset["keywords"]))
 
+        if "funder" in dataset:
+            yield (
+                "dataset.funder",
+                ", ".join([funder["name"] for funder in dataset["funder"]])
+            )
+
         if standards:
             yield ("dataset.standards", ", ".join(standards))
 
