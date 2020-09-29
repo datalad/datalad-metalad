@@ -58,7 +58,7 @@ class TestDateValidator(ValidatorTestCase):
         spec["study"]["end_date"] = "2010-03-04"
         validator = DateValidator("test.yaml", spec, None)
         errors = validator.perform_validation()
-        self.check_warning_and_error_count(errors, 0, 2)
+        self.check_warning_and_error_count(errors, 0, 1)
 
     def test_publication_good_year(self):
         """ Expect one warning that """
@@ -114,11 +114,3 @@ class TestDateValidator(ValidatorTestCase):
         validator = DateValidator("test.yaml", spec, None)
         errors = validator.perform_validation()
         self.check_warning_and_error_count(errors, 1, 0)
-
-    def test_year_only_dates(self):
-        spec = deepcopy(BASE_SPEC)
-        spec["study"]["start_date"] = "2000"
-        spec["study"]["end_date"] = "2010"
-        validator = DateValidator("test.yaml", spec, None)
-        errors = validator.perform_validation()
-        self.check_warning_and_error_count(errors, 0, 0)
