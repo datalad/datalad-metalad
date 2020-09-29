@@ -45,8 +45,8 @@ class DOIValidator(ContentValidator):
                             ObjectLocation(self.file_name, dotted_name, self.object_locations)))
                 if self._doi_is_resolvable(doi_str) is False:
                     messages.append(
-                        ErrorMessage(
-                            f"DOI unresolvable ({doi_str})",
+                        WarningMessage(
+                            f"DOI ({doi_str}) unresolvable over resolver {DOI_RESOLVER_BASE_URL}",
                             ObjectLocation(self.file_name, dotted_name, self.object_locations)))
                 seen_doi_str.append(doi_str)
         return messages
