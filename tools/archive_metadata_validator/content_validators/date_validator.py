@@ -9,7 +9,8 @@ from .content_validator import ContentValidator
 
 TIME_FORMATS = [
     "%d.%m.%Y",
-    "%Y-%m-%d"
+    "%Y-%m-%d",
+    "%Y",
 ]
 
 
@@ -38,7 +39,7 @@ class DateValidator(ContentValidator):
         return year and year > date.today().year
 
     def _check_optional_date(self, dotted_name) -> Union[DateInfo, None]:
-        date_str = self.value_at(dotted_name)
+        date_str = str(self.value_at(dotted_name))
         if date_str:
             _date = self._parse_date(date_str)
             if _date is None:
