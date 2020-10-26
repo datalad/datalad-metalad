@@ -1,7 +1,7 @@
 import os
 from typing import Any, Dict, List, Union
 
-from .base import MetadataIndexer
+from datalad.metadata.indexers.base import MetadataIndexer
 
 
 class JsonLdIndexer(MetadataIndexer):

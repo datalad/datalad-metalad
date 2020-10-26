@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Union
 
-from .base import MetadataIndexer
+from datalad.metadata.indexers.base import MetadataIndexer
 
 
 STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'
