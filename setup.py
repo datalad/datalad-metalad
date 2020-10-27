@@ -43,10 +43,10 @@ setup(
     long_description=long_description,
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
     install_requires=[
-        'datalad_future'
+        'datalad_future-0'
     ],
     dependency_links=[
-        'git+https://github.com/datalad/datalad.git#egg=datalad_future'
+        'git+https://github.com/datalad/datalad.git@master#egg=datalad_future-0'
     ],
     entry_points={
         'datalad.extensions': [
