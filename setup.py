@@ -42,10 +42,10 @@ setup(
     description="DataLad extension for semantic metadata handling",
     long_description=long_description,
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
-    install_requires=[
-        'datalad>=0.12.3',
+    dependency_links=[
+        'http://github.com/datalad/datalad/tarball/master#egg=datalad-future'
     ],
-    entry_points = {
+    entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
         ],
