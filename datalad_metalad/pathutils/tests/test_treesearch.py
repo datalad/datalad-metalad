@@ -9,32 +9,27 @@ class TestJoin(unittest.TestCase):
     def test_empty_join(self):
         self.assertEqual(
             TreeSearch._join("", ""),
-            ""
-        )
+            "")
 
     def test_empty_leading(self):
         self.assertEqual(
             TreeSearch._join("", "", "a"),
-            "a"
-        )
+            "a")
 
     def test_common(self):
         self.assertEqual(
             TreeSearch._join("", "", "a", "b"),
-            "a/b"
-        )
+            "a/b")
 
     def test_multiple_dash(self):
         self.assertEqual(
             TreeSearch._join("/", "a//", "b"),
-            "/a/b"
-        )
+            "/a/b")
 
     def test_intermediate_root(self):
         self.assertEqual(
             TreeSearch._join("/", "a//", "/b"),
-            "/b"
-        )
+            "/b")
 
 
 class TestTreeSearchBase(unittest.TestCase):
@@ -52,8 +47,7 @@ class TestTreeSearchBase(unittest.TestCase):
             "s1/s1.2/d1.2.1/.datalad_metadata",
             "s2/d2.1/.datalad_metadata",
             "d3/.datalad_metadata",
-            "d3/some_file",
-        ]
+            "d3/some_file"]
         self.tree_search = self.create_tree_search_from_paths(self.path_list)
 
     def assertSameElements(self, list_a: List, list_b: List):
@@ -99,9 +93,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
                 ".datalad_metadata",
                 "s1",
                 "s2",
-                "d3"
-            ]
-        )
+                "d3"])
         self.assertListEqual(failed, [])
 
     def test_auto_list_root_off(self):
