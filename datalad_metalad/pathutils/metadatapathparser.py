@@ -31,24 +31,24 @@ class MetadataPathParser(object):
 
     uuid_string_length = 36
 
-    def __init__(self, path_spec):
+    def __init__(self, path_spec: str):
         self.path_spec = path_spec
         self.current_spec = self.path_spec[:]
 
-    def match(self, content):
+    def match(self, content: str):
         if self.current_spec.startswith(content):
             self.current_spec = self.current_spec[len(content):]
             return True
         return False
 
-    def fetch_upto(self, pattern):
+    def fetch_upto(self, pattern: str):
         pattern_location = self.current_spec.find(pattern)
         if pattern_location >= 0:
             result, self.current_spec = self.current_spec[:pattern_location], self.current_spec[pattern_location:]
             return True, result
         return False, None
 
-    def fetch(self, length):
+    def fetch(self, length: int):
         result, self.current_spec = self.current_spec[:length], self.current_spec[length:]
         return result
 
@@ -97,5 +97,6 @@ class MetadataPathParser(object):
             local_path = self.get_path()
         else:
             version = None
+            dataset_path = ""
             local_path = self.get_path()
         return TreeMetadataPath(dataset_path, local_path, version)
