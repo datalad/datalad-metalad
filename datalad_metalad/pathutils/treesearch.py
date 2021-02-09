@@ -29,7 +29,8 @@ class TreeSearch:
 
     def get_matching_paths(self,
                            pattern_list: List[str],
-                           auto_list_root: bool = False
+                           recursive: bool,
+                           auto_list_root: bool = True
                            ) -> Tuple[List[MatchRecord], List[str]]:
         """
         Get all paths that are matching the patterns in
@@ -44,15 +45,13 @@ class TreeSearch:
             pattern.lstrip("/").split("/")
             for pattern in set(pattern_list)
         ]
-        return self._get_matching_nodes(path_elements_list, auto_list_root)
+        matching, failed = self._get_matching_nodes(
+            path_elements_list,
+            auto_list_root)
 
-    def get_matching_paths_recursive(self,
-                                     pattern_list: List[str]
-                                     ) -> Tuple[List[MatchRecord], List[str]]:
-
-        matching, failed = self.get_matching_paths(pattern_list, True)
-        all_matching = self._list_recursive(matching)
-        return all_matching, failed
+        if recursive:
+            matching = self._list_recursive(matching[:])
+        return matching, failed
 
     def _get_matching_nodes(self,
                             path_elements_list: List[List[str]],

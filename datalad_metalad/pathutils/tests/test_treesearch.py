@@ -82,17 +82,17 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         return found, failed
 
     def _test_pattern(self, pattern_list: List[str], expected_matches: List[str]):
-        found, failed = self.tree_search.get_matching_paths(pattern_list)
+        found, failed = self.tree_search.get_matching_paths(pattern_list, False)
         self.assertPathsInResult(found, expected_matches)
         self.assertListEqual(failed, [])
 
     def _test_pattern_rec(self, pattern_list: List[str], expected_matches: List[str]):
-        found, failed = self.tree_search.get_matching_paths_recursive(pattern_list)
+        found, failed = self.tree_search.get_matching_paths(pattern_list, True)
         self.assertPathsInResult(found, expected_matches)
         self.assertListEqual(failed, [])
 
     def test_auto_list_root_on(self):
-        found, failed = self.tree_search.get_matching_paths([""], auto_list_root=True)
+        found, failed = self.tree_search.get_matching_paths([""], False, auto_list_root=True)
         self.assertPathsInResult(
             found,
             [
@@ -105,7 +105,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertListEqual(failed, [])
 
     def test_auto_list_root_off(self):
-        found, failed = self.tree_search.get_matching_paths([""], auto_list_root=False)
+        found, failed = self.tree_search.get_matching_paths([""], False, auto_list_root=False)
         self.assertListEqual(found, [])
         self.assertListEqual(failed, [])
 
@@ -131,12 +131,12 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self._test_pattern(["*/s*"], ["s1/s1.1", "s1/s1.2", "d3/some_file"])
 
     def test_pattern_6(self):
-        found, failed = self.tree_search.get_matching_paths(["s*/xxx"])
+        found, failed = self.tree_search.get_matching_paths(["s*/xxx"], False)
         self.assertListEqual(found, [])
         self.assertListEqual(failed, ["s*/xxx"])
 
     def test_pattern_7(self):
-        found, failed = self.tree_search.get_matching_paths(["see"])
+        found, failed = self.tree_search.get_matching_paths(["see"], False)
         self.assertListEqual(found, [])
         self.assertListEqual(failed, ["see"])
 
