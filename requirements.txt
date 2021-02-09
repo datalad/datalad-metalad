@@ -4,5 +4,6 @@ nose
 coverage
 sphinx>=1.7.8
 sphinx-rtd-theme
-
 pyyaml
+
+git+https://github.com/christian-monch/metadata-model.git@chm-dev#egg=datalad-metadata-dataladmetadatamodel
