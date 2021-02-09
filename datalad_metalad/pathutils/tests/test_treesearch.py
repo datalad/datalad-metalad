@@ -105,8 +105,9 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertListEqual(failed, [])
 
     def test_auto_list_root_off(self):
+        """ Expect a single root record for non-autolist root search """
         found, failed = self.tree_search.get_matching_paths([""], False, auto_list_root=False)
-        self.assertListEqual(found, [])
+        self.assertListEqual(found, [MatchRecord("", self.tree_search.file_tree)])
         self.assertListEqual(failed, [])
 
     def test_pattern_1(self):
