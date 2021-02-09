@@ -83,7 +83,7 @@ class TreeSearch:
                 for name, child_node in self.file_tree.child_nodes.items()
             ]
             if auto_list_root is True
-            else [MatchRecord("", self.file_tree.child_nodes[""])])  # TODO: the root node should be the root node
+            else [MatchRecord("", self.file_tree)])  # TODO: the root node should be the root node
 
     def _search_matches(self,
                         path_elements: List[str],
