@@ -1,5 +1,5 @@
 import unittest
-from typing import List, Tuple
+from typing import List
 
 from dataladmetadatamodel.filetree import FileTree
 from datalad_metalad.pathutils.treesearch import MatchRecord, TreeSearch
