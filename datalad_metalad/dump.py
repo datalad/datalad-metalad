@@ -10,9 +10,10 @@
 
 __docformat__ = 'restructuredtext'
 
-
 import json
 import logging
+import sys
+from typing import Generator
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
@@ -68,9 +69,10 @@ def get_top_level_metadata_objects(mapper_family, realm):
         return None, None
 
 
-def show_dataset_tree(realm, root_dataset_version, path, dataset_tree):
-    import json
-    import sys
+def show_dataset_tree(realm,
+                      root_dataset_version,
+                      path,
+                      dataset_tree) -> Generator[dict, None, None]:
 
     metadata_root_record = dataset_tree.value
     dataset_url = f"tree://{path}@{root_dataset_version}"  # TODO: put tree version in front of path, also in parser!
@@ -89,25 +91,31 @@ def show_dataset_tree(realm, root_dataset_version, path, dataset_tree):
                 "parameter": instance.configuration.parameter,
                 "metadata": instance.metadata_location
             }
-            print(
+            print(      # TODO: remove after testing
                 json.dumps(
-                    {"metadata": extractor_url + json.dumps(run_info)}),
+                    {
+                        "dataset_extractor_url": extractor_url,
+                        "extractor_version": run_info["version"],
+                        "extractor_parameter": run_info["parameter"],
+                        "metadata": run_info["metadata"]
+                    }),
                 file=sys.stderr)
 
             yield {
-                "metadata": extractor_url + json.dumps(run_info)
-            }
+                "dataset_extractor_url": extractor_url,
+                "extractor_version": run_info["version"],
+                "extractor_parameter": run_info["parameter"],
+                "metadata": run_info["metadata"]}
 
     metadata_root_record.dataset_level_metadata.purge()
     # TODO: show file tree: file_tree = metadata_root_record.file_tree.load_object(default_mapper_family, realm)
-
 
 
 def dump_from_dataset_tree(mapper: str,
                            realm: str,
                            tree_version_list: TreeVersionList,
                            path: TreeMetadataPath,
-                           recursive: bool):
+                           recursive: bool) -> Generator[dict, None, None]:
     """ Dump dataset tree elements that are referenced in path """
 
     # Get specified version or default version
@@ -267,13 +275,16 @@ class Dump(Interface):
         metadata_path = parser.parse()
 
         if isinstance(metadata_path, TreeMetadataPath):
-            yield from dump_from_dataset_tree(
-                mapper,
-                realm,
-                tree_version_list,
-                metadata_path,
-                recursive
-            )
+            for metadata_info in dump_from_dataset_tree(mapper,
+                                                        realm,
+                                                        tree_version_list,
+                                                        metadata_path,
+                                                        recursive):
+                yield dict(
+                    mapper=mapper,
+                    realm=realm,
+                    status="ok",
+                    metadata=metadata_info)
 
         elif isinstance(metadata_path, UUIDMetadataPath):
             yield from dump_from_uuid_set(
