@@ -382,3 +382,126 @@ class Dump(Interface):
             )
 
         return
+
+
+###################################################################################
+# TODO: the following code is still needed by other metadata modules. Until those
+#  are converted to the metadata model, the code has to stay here in order for the
+#  tests to work
+
+import glob
+import os.path as op
+
+from six import text_type
+
+from datalad.support.json_py import load as json_load
+from . import aggregate_layout_version, location_keys
+
+
+def get_ds_aggregate_db_locations(dspath, version='default', warn_absent=True):
+    """Returns the location of a dataset's aggregate metadata DB
+
+    Parameters
+    ----------
+    dspath : Path
+      Path to a dataset to query
+    version : str
+      DataLad aggregate metadata layout version. At the moment only a single
+      version exists. 'default' will return the locations for the current
+      default layout version.
+    warn_absent : bool
+      If True, warn if the desired DB version is not present and give hints on
+      what else is available. This is useful when using this function from
+      a user-facing command.
+
+    Returns
+    -------
+    db_location, db_object_base_path
+      Absolute paths to the DB itself, and to the basepath to resolve relative
+      object references in the database. Either path may not exist in the
+      queried dataset.
+    """
+    layout_version = aggregate_layout_version \
+        if version == 'default' else version
+
+    agginfo_relpath_template = op.join(
+        '.datalad',
+        'metadata',
+        'aggregate_v{}.json')
+    agginfo_relpath = agginfo_relpath_template.format(layout_version)
+    info_fpath = dspath / agginfo_relpath
+    agg_base_path = info_fpath.parent
+    # not sure if this is the right place with these check, better move then to
+    # a higher level
+    if warn_absent and not info_fpath.exists():  # pragma: no cover
+        # legacy code from a time when users could not be aware of whether
+        # they were doing metadata extraction, or querying aggregated metadata
+        # nowadays, and error is triggered long before it reaches this code
+        if version == 'default':
+            from datalad.consts import (
+                OLDMETADATA_DIR,
+                OLDMETADATA_FILENAME,
+            )
+            # caller had no specific idea what metadata version is
+            # needed/available This dataset does not have aggregated metadata.
+            # Does it have any other version?
+            info_glob = op.join(
+                text_type(dspath), agginfo_relpath_template).format('*')
+            info_files = glob.glob(info_glob)
+            msg = "Found no aggregated metadata info file %s." \
+                  % info_fpath
+            old_metadata_file = op.join(
+                text_type(dspath), OLDMETADATA_DIR, OLDMETADATA_FILENAME)
+            if op.exists(old_metadata_file):
+                msg += " Found metadata generated with pre-0.10 version of " \
+                       "DataLad, but it will not be used."
+            upgrade_msg = ""
+            if info_files:
+                msg += " Found following info files, which might have been " \
+                       "generated with newer version(s) of datalad: %s." \
+                       % (', '.join(info_files))
+                upgrade_msg = ", upgrade datalad"
+            msg += " You will likely need to either update the dataset from its " \
+                   "original location%s or reaggregate metadata locally." \
+                   % upgrade_msg
+            lgr.warning(msg)
+    return info_fpath, agg_base_path
+
+
+def get_ds_aggregate_db(dspath, version='default', warn_absent=True):
+    """Load a dataset's aggregate metadata database
+
+    Parameters
+    ----------
+    dspath : Path
+      Path to a dataset to query
+    version : str
+      DataLad aggregate metadata layout version. At the moment only a single
+      version exists. 'default' will return the content of the current default
+      aggregate database version.
+    warn_absent : bool
+      If True, warn if the desired DB version is not present and give hints on
+      what else is available. This is useful when using this function from
+      a user-facing command.
+
+    Returns
+    -------
+    dict
+      A dictionary with the database content is returned. All paths in the
+      dictionary (datasets, metadata object archives) are
+      absolute.
+    """
+    info_fpath, agg_base_path = get_ds_aggregate_db_locations(
+        dspath, version, warn_absent)
+
+    # save to call even with a non-existing location
+    agginfos = json_load(text_type(info_fpath)) if info_fpath.exists() else {}
+
+    return {
+        # paths in DB on disk are always relative
+        # make absolute to ease processing during aggregation
+        dspath / p:
+        {k: agg_base_path / v if k in location_keys else v
+         for k, v in props.items()}
+        for p, props in agginfos.items()
+    }
