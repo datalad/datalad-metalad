@@ -44,7 +44,7 @@ setup(
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
     install_requires=[
         'datalad>=0.14',
-        'datalad-metadata-dataladmetadatamodel',
+        'datalad-metadata-model'
         'pyyaml'
     ],
     entry_points={
