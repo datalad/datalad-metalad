@@ -176,11 +176,6 @@ def show_dataset_metadata(realm,
     """
 
     metadata_root_record = dataset_tree.value
-
-    # TODO Fix root handling in datatree. For work around a dataset tree shortcoming.
-    if metadata_root_record is None:
-        metadata_root_record = dataset_tree.child_nodes[""].value
-
     dataset_level_metadata = \
         metadata_root_record.dataset_level_metadata.load_object(
             default_mapper_family,
@@ -216,11 +211,6 @@ def show_file_tree_metadata(realm,
                             ) -> Generator[dict, None, None]:
 
     metadata_root_record = dataset_tree.value
-
-    # TODO Fix root handling in datatree. For work around a dataset tree shortcoming.
-    if metadata_root_record is None:
-        metadata_root_record = dataset_tree.child_nodes[""].value
-
     file_tree = metadata_root_record.file_tree.load_object(
             default_mapper_family,
             realm)
