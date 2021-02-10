@@ -126,7 +126,7 @@ class TreeSearch:
 
         result = []
         for node_name, sub_tree in starting_point.child_nodes.items():
-            sub_tree_path = starting_point_path + "/" + node_name
+            sub_tree_path = starting_point_path + ("" if starting_point_path == "" else "/") + node_name
             result.extend(
                 self._rec_list_recursive(sub_tree, sub_tree_path))
 
