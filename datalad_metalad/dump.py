@@ -167,6 +167,7 @@ def show_dataset_metadata(realm,
         }
     }
 
+    We use the small object approach below
     """
     metadata_root_record = dataset_tree.value
     dataset_level_metadata = \
