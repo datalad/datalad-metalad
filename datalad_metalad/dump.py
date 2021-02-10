@@ -25,6 +25,7 @@ from datalad.support.constraints import (
     EnsureChoice,
 )
 from datalad.support.param import Parameter
+from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.reference import Reference
@@ -37,6 +38,17 @@ default_mapper_family = "git"
 
 
 lgr = logging.getLogger('datalad.metadata.dump')
+
+
+def debug_out(message: str, indent: int = 0):
+    for line in message.splitlines(keepends=True):
+        sys.stderr.write((" " * indent) + line)
+
+
+def debug_out_json_obj(json_object: JSONObject,
+                       indent: int = 0,
+                       separator: str = ""):
+    debug_out(json.dumps(json_object, indent=4) + separator, indent)
 
 
 def get_top_level_metadata_objects(mapper_family, realm):
@@ -69,43 +81,114 @@ def get_top_level_metadata_objects(mapper_family, realm):
         return None, None
 
 
-def show_dataset_tree(realm,
-                      root_dataset_version,
-                      path,
-                      dataset_tree) -> Generator[dict, None, None]:
+def show_dataset_metadata(realm,
+                          root_dataset_version,
+                          dataset_path,
+                          dataset_tree
+                          ) -> Generator[dict, None, None]:
+    """
+    Large object:
+    {
+       "dataset-1": {
+           "dataset-info": "some dataset info"
+           "extractor1.1": [
+                {
+                   "extraction_time": "11:00:11",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                {
+                   "extraction_time": "12:23:34",
+                   "parameter": { some other extraction parameter}
+                   metadata: [
+                      another HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor1.2": ...
+       },
+       "dataset-2": {
+           "dataset-info": "another dataset info"
+           "extractor2.1": [
+                {
+                   "extraction_time": "1998",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor2.2": ...
+       },
+       ...
+    }
 
+    Such an object would be extremely large, especially if it
+    contains metadata.
+
+    The second approach focuses on minimal result sizes, but
+    result repetition and therefore also information duplication.
+    The non-splitable information is the metadata blob.
+    For example:
+
+    Small object 1:
+    {
+       "dataset-1": {
+           "dataset-info": "some dataset-1 info"
+           "extractor1.1":
+                {
+                   "extraction_time": "11:00:11",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                }
+            }
+        }
+    }
+
+    Small object 2:
+    {
+       "dataset-1": {
+           "dataset-info": "some dataset-1 info"
+           "extractor1.1":
+                {
+                   "extraction_time": "12:23:34",
+                   "parameter": { some other extraction parameter}
+                   metadata: [
+                      another HUGE metadata blob
+                   ]
+                }
+            }
+        }
+    }
+
+    """
     metadata_root_record = dataset_tree.value
-    dataset_url = f"tree://{path}@{root_dataset_version}"  # TODO: put tree version in front of path, also in parser!
+    dataset_level_metadata = \
+        metadata_root_record.dataset_level_metadata.load_object(
+            default_mapper_family,
+            realm)
 
-    ds_metadata = metadata_root_record.dataset_level_metadata.load_object(
-        default_mapper_family, realm)
-
-    for extractor_name, extractor_runs in ds_metadata.extractor_runs():
-        extractor_url = dataset_url + f"#{extractor_name}:"
-
+    result_json_object = {
+        "root_dataset_version": root_dataset_version,
+        "dataset_path": dataset_path
+    }
+    
+    for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
         for instance in extractor_runs:
-            run_info = {
-                "version": instance.configuration.version,
-                "time_stamp": instance.time_stamp,
-                "author": f"{instance.author_name} <{instance.author_email}>",
+            result_json_object["extractor_name"] = {
+                "extraction_time": instance.time_stamp,
+                "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+                "extractor_version": instance.configuration.version,
                 "parameter": instance.configuration.parameter,
                 "metadata": instance.metadata_location
             }
-            print(      # TODO: remove after testing
-                json.dumps(
-                    {
-                        "dataset_extractor_url": extractor_url,
-                        "extractor_version": run_info["version"],
-                        "extractor_parameter": run_info["parameter"],
-                        "metadata": run_info["metadata"]
-                    }),
-                file=sys.stderr)
-
-            yield {
-                "dataset_extractor_url": extractor_url,
-                "extractor_version": run_info["version"],
-                "extractor_parameter": run_info["parameter"],
-                "metadata": run_info["metadata"]}
+            yield result_json_object
 
     metadata_root_record.dataset_level_metadata.purge()
     # TODO: show file tree: file_tree = metadata_root_record.file_tree.load_object(default_mapper_family, realm)
@@ -140,12 +223,11 @@ def dump_from_dataset_tree(mapper: str,
             f"realm {mapper}:{realm}")
 
     for match_record in matches:
-        yield from show_dataset_tree(
+        yield from show_dataset_metadata(
             realm,
             version,
             match_record.path,
             match_record.node)
-
     return
 
 
@@ -280,6 +362,9 @@ class Dump(Interface):
                                                         tree_version_list,
                                                         metadata_path,
                                                         recursive):
+
+                debug_out_json_obj(metadata_info, separator="\n")
+
                 yield dict(
                     mapper=mapper,
                     realm=realm,

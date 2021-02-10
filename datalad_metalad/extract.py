@@ -10,9 +10,11 @@
 
 __docformat__ = 'restructuredtext'
 
-from os import curdir
-import os.path as op
 import logging
+import time
+import os.path as op
+
+from os import curdir
 from six import (
     iteritems,
     text_type,
@@ -59,6 +61,10 @@ from simplejson import dumps as jsondumps
 
 # API commands needed
 from datalad.core.local import status as _status
+
+from dataladmetadatamodel.filetree import FileTree
+from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata, MetadataInstance
+
 
 lgr = logging.getLogger('datalad.metadata.extract')
 
@@ -166,6 +172,7 @@ class Extract(Interface):
         if not sources:
             sources = ['metalad_core', 'metalad_annex'] \
                 + assure_list(get_metadata_type(ds))
+
         # keep local, who knows what some extractors might pull in
         from pkg_resources import iter_entry_points  # delayed heavy import
         extractors = {}
@@ -267,7 +274,8 @@ class Extract(Interface):
             ds.pathobj / PurePosixPath(e)
             for e in (
                 list(exclude_from_metadata) + assure_list(
-                    ds.config.get('datalad.metadata.exclude-path', []))
+                    ds.config.get('datalad.metadata.exclude-path', [])
+                )
             )
         ]
         if ds.is_installed():
@@ -315,8 +323,8 @@ class Extract(Interface):
                 yield dict(
                     res_props,
                     status='error',
-                    message=\
-                    'No metadata-relevant repository content found. ' \
+                    message=
+                    'No metadata-relevant repository content found. '
                     'Cannot determine reference commit for metadata ID',
                     type='dataset',
                     path=ds.path,
@@ -353,7 +361,8 @@ class Extract(Interface):
                         result_renderer='disabled'):
                     if success_status_map.get(
                             r['status'],
-                            False) != 'success':  # pragma: no cover
+                            False
+                    ) != 'success':  # pragma: no cover
                         # online complain when something goes wrong
                         yield r
 
@@ -452,10 +461,35 @@ class Extract(Interface):
                  ','.join(assure_list(meta['tag'])))))
 
 
+def _create_metadata_object(mapper_family, realm, absolute_path, extractor_name, version, metadata_result):
+    extractor_configuration = ExtractorConfiguration(
+        1,
+        {
+            "p1": 123.45,
+            "info": "demo parameter"
+        }
+    )
+
+    metadata_instance = MetadataInstance(
+        str(int(time.time())),
+        "chm",
+        "c.moench@fz-juelich.de",
+        extractor_configuration,
+        metadata_result["metadata"]
+    )
+
+    return Metadata(mapper_family, realm, {extractor_name: metadata_instance})
+
+
 def _proc(ds, refcommit, sources, status, extractors, process_type):
     dsmeta = dict()
     contentmeta = {}
 
+    root_dir = ds.path
+    md_dataset_tree = FileTree("git", root_dir)
+    md_file_tree = FileTree("git", root_dir)
+
+    print(f"_proc({ds}, {refcommit}, {sources}, {status}, {extractors}, {process_type}")
     log_progress(
         lgr.info,
         'metadataextractors',
@@ -482,6 +516,32 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
                 refcommit,
                 status,
                 extractor['process_type']):
+
+            print(f"RESULT:{ds}, {msrc}, {res['type']}: {res}")
+            if res['type'] == 'file':
+                import json
+
+                path = res['path']
+                if path.startswith(ds.path):
+                    path = path[len(ds.path) + 1:]
+                print(f"PATH: {path}")
+
+                md_file_tree.add_metadata(
+                    path,
+                    _create_metadata_object("git", ds.path, msrc, path, 1, res)
+                )
+
+            elif res['type'] == 'dataset':
+                import json
+
+                path = ds.path
+                print(f"DATASET PATH: {path}")
+                #md_ds_tree.add_metadata_source(
+                #    path,
+                #    msrc,
+                #    create_immediate_source_from_text(json.dumps(res))
+                #)
+
             # always have a path, use any absolute path coming in,
             # make any relative path absolute using the dataset anchor,
             # use the dataset path if nothing is coming in (better then
@@ -542,6 +602,13 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
         'metadataextractors',
         'Finished metadata extraction from %s', ds,
     )
+
+    print(md_file_tree)
+    for path, obj in md_file_tree.get_paths_recursive():
+        print(path, obj.value.object)
+
+    #print(md_ds_tree)
+
     # top-level code relies on the fact that any dataset metadata
     # is yielded before content metadata
     if process_type in (None, 'all', 'dataset') and \
