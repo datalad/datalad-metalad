@@ -30,7 +30,11 @@ from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.reference import Reference
 
-from .pathutils.metadatapathparser import MetadataPathParser, TreeMetadataPath, UUIDMetadataPath
+from .pathutils.metadatapathparser import (
+    MetadataPathParser,
+    TreeMetadataPath,
+    UUIDMetadataPath
+)
 from .pathutils.treesearch import TreeSearch
 
 
@@ -42,7 +46,7 @@ lgr = logging.getLogger('datalad.metadata.dump')
 
 def debug_out(message: str, indent: int = 0):
     for line in message.splitlines(keepends=True):
-        sys.stderr.write((" " * indent) + line)
+        sys.stdout.write((" " * indent) + line)
 
 
 def debug_out_json_obj(json_object: JSONObject,
@@ -90,41 +94,45 @@ def show_dataset_metadata(realm,
     Large object:
     {
        "dataset-1": {
-           "dataset-info": "some dataset info"
-           "extractor1.1": [
-                {
-                   "extraction_time": "11:00:11",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                {
-                   "extraction_time": "12:23:34",
-                   "parameter": { some other extraction parameter}
-                   metadata: [
-                      another HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor1.2": ...
+           "dataset_level_metadata": {
+               "dataset-info": "some dataset info"
+               "extractor1.1": [
+                    {
+                       "extraction_time": "11:00:11",
+                       "parameter": { some extraction parameter}
+                       metadata: [
+                          a HUGE metadata blob
+                       ]
+                    },
+                    {
+                       "extraction_time": "12:23:34",
+                       "parameter": { some other extraction parameter}
+                       metadata: [
+                          another HUGE metadata blob
+                       ]
+                    },
+                    { more runs}
+               ]
+               "extractor1.2": ...
+           }
+           "file_tree": {  LARGE object with file-based metadata }
        },
        "dataset-2": {
-           "dataset-info": "another dataset info"
-           "extractor2.1": [
-                {
-                   "extraction_time": "1998",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor2.2": ...
-       },
-       ...
+           "dataset_level_metadata": {
+               "dataset-info": "another dataset info"
+               "extractor2.1": [
+                    {
+                       "extraction_time": "1998",
+                       "parameter": { some extraction parameter}
+                       metadata: [
+                          a HUGE metadata blob
+                       ]
+                    },
+                    { more runs}
+               ]
+               "extractor2.2": ...
+           },
+           "file_tree": {  LARGE object with file-based metadata }
     }
 
     Such an object would be extremely large, especially if it
@@ -137,52 +145,58 @@ def show_dataset_metadata(realm,
 
     Small object 1:
     {
-       "dataset-1": {
-           "dataset-info": "some dataset-1 info"
-           "extractor1.1":
-                {
-                   "extraction_time": "11:00:11",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                }
+        "dataset-1": {
+            "dataset_level_metadata": {
+                "dataset-info": "some dataset-1 info"
+                "extractor1.1": {
+                    "extraction_time": "11:00:11",
+                    "parameter": { some extraction parameter}
+                    "metadata":  " a HUGE metadata blob "
+                 }
             }
         }
     }
 
     Small object 2:
     {
-       "dataset-1": {
-           "dataset-info": "some dataset-1 info"
-           "extractor1.1":
-                {
-                   "extraction_time": "12:23:34",
-                   "parameter": { some other extraction parameter}
-                   metadata: [
-                      another HUGE metadata blob
-                   ]
-                }
+        "dataset-1": {
+            "dataset_level_metadata": {
+                "dataset-info": "some dataset-1 info"
+                "extractor1.2": {
+                    "extraction_time": "12:23:34",
+                    "parameter": { some other extraction parameter}
+                    "metadata":  " another HUGE metadata blob "
+                 }
             }
         }
     }
 
+
     We use the small object approach below
     """
+
     metadata_root_record = dataset_tree.value
+
+    # TODO Fix root handling in datatree. For work around a dataset tree shortcoming.
+    if metadata_root_record is None:
+        metadata_root_record = dataset_tree.child_nodes[""].value
+
     dataset_level_metadata = \
         metadata_root_record.dataset_level_metadata.load_object(
             default_mapper_family,
             realm)
 
     result_json_object = {
-        "root_dataset_version": root_dataset_version,
-        "dataset_path": dataset_path
+        "dataset_level_metadata": {
+            "root_dataset_version": root_dataset_version,
+            "dataset_path": dataset_path,
+            "metadata": dict()
+        }
     }
-    
+
     for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
         for instance in extractor_runs:
-            result_json_object["extractor_name"] = {
+            result_json_object["dataset_level_metadata"]["metadata"][extractor_name] = {
                 "extraction_time": instance.time_stamp,
                 "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
                 "extractor_version": instance.configuration.version,
@@ -191,15 +205,63 @@ def show_dataset_metadata(realm,
             }
             yield result_json_object
 
+    # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
-    # TODO: show file tree: file_tree = metadata_root_record.file_tree.load_object(default_mapper_family, realm)
+
+
+def show_file_tree_metadata(realm,
+                            root_dataset_version,
+                            dataset_path,
+                            dataset_tree
+                            ) -> Generator[dict, None, None]:
+
+    metadata_root_record = dataset_tree.value
+
+    # TODO Fix root handling in datatree. For work around a dataset tree shortcoming.
+    if metadata_root_record is None:
+        metadata_root_record = dataset_tree.child_nodes[""].value
+
+    file_tree = metadata_root_record.file_tree.load_object(
+            default_mapper_family,
+            realm)
+
+    for path, metadata_connector in file_tree.get_paths_recursive():
+
+        # Ignore empty datasets
+        if metadata_connector is None:
+            continue
+
+        metadata = metadata_connector.load_object(default_mapper_family, realm)
+        result_json_object = {
+            "file_level_metadata": {
+                "root_dataset_version": root_dataset_version,
+                "dataset_path": dataset_path,
+                "file_path": path,
+                "metadata": dict()
+            }
+        }
+
+        for extractor_name, extractor_runs in metadata.extractor_runs():
+            for instance in extractor_runs:
+                result_json_object["file_level_metadata"]["metadata"][extractor_name] = {
+                    "extraction_time": instance.time_stamp,
+                    "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+                    "extractor_version": instance.configuration.version,
+                    "parameter": instance.configuration.parameter,
+                    "metadata": instance.metadata_location
+                }
+                yield result_json_object
+
+    # Remove file tree metadata when we are done with it
+    metadata_root_record.file_tree.purge()
 
 
 def dump_from_dataset_tree(mapper: str,
                            realm: str,
                            tree_version_list: TreeVersionList,
                            path: TreeMetadataPath,
-                           recursive: bool) -> Generator[dict, None, None]:
+                           recursive: bool,
+                           show_files: bool) -> Generator[dict, None, None]:
     """ Dump dataset tree elements that are referenced in path """
 
     # Get specified version or default version
@@ -212,14 +274,16 @@ def dump_from_dataset_tree(mapper: str,
 
     time_stamp, dataset_tree = tree_version_list.get_dataset_tree(version)
 
-    # Get matching dataset names
+    if not path or path.dataset_path is None:
+        path = TreeMetadataPath("", "")
+
     tree_search = TreeSearch(dataset_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
         [path.dataset_path], recursive, auto_list_root=False)
 
-    for nf_path in not_found_paths:
+    for missing_path in not_found_paths:
         lgr.warning(
-            f"could not locate dataset path {nf_path} "
+            f"could not locate dataset path {missing_path} "
             f"in tree version {path.version} in "
             f"realm {mapper}:{realm}")
 
@@ -229,6 +293,15 @@ def dump_from_dataset_tree(mapper: str,
             version,
             match_record.path,
             match_record.node)
+
+        # TODO: check the different file paths
+        if show_files:
+            yield from show_file_tree_metadata(
+                realm,
+                version,
+                match_record.path,
+                match_record.node)
+
     return
 
 
@@ -290,7 +363,8 @@ class Dump(Interface):
             args=("--realm",),
             metavar="REALM",
             doc="""realm where the metadata is stored. If not given, realm will be determined
-            to be the current working directory."""),
+            to be the current working directory."""
+        ),
         path=Parameter(
             args=("path",),
             metavar="PATH",
@@ -332,12 +406,13 @@ class Dump(Interface):
     @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
-            mapper='git',
+            mapper="git",
             realm=None,
             path=None,
             reporton='all',
             recursive=False):
 
+        realm = realm or "."
         tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
 
         # We require both entry points to exist for valid metadata
@@ -362,7 +437,8 @@ class Dump(Interface):
                                                         realm,
                                                         tree_version_list,
                                                         metadata_path,
-                                                        recursive):
+                                                        recursive,
+                                                        True):
 
                 debug_out_json_obj(metadata_info, separator="\n")
 
