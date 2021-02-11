@@ -55,15 +55,24 @@ class ReportOn(enum.Enum):
     ALL = "all"
 
 
-def debug_out(message: str, indent: int = 0):
+def _debug_out(message: str, indent: int = 0):
     for line in message.splitlines(keepends=True):
         sys.stdout.write((" " * indent) + line)
 
 
-def debug_out_json_obj(json_object: JSONObject,
+def _debug_out_json_obj(json_object: JSONObject,
                        indent: int = 0,
                        separator: str = ""):
-    debug_out(json.dumps(json_object, indent=4) + separator, indent)
+    _debug_out(json.dumps(json_object, indent=4) + separator, indent)
+
+
+def _create_result_record(metadata_record: JSONObject, report_type: str):
+    return {
+        "status": "ok",
+        "action": "meta_dump",
+        "type": report_type,
+        "metadata": metadata_record
+    }
 
 
 def get_top_level_metadata_objects(mapper_family, realm):
@@ -211,7 +220,10 @@ def show_dataset_metadata(realm,
                     "metadata": instance.metadata_location
                 }
             }
-            yield result_json_object
+            yield _create_result_record(
+                result_json_object,
+                "dataset"
+            )
 
     # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
@@ -254,7 +266,10 @@ def show_file_tree_metadata(realm,
                         "metadata": instance.metadata_location
                     }
                 }
-                yield result_json_object
+                yield _create_result_record(
+                    result_json_object,
+                    "file"
+                )
 
     # Remove file tree metadata when we are done with it
     metadata_root_record.file_tree.purge()
@@ -444,21 +459,15 @@ class Dump(Interface):
         metadata_path = parser.parse()
 
         if isinstance(metadata_path, TreeMetadataPath):
-            for metadata_info in dump_from_dataset_tree(mapper,
-                                                        realm,
-                                                        tree_version_list,
-                                                        metadata_path,
-                                                        ReportOn(reporton),
-                                                        ReportPolicy(reportpolicy),
-                                                        recursive):
-
-                debug_out_json_obj(metadata_info, separator="\n")
-
-                yield dict(
-                    mapper=mapper,
-                    realm=realm,
-                    status="ok",
-                    metadata=metadata_info)
+            yield from dump_from_dataset_tree(
+                mapper,
+                realm,
+                tree_version_list,
+                metadata_path,
+                ReportOn(reporton),
+                ReportPolicy(reportpolicy),
+                recursive
+            )
 
         elif isinstance(metadata_path, UUIDMetadataPath):
             yield from dump_from_uuid_set(
