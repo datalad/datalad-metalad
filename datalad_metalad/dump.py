@@ -6,14 +6,112 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Query a dataset's aggregated metadata"""
+"""
+Query a dataset's aggregated metadata
+
+We distinguish between two different result formats, large objects and
+small objects. Both contain the same information per metadata, but the
+large object contains all metadata in a single object, while the small
+objects contain only per-item, e.g. dataset or file, metadata together
+with context information.
+
+The large objects do not repeat information, but can become hard to
+manage in datasets with millions of subdatasets or files.
+
+The small objects are easy to manage, but identical information is
+repeated in them.
+
+We currently only support small objects
+
+Large object:
+{
+   "dataset-1": {
+       "dataset_level_metadata": {
+           "dataset-info": "some dataset info"
+           "extractor1.1": [
+                {
+                   "extraction_time": "11:00:11",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                {
+                   "extraction_time": "12:23:34",
+                   "parameter": { some other extraction parameter}
+                   metadata: [
+                      another HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor1.2": ...
+       }
+       "file_tree": {  LARGE object with file-based metadata }
+   },
+   "dataset-2": {
+       "dataset_level_metadata": {
+           "dataset-info": "another dataset info"
+           "extractor2.1": [
+                {
+                   "extraction_time": "1998",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor2.2": ...
+       },
+       "file_tree": {  LARGE object with file-based metadata }
+}
+
+Such an object would be extremely large, especially if it
+contains metadata.
+
+The second approach focuses on minimal result sizes, but
+result repetition and therefore also information duplication.
+The non-splitable information is the metadata blob.
+For example:
+
+Small object 1:
+{
+    "dataset-1": {
+        "dataset_level_metadata": {
+            "dataset-info": "some dataset-1 info"
+            "extractor1.1": {
+                "extraction_time": "11:00:11",
+                "parameter": { some extraction parameter}
+                "metadata":  " a HUGE metadata blob "
+             }
+        }
+    }
+}
+
+Small object 2:
+{
+    "dataset-1": {
+        "dataset_level_metadata": {
+            "dataset-info": "some dataset-1 info"
+            "extractor1.2": {
+                "extraction_time": "12:23:34",
+                "parameter": { some other extraction parameter}
+                "metadata":  " another HUGE metadata blob "
+             }
+        }
+    }
+}
+
+
+We use the small object approach below
+"""
+
 
 __docformat__ = 'restructuredtext'
 
 import enum
-import json
 import logging
-import sys
 from typing import Generator
 
 from datalad.distribution.dataset import datasetmethod
@@ -28,6 +126,7 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.connector import Connector
+from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.reference import Reference
 
@@ -55,23 +154,26 @@ class ReportOn(enum.Enum):
     ALL = "all"
 
 
-def _debug_out(message: str, indent: int = 0):
-    for line in message.splitlines(keepends=True):
-        sys.stdout.write((" " * indent) + line)
-
-
-def _debug_out_json_obj(json_object: JSONObject,
-                       indent: int = 0,
-                       separator: str = ""):
-    _debug_out(json.dumps(json_object, indent=4) + separator, indent)
-
-
-def _create_result_record(metadata_record: JSONObject, report_type: str):
+def _create_result_record(mapper: str, realm: str, metadata_record: JSONObject, report_type: str):
     return {
         "status": "ok",
         "action": "meta_dump",
+        "source": {
+            "mapper": mapper,
+            "realm": realm
+        },
         "type": report_type,
         "metadata": metadata_record
+    }
+
+
+def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
+    return {
+        "extraction_time": instance.time_stamp,
+        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+        "extractor_version": instance.configuration.version,
+        "extractor_parameter": instance.configuration.parameter,
+        "extractor_result": instance.metadata_location
     }
 
 
@@ -105,95 +207,12 @@ def get_top_level_metadata_objects(mapper_family, realm):
         return None, None
 
 
-def show_dataset_metadata(realm,
+def show_dataset_metadata(mapper,
+                          realm,
                           root_dataset_version,
                           dataset_path,
                           dataset_tree
                           ) -> Generator[dict, None, None]:
-    """
-    Large object:
-    {
-       "dataset-1": {
-           "dataset_level_metadata": {
-               "dataset-info": "some dataset info"
-               "extractor1.1": [
-                    {
-                       "extraction_time": "11:00:11",
-                       "parameter": { some extraction parameter}
-                       metadata: [
-                          a HUGE metadata blob
-                       ]
-                    },
-                    {
-                       "extraction_time": "12:23:34",
-                       "parameter": { some other extraction parameter}
-                       metadata: [
-                          another HUGE metadata blob
-                       ]
-                    },
-                    { more runs}
-               ]
-               "extractor1.2": ...
-           }
-           "file_tree": {  LARGE object with file-based metadata }
-       },
-       "dataset-2": {
-           "dataset_level_metadata": {
-               "dataset-info": "another dataset info"
-               "extractor2.1": [
-                    {
-                       "extraction_time": "1998",
-                       "parameter": { some extraction parameter}
-                       metadata: [
-                          a HUGE metadata blob
-                       ]
-                    },
-                    { more runs}
-               ]
-               "extractor2.2": ...
-           },
-           "file_tree": {  LARGE object with file-based metadata }
-    }
-
-    Such an object would be extremely large, especially if it
-    contains metadata.
-
-    The second approach focuses on minimal result sizes, but
-    result repetition and therefore also information duplication.
-    The non-splitable information is the metadata blob.
-    For example:
-
-    Small object 1:
-    {
-        "dataset-1": {
-            "dataset_level_metadata": {
-                "dataset-info": "some dataset-1 info"
-                "extractor1.1": {
-                    "extraction_time": "11:00:11",
-                    "parameter": { some extraction parameter}
-                    "metadata":  " a HUGE metadata blob "
-                 }
-            }
-        }
-    }
-
-    Small object 2:
-    {
-        "dataset-1": {
-            "dataset_level_metadata": {
-                "dataset-info": "some dataset-1 info"
-                "extractor1.2": {
-                    "extraction_time": "12:23:34",
-                    "parameter": { some other extraction parameter}
-                    "metadata":  " another HUGE metadata blob "
-                 }
-            }
-        }
-    }
-
-
-    We use the small object approach below
-    """
 
     metadata_root_record = dataset_tree.value
     dataset_level_metadata = \
@@ -210,26 +229,29 @@ def show_dataset_metadata(realm,
     }
 
     for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
-        for instance in extractor_runs:
-            result_json_object["dataset_level_metadata"]["metadata"] = {
-                extractor_name: {
-                    "extraction_time": instance.time_stamp,
-                    "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
-                    "extractor_version": instance.configuration.version,
-                    "parameter": instance.configuration.parameter,
-                    "metadata": instance.metadata_location
-                }
-            }
-            yield _create_result_record(
-                result_json_object,
-                "dataset"
-            )
+
+        instances = [
+            _create_metadata_instance_record(instance)
+            for instance in extractor_runs
+        ]
+
+        result_json_object["dataset_level_metadata"]["metadata"] = {
+            extractor_name: instances
+        }
+
+        yield _create_result_record(
+            mapper,
+            realm,
+            result_json_object,
+            "dataset"
+        )
 
     # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
 
 
-def show_file_tree_metadata(realm,
+def show_file_tree_metadata(mapper,
+                            realm,
                             root_dataset_version,
                             dataset_path,
                             dataset_tree
@@ -256,20 +278,21 @@ def show_file_tree_metadata(realm,
         }
 
         for extractor_name, extractor_runs in metadata.extractor_runs():
-            for instance in extractor_runs:
-                result_json_object["file_level_metadata"]["metadata"] = {
-                    extractor_name: {
-                        "extraction_time": instance.time_stamp,
-                        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
-                        "extractor_version": instance.configuration.version,
-                        "parameter": instance.configuration.parameter,
-                        "metadata": instance.metadata_location
-                    }
-                }
-                yield _create_result_record(
-                    result_json_object,
-                    "file"
-                )
+            instances = [
+                _create_metadata_instance_record(instance)
+                for instance in extractor_runs
+            ]
+
+            result_json_object["file_level_metadata"]["metadata"] = {
+                extractor_name: instances
+            }
+
+            yield _create_result_record(
+                mapper,
+                realm,
+                result_json_object,
+                "file"
+            )
 
     # Remove file tree metadata when we are done with it
     metadata_root_record.file_tree.purge()
@@ -312,18 +335,22 @@ def dump_from_dataset_tree(mapper: str,
     for match_record in matches:
         if report_on in (ReportOn.DATASETS, ReportOn.ALL):
             yield from show_dataset_metadata(
+                mapper,
                 realm,
                 version,
                 match_record.path,
-                match_record.node)
+                match_record.node
+            )
 
         # TODO: check the different file paths
         if report_on in (ReportOn.FILES, ReportOn.ALL):
             yield from show_file_tree_metadata(
-                    realm,
-                    version,
-                    match_record.path,
-                    match_record.node)
+                mapper,
+                realm,
+                version,
+                match_record.path,
+                match_record.node
+            )
 
     return
 
