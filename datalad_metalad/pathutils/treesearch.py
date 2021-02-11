@@ -1,8 +1,9 @@
 from fnmatch import fnmatchcase
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import dataclasses
 
+from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
 
 
@@ -21,10 +22,9 @@ class TreeSearch:
     """
     Search through FileTrees. File Tree elements
     are always separated by "/". The root is
-    identified by an empty string, and -for now-
-    also by "/".
+    identified by an empty string, i.e. "".
     """
-    def __init__(self, file_tree: FileTree):
+    def __init__(self, file_tree: Union[DatasetTree, FileTree]):
         self.file_tree = file_tree
 
     def get_matching_paths(self,
@@ -83,7 +83,7 @@ class TreeSearch:
                 for name, child_node in self.file_tree.child_nodes.items()
             ]
             if auto_list_root is True
-            else [MatchRecord("", self.file_tree)])  # TODO: the root node should be the root node
+            else [MatchRecord("", self.file_tree)])
 
     def _search_matches(self,
                         path_elements: List[str],
