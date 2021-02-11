@@ -10,6 +10,7 @@
 
 __docformat__ = 'restructuredtext'
 
+import enum
 import json
 import logging
 import sys
@@ -40,8 +41,18 @@ from .pathutils.treesearch import TreeSearch
 
 default_mapper_family = "git"
 
-
 lgr = logging.getLogger('datalad.metadata.dump')
+
+
+class ReportPolicy(enum.Enum):
+    INDIVIDUAL = "individual"
+    COMPLETE = "complete"
+
+
+class ReportOn(enum.Enum):
+    FILES = "files"
+    DATASETS = "datasets"
+    ALL = "all"
 
 
 def debug_out(message: str, indent: int = 0):
@@ -183,20 +194,22 @@ def show_dataset_metadata(realm,
 
     result_json_object = {
         "dataset_level_metadata": {
+            "dataset_identifier": str(metadata_root_record.dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": dataset_path,
-            "metadata": dict()
+            "dataset_path": dataset_path
         }
     }
 
     for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
         for instance in extractor_runs:
-            result_json_object["dataset_level_metadata"]["metadata"][extractor_name] = {
-                "extraction_time": instance.time_stamp,
-                "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
-                "extractor_version": instance.configuration.version,
-                "parameter": instance.configuration.parameter,
-                "metadata": instance.metadata_location
+            result_json_object["dataset_level_metadata"]["metadata"] = {
+                extractor_name: {
+                    "extraction_time": instance.time_stamp,
+                    "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+                    "extractor_version": instance.configuration.version,
+                    "parameter": instance.configuration.parameter,
+                    "metadata": instance.metadata_location
+                }
             }
             yield result_json_object
 
@@ -226,19 +239,20 @@ def show_file_tree_metadata(realm,
             "file_level_metadata": {
                 "root_dataset_version": root_dataset_version,
                 "dataset_path": dataset_path,
-                "file_path": path,
-                "metadata": dict()
+                "file_path": path
             }
         }
 
         for extractor_name, extractor_runs in metadata.extractor_runs():
             for instance in extractor_runs:
-                result_json_object["file_level_metadata"]["metadata"][extractor_name] = {
-                    "extraction_time": instance.time_stamp,
-                    "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
-                    "extractor_version": instance.configuration.version,
-                    "parameter": instance.configuration.parameter,
-                    "metadata": instance.metadata_location
+                result_json_object["file_level_metadata"]["metadata"] = {
+                    extractor_name: {
+                        "extraction_time": instance.time_stamp,
+                        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+                        "extractor_version": instance.configuration.version,
+                        "parameter": instance.configuration.parameter,
+                        "metadata": instance.metadata_location
+                    }
                 }
                 yield result_json_object
 
@@ -250,9 +264,12 @@ def dump_from_dataset_tree(mapper: str,
                            realm: str,
                            tree_version_list: TreeVersionList,
                            path: TreeMetadataPath,
-                           recursive: bool,
-                           show_files: bool) -> Generator[dict, None, None]:
+                           report_on: ReportOn,
+                           report_policy: ReportPolicy,
+                           recursive: bool) -> Generator[dict, None, None]:
     """ Dump dataset tree elements that are referenced in path """
+
+    assert report_policy == ReportPolicy.INDIVIDUAL
 
     # Get specified version or default version
     version = path.version
@@ -278,19 +295,20 @@ def dump_from_dataset_tree(mapper: str,
             f"realm {mapper}:{realm}")
 
     for match_record in matches:
-        yield from show_dataset_metadata(
-            realm,
-            version,
-            match_record.path,
-            match_record.node)
-
-        # TODO: check the different file paths
-        if show_files:
-            yield from show_file_tree_metadata(
+        if report_on in (ReportOn.DATASETS, ReportOn.ALL):
+            yield from show_dataset_metadata(
                 realm,
                 version,
                 match_record.path,
                 match_record.node)
+
+        # TODO: check the different file paths
+        if report_on in (ReportOn.FILES, ReportOn.ALL):
+            yield from show_file_tree_metadata(
+                    realm,
+                    version,
+                    match_record.path,
+                    match_record.node)
 
     return
 
@@ -363,16 +381,18 @@ class Dump(Interface):
             constraints=EnsureStr() | EnsureNone()),
         reporton=Parameter(
             args=('--reporton',),
-            constraints=EnsureChoice('all', 'jsonld', 'datasets', 'files',
-                                     'aggregates'),
-            doc="""what type of metadata to report on: dataset-global
-            metadata only ('datasets'), metadata on dataset content/files only
-            ('files'), both ('all', default). 'jsonld' is an alternative mode
-            to report all available metadata with JSON-LD markup. A single
-            metadata result with the entire metadata graph matching the query
-            will be reported, all non-JSON-LD-type metadata will be ignored.
-            There is an auxiliary category 'aggregates' that reports on which
-            metadata aggregates are present in the queried dataset."""),
+            constraints=EnsureChoice(ReportOn.ALL.value, ReportOn.DATASETS.value, ReportOn.FILES.value),
+            doc=f"""what type of metadata to report on: dataset-global
+            metadata only ('{ReportOn.DATASETS.value}'), metadata on dataset content/files only
+            ('files'), both ('{ReportOn.ALL.value}', default)."""),
+        reportpolicy=Parameter(
+            args=('--reportpolicy',),
+            constraints=EnsureChoice(ReportPolicy.INDIVIDUAL.value, ReportPolicy.COMPLETE.value),
+            doc=f"""how to report metadata: as individual elements that
+            identify one metadatum ('{ReportPolicy.COMPLETE.value}', default), i.e. a single
+            extractor run for a dataset or file, or as a complete
+            structure ('{ReportPolicy.COMPLETE.value}'), that represents all metadata extractor
+            runs of all datasets and files that match the path"""),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -399,7 +419,8 @@ class Dump(Interface):
             mapper="git",
             realm=None,
             path=None,
-            reporton='all',
+            reporton=ReportOn.ALL.value,
+            reportpolicy=ReportPolicy.INDIVIDUAL.value,
             recursive=False):
 
         realm = realm or "."
@@ -427,8 +448,9 @@ class Dump(Interface):
                                                         realm,
                                                         tree_version_list,
                                                         metadata_path,
-                                                        recursive,
-                                                        True):
+                                                        ReportOn(reporton),
+                                                        ReportPolicy(reportpolicy),
+                                                        recursive):
 
                 debug_out_json_obj(metadata_info, separator="\n")
 
