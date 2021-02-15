@@ -209,6 +209,7 @@ def get_top_level_metadata_objects(mapper_family, realm):
 
 def show_dataset_metadata(mapper,
                           realm,
+                          root_dataset_identifier,
                           root_dataset_version,
                           dataset_path,
                           dataset_tree
@@ -222,9 +223,11 @@ def show_dataset_metadata(mapper,
 
     result_json_object = {
         "dataset_level_metadata": {
-            "dataset_identifier": str(metadata_root_record.dataset_identifier),
+            "root_dataset_identifier": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": dataset_path
+            "dataset_identifier": str(metadata_root_record.dataset_identifier),
+            "dataset_version": metadata_root_record.dataset_version,
+            "dataset_path": dataset_path,
         }
     }
 
@@ -252,6 +255,7 @@ def show_dataset_metadata(mapper,
 
 def show_file_tree_metadata(mapper,
                             realm,
+                            root_dataset_identifier,
                             root_dataset_version,
                             dataset_path,
                             dataset_tree
@@ -271,6 +275,7 @@ def show_file_tree_metadata(mapper,
         metadata = metadata_connector.load_object(default_mapper_family, realm)
         result_json_object = {
             "file_level_metadata": {
+                "root_dataset_identifier": str(root_dataset_identifier),
                 "root_dataset_version": root_dataset_version,
                 "dataset_path": dataset_path,
                 "file_path": path
@@ -309,19 +314,26 @@ def dump_from_dataset_tree(mapper: str,
 
     assert report_policy == ReportPolicy.INDIVIDUAL
 
-    # Get specified version or default version
-    version = path.version
-    if version is None:
-        version = (
+    # Normalize path representation
+    if not path or path.dataset_path is None:
+        path = TreeMetadataPath("", "")
+
+    # Get specified version, if none is specified, take the first from the
+    # tree version list.
+    requested_root_dataset_version = path.version
+    if requested_root_dataset_version is None:
+        requested_root_dataset_version = (
             tuple(tree_version_list.versions())[0]   # TODO: add an item() method to VersionList
             if path.version is None
             else path.version)
 
-    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(version)
+    # Fetch dataset tree for the specified version
+    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(requested_root_dataset_version)
+    root_mrr = dataset_tree.get_metadata_root_record("")
+    root_dataset_version = root_mrr.dataset_version
+    root_dataset_identifier = root_mrr.dataset_identifier
 
-    if not path or path.dataset_path is None:
-        path = TreeMetadataPath("", "")
-
+    # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
         [path.dataset_path], recursive, auto_list_root=False)
@@ -337,7 +349,8 @@ def dump_from_dataset_tree(mapper: str,
             yield from show_dataset_metadata(
                 mapper,
                 realm,
-                version,
+                root_dataset_identifier,
+                root_dataset_version,
                 match_record.path,
                 match_record.node
             )
@@ -347,7 +360,8 @@ def dump_from_dataset_tree(mapper: str,
             yield from show_file_tree_metadata(
                 mapper,
                 realm,
-                version,
+                root_dataset_identifier,
+                root_dataset_version,
                 match_record.path,
                 match_record.node
             )

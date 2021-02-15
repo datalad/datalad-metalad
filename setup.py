@@ -52,7 +52,7 @@ setup(
             'metalad=datalad_metalad:command_suite',
         ],
         'datalad.tests': [
-            'metalad=datalad_metalad',
+            'metalad=datalad_metalad'
         ],
         'datalad.metadata.extractors': [
             'metalad_core=datalad_metalad.extractors.core:DataladCoreExtractor',

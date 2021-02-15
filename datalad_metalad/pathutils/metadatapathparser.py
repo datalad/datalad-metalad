@@ -7,7 +7,7 @@ class MetadataPathScheme(enum.Enum):
     TREE = "tree"
 
 
-class MetadataPath(object):
+class MetadataPath:
     def __init__(self, local_path: Optional[str], version: Optional[str] = None):
         self.local_path = local_path
         self.version = version
