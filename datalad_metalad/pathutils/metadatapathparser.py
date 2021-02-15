@@ -46,7 +46,7 @@ class MetadataPathParser(object):
         if pattern_location >= 0:
             result, self.current_spec = self.current_spec[:pattern_location], self.current_spec[pattern_location:]
             return True, result
-        return False, None
+        return False, ""
 
     def fetch(self, length: int):
         result, self.current_spec = self.current_spec[:length], self.current_spec[length:]
@@ -59,8 +59,8 @@ class MetadataPathParser(object):
     def get_path(self):
         if self.match(":"):
             path = self.get_remaining()
-            return path
-        return ""
+            return True, path
+        return False, ""
 
     def parse_version(self):
         if self.match("@"):
@@ -86,17 +86,23 @@ class MetadataPathParser(object):
         if self.match(MetadataPathParser.uuid_header):
             uuid = self.fetch(MetadataPathParser.uuid_string_length)
             _, version = self.parse_version()
-            local_path = self.get_path()
+            _, local_path = self.get_path()
             return UUIDMetadataPath(uuid, local_path, version)
 
         # Expect a tree spec
         self.match(self.tree_header)
+
         success, dataset_path = self.fetch_upto("@")
         if success:
             _, version = self.parse_version()
-            local_path = self.get_path()
+            self.match(":")
+            local_path = self.get_remaining()
         else:
             version = None
-            dataset_path = ""
-            local_path = self.get_path()
+            success, dataset_path = self.fetch_upto(":")
+            if success:
+                _, local_path = self.get_path()
+            else:
+                dataset_path = self.get_remaining()
+                local_path = ""
         return TreeMetadataPath(dataset_path, local_path, version)

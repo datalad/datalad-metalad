@@ -10,6 +10,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, TreeMetadataPath)
         self.assertIsNone(result.version)
+        self.assertEqual(result.dataset_path, "")
         self.assertEqual(result.local_path, "a/b/c")
 
     def test_tree_version(self):
@@ -66,6 +67,13 @@ class TestMetadataPathParser(unittest.TestCase):
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, "111222")
         self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.local_path, "")
+
+    def test_blank_path(self):
+        parser = MetadataPathParser("a/b/c")
+        result = parser.parse()
+        self.assertIsInstance(result, TreeMetadataPath)
+        self.assertEqual(result.dataset_path, "a/b/c")
         self.assertEqual(result.local_path, "")
 
 
