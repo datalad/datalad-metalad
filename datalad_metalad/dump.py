@@ -404,32 +404,51 @@ class Dump(Interface):
     Both types can be queried with this command, and a specific type is
     requested via the `--reporton` argument.
 
+    The DATASET_FILE_PATH_PATTERN argument specifies dataset and file patterns
+    that are matched against the dataset and file information in the metadata. There are two
+    format, UUID-based and dataset-tree based. The formats are:
+
+        TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
+        UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
+
+    (the tree-format is the default format and does not require a prefix).
+
+    The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
+    find all JSON files in the root directory of all datasets by specifying:
+
+        *:*.json
+
+    as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
+    go through metadata for all datasets, e.g.:
+
+      % datalad -f json_pp meta-dump *:*.json -r --reporton files
+
+    or simply do not specify a specific dataset at all:
+
+      % datalad -f json_pp meta-dump :*.json -r --reporton files
+
     Examples:
 
-      Dump the metadata of a single file, the queried dataset is determined
-      based on the current working directory::
+      Dump the metadata of the file "dataset_description.json" in the
+      dataset "simon". (The queried dataset git-repository is determined
+      based on the current working directory)::
 
-        % datalad meta-dump somedir/subdir/thisfile.dat
+        % datalad meta-dump --reporton files simon:dataset_description.json
 
       Sometimes it is helpful to get metadata records formatted in a more
       accessible form, here as pretty-printed JSON::
 
-        % datalad -f json_pp meta-dump somedir/subdir/thisfile.dat
+        % datalad -f json_pp meta-dump simon:dataset_description.json
 
-      Same query as above, but specify which dataset to query (must be
-      containing the query path)::
+      Same query as above, but specify that all datasets should be queried
+      for the given path::
 
-        % datalad meta-dump -d . somedir/subdir/thisfile.dat
+        % datalad meta-dump -d . :somedir/subdir/thisfile.dat
 
       Dump any metadata record of any dataset known to the queried dataset::
 
-        % datalad meta-dump --recursive --reporton datasets
+        % datalad meta-dump -r --reporton datasets
 
-      Get a JSON-formatted report of metadata aggregates in a dataset, incl.
-      information on enabled metadata extractors, dataset versions, dataset
-      IDs, and dataset paths::
-
-        % datalad -f json meta-dump --reporton aggregates
     """
     # make the custom renderer the default, path reporting isn't the top
     # priority here
@@ -449,8 +468,8 @@ class Dump(Interface):
         ),
         path=Parameter(
             args=("path",),
-            metavar="PATH",
-            doc="path(s) to query metadata for",
+            metavar="DATASET_FILE_PATH_PATTERN",
+            doc="path to query metadata for",
             constraints=EnsureStr() | EnsureNone()),
         reporton=Parameter(
             args=('--reporton',),
@@ -465,7 +484,9 @@ class Dump(Interface):
             identify one metadatum ('{ReportPolicy.COMPLETE.value}', default), i.e. a single
             extractor run for a dataset or file, or as a complete
             structure ('{ReportPolicy.COMPLETE.value}'), that represents all metadata extractor
-            runs of all datasets and files that match the path"""),
+            runs of all datasets and files that match the path.
+            [NOT HONORED YET, FIXED TO ({ReportPolicy.INDIVIDUAL.value})]
+            """),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -478,12 +499,7 @@ class Dump(Interface):
             args=("-n", "--nameonly"),
             action="store_true",
             doc="""if set show only the names of files, not any metadata. This
-            is similar to ls."""),
-        datasetonly=Parameter(
-            args=("--datasetonly",),
-            action="store_true",
-            doc="""if set show only information about datasets, do not list the
-            files within the dataset."""))
+            is similar to ls. [Not implemented]"""))
 
     @staticmethod
     @datasetmethod(name='meta_dump')
