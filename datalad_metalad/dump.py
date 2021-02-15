@@ -258,7 +258,9 @@ def show_file_tree_metadata(mapper,
                             root_dataset_identifier,
                             root_dataset_version,
                             dataset_path,
-                            dataset_tree
+                            dataset_tree,
+                            file_pattern,
+                            recursive
                             ) -> Generator[dict, None, None]:
 
     metadata_root_record = dataset_tree.value
@@ -266,7 +268,21 @@ def show_file_tree_metadata(mapper,
             default_mapper_family,
             realm)
 
-    for path, metadata_connector in file_tree.get_paths_recursive():
+    # Determine matching file paths
+    tree_search = TreeSearch(file_tree)
+    matches, not_found_paths = tree_search.get_matching_paths(
+        [file_pattern], recursive, auto_list_root=False)
+
+    for missing_path in not_found_paths:
+        lgr.warning(
+            f"could not locate file path {missing_path} "
+            f"in dataset {metadata_root_record.dataset_identifier}"
+            f"@{metadata_root_record.dataset_version} in "
+            f"realm {mapper}:{realm}")
+
+    for match_record in matches:
+        path = match_record.path
+        metadata_connector = match_record.node.value
 
         # Ignore empty datasets
         if metadata_connector is None:
@@ -363,7 +379,9 @@ def dump_from_dataset_tree(mapper: str,
                 root_dataset_identifier,
                 root_dataset_version,
                 match_record.path,
-                match_record.node
+                match_record.node,
+                path.local_path,
+                recursive
             )
 
     return
@@ -433,7 +451,6 @@ class Dump(Interface):
             args=("path",),
             metavar="PATH",
             doc="path(s) to query metadata for",
-            nargs="*",
             constraints=EnsureStr() | EnsureNone()),
         reporton=Parameter(
             args=('--reporton',),
