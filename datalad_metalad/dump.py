@@ -378,7 +378,7 @@ def dump_from_dataset_tree(mapper: str,
                 root_dataset_identifier,
                 root_dataset_version,
                 match_record.path,
-                match_record.node,
+                match_record.node.value,
                 path.local_path,
                 recursive
             )
@@ -524,13 +524,13 @@ class Dump(Interface):
             args=("--realm",),
             metavar="REALM",
             doc="""realm where the metadata is stored. If not given, realm will be determined
-            to be the current working directory."""
-        ),
+            to be the current working directory."""),
         path=Parameter(
             args=("path",),
             metavar="DATASET_FILE_PATH_PATTERN",
             doc="path to query metadata for",
-            constraints=EnsureStr() | EnsureNone()),
+            constraints=EnsureStr() | EnsureNone(),
+            nargs='?'),
         reporton=Parameter(
             args=('--reporton',),
             constraints=EnsureChoice(ReportOn.ALL.value, ReportOn.DATASETS.value, ReportOn.FILES.value),
@@ -567,7 +567,7 @@ class Dump(Interface):
     def __call__(
             mapper="git",
             realm=None,
-            path=None,
+            path="",
             reporton=ReportOn.ALL.value,
             reportpolicy=ReportPolicy.INDIVIDUAL.value,
             recursive=False):
@@ -585,9 +585,6 @@ class Dump(Interface):
                 status='impossible',
                 message=message)
             return
-
-        if not path:
-            path = ""
 
         parser = MetadataPathParser(path)
         metadata_path = parser.parse()
