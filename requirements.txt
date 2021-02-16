@@ -1,5 +1,3 @@
-# install of metalad itself
-.
 
 nose
 coverage
