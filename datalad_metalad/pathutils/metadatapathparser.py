@@ -1,5 +1,6 @@
 import enum
 from typing import Optional
+from uuid import UUID
 
 
 class MetadataPathScheme(enum.Enum):
@@ -84,7 +85,7 @@ class MetadataPathParser(object):
 
         # Try to parse a uuid-spec
         if self.match(MetadataPathParser.uuid_header):
-            uuid = self.fetch(MetadataPathParser.uuid_string_length)
+            uuid = UUID(self.fetch(MetadataPathParser.uuid_string_length))
             _, version = self.parse_version()
             _, local_path = self.get_path()
             return UUIDMetadataPath(uuid, local_path, version)
