@@ -322,12 +322,8 @@ def dump_from_dataset_tree(mapper: str,
                            realm: str,
                            tree_version_list: TreeVersionList,
                            path: TreeMetadataPath,
-                           report_on: ReportOn,
-                           report_policy: ReportPolicy,
                            recursive: bool) -> Generator[dict, None, None]:
     """ Dump dataset tree elements that are referenced in path """
-
-    assert report_policy == ReportPolicy.INDIVIDUAL
 
     # Normalize path representation
     if not path or path.dataset_path is None:
@@ -360,28 +356,26 @@ def dump_from_dataset_tree(mapper: str,
             f"realm {mapper}:{realm}")
 
     for match_record in matches:
-        if report_on in (ReportOn.DATASETS, ReportOn.ALL):
-            yield from show_dataset_metadata(
-                mapper,
-                realm,
-                root_dataset_identifier,
-                root_dataset_version,
-                match_record.path,
-                match_record.node.value
-            )
+        yield from show_dataset_metadata(
+            mapper,
+            realm,
+            root_dataset_identifier,
+            root_dataset_version,
+            match_record.path,
+            match_record.node.value
+        )
 
         # TODO: check the different file paths
-        if report_on in (ReportOn.FILES, ReportOn.ALL):
-            yield from show_file_tree_metadata(
-                mapper,
-                realm,
-                root_dataset_identifier,
-                root_dataset_version,
-                match_record.path,
-                match_record.node.value,
-                path.local_path,
-                recursive
-            )
+        yield from show_file_tree_metadata(
+            mapper,
+            realm,
+            root_dataset_identifier,
+            root_dataset_version,
+            match_record.path,
+            match_record.node.value,
+            path.local_path,
+            recursive
+        )
 
     return
 
@@ -390,13 +384,9 @@ def dump_from_uuid_set(mapper: str,
                        realm: str,
                        uuid_set: UUIDSet,
                        path: UUIDMetadataPath,
-                       report_on: ReportOn,
-                       report_policy: ReportPolicy,
                        recursive: bool) -> Generator[dict, None, None]:
 
     """ Dump UUID-identified dataset elements that are referenced in path """
-
-    assert report_policy == ReportPolicy.INDIVIDUAL
 
     # Get specified version, if none is specified, take the first from the
     # UUID version list.
@@ -425,28 +415,27 @@ def dump_from_uuid_set(mapper: str,
             f"realm {mapper}:{realm}")
         return
 
-    # Show dataset level metadata
-    if report_on in (ReportOn.DATASETS, ReportOn.ALL):
-        yield from show_dataset_metadata(
-            mapper,
-            realm,
-            path.uuid,
-            requested_dataset_version,
-            dataset_path,
-            metadata_root_record
-        )
+    # Show dataset-level metadata
+    yield from show_dataset_metadata(
+        mapper,
+        realm,
+        path.uuid,
+        requested_dataset_version,
+        dataset_path,
+        metadata_root_record
+    )
 
-        if report_on in (ReportOn.FILES, ReportOn.ALL):
-            yield from show_file_tree_metadata(
-                mapper,
-                realm,
-                path.uuid,
-                requested_dataset_version,
-                dataset_path,
-                metadata_root_record,
-                path.local_path,
-                recursive
-            )
+    # Show file-level metadata
+    yield from show_file_tree_metadata(
+        mapper,
+        realm,
+        path.uuid,
+        requested_dataset_version,
+        dataset_path,
+        metadata_root_record,
+        path.local_path,
+        recursive
+    )
 
     return
 
@@ -515,10 +504,10 @@ class Dump(Interface):
     result_renderer = 'tailored'
 
     _params_ = dict(
-        mapper=Parameter(
-            args=("--mapperfamily",),
-            metavar="MAPPERFAMILY",
-            doc="""mapper family to be used.""",
+        backend=Parameter(
+            args=("--backend",),
+            metavar="BACKEND",
+            doc="""metadata storage backend to be used.""",
             constraints=EnsureChoice("git")),
         realm=Parameter(
             args=("--realm",),
@@ -531,22 +520,6 @@ class Dump(Interface):
             doc="path to query metadata for",
             constraints=EnsureStr() | EnsureNone(),
             nargs='?'),
-        reporton=Parameter(
-            args=('--reporton',),
-            constraints=EnsureChoice(ReportOn.ALL.value, ReportOn.DATASETS.value, ReportOn.FILES.value),
-            doc=f"""what type of metadata to report on: dataset-global
-            metadata only ('{ReportOn.DATASETS.value}'), metadata on dataset content/files only
-            ('files'), both ('{ReportOn.ALL.value}', default)."""),
-        reportpolicy=Parameter(
-            args=('--reportpolicy',),
-            constraints=EnsureChoice(ReportPolicy.INDIVIDUAL.value, ReportPolicy.COMPLETE.value),
-            doc=f"""how to report metadata: as individual elements that
-            identify one metadatum ('{ReportPolicy.COMPLETE.value}', default), i.e. a single
-            extractor run for a dataset or file, or as a complete
-            structure ('{ReportPolicy.COMPLETE.value}'), that represents all metadata extractor
-            runs of all datasets and files that match the path.
-            [NOT HONORED YET, FIXED TO ({ReportPolicy.INDIVIDUAL.value})]
-            """),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -554,22 +527,15 @@ class Dump(Interface):
             on given paths or reference dataset. Note, setting this option
             does not cause any recursion into potential subdatasets on the
             filesystem. It merely determines what metadata is being reported
-            from the given/discovered reference dataset."""),
-        nameonly=Parameter(
-            args=("-n", "--nameonly"),
-            action="store_true",
-            doc="""if set show only the names of files, not any metadata. This
-            is similar to ls. [Not implemented]"""))
+            from the given/discovered reference dataset."""))
 
     @staticmethod
     @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
-            mapper="git",
+            backend="git",
             realm=None,
             path="",
-            reporton=ReportOn.ALL.value,
-            reportpolicy=ReportPolicy.INDIVIDUAL.value,
             recursive=False):
 
         realm = realm or "."
@@ -577,10 +543,10 @@ class Dump(Interface):
 
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
-            message = f"No {mapper}-mapped datalad metadata model found in: {realm}"
+            message = f"No {backend}-mapped datalad metadata model found in: {realm}"
             lgr.warning(message)
             yield dict(
-                mapper=mapper,
+                backend=backend,
                 realm=realm,
                 status='impossible',
                 message=message)
@@ -591,23 +557,19 @@ class Dump(Interface):
 
         if isinstance(metadata_path, TreeMetadataPath):
             yield from dump_from_dataset_tree(
-                mapper,
+                backend,
                 realm,
                 tree_version_list,
                 metadata_path,
-                ReportOn(reporton),
-                ReportPolicy(reportpolicy),
                 recursive
             )
 
         elif isinstance(metadata_path, UUIDMetadataPath):
             yield from dump_from_uuid_set(
-                mapper,
+                backend,
                 realm,
                 uuid_set,
                 metadata_path,
-                ReportOn(reporton),
-                ReportPolicy(reportpolicy),
                 recursive
             )
 
