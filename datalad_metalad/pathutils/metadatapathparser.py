@@ -21,7 +21,7 @@ class TreeMetadataPath(MetadataPath):
 
 
 class UUIDMetadataPath(MetadataPath):
-    def __init__(self, uuid: str, local_path: Optional[str], version: Optional[str] = None):
+    def __init__(self, uuid: UUID, local_path: Optional[str], version: Optional[str] = None):
         super().__init__(local_path, version)
         self.uuid = uuid
 

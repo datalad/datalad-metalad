@@ -113,6 +113,7 @@ __docformat__ = 'restructuredtext'
 import enum
 import logging
 from typing import Generator
+from uuid import UUID
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
@@ -127,6 +128,7 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.metadata import MetadataInstance
+from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.reference import Reference
@@ -208,12 +210,12 @@ def get_top_level_metadata_objects(mapper_family, realm):
         return None, None
 
 
-def show_dataset_metadata(mapper,
-                          realm,
-                          root_dataset_identifier,
-                          root_dataset_version,
-                          dataset_path,
-                          metadata_root_record
+def show_dataset_metadata(mapper: str,
+                          realm: str,
+                          root_dataset_identifier: UUID,
+                          root_dataset_version: str,
+                          dataset_path: str,
+                          metadata_root_record: MetadataRootRecord
                           ) -> Generator[dict, None, None]:
 
     dataset_level_metadata = \
@@ -253,14 +255,14 @@ def show_dataset_metadata(mapper,
     metadata_root_record.dataset_level_metadata.purge()
 
 
-def show_file_tree_metadata(mapper,
-                            realm,
-                            root_dataset_identifier,
-                            root_dataset_version,
-                            dataset_path,
-                            metadata_root_record,
-                            file_pattern,
-                            recursive
+def show_file_tree_metadata(mapper: str,
+                            realm: str,
+                            root_dataset_identifier: UUID,
+                            root_dataset_version: str,
+                            dataset_path: str,
+                            metadata_root_record: MetadataRootRecord,
+                            file_pattern: str,
+                            recursive: bool
                             ) -> Generator[dict, None, None]:
 
     file_tree = metadata_root_record.file_tree.load_object(
@@ -449,9 +451,6 @@ class Dump(Interface):
     1. metadata describing a dataset as a whole (dataset-global metadata), and
 
     2. metadata for files in a dataset (content metadata).
-
-    Both types can be queried with this command, and a specific type is
-    requested via the `--reporton` argument.
 
     The DATASET_FILE_PATH_PATTERN argument specifies dataset and file patterns
     that are matched against the dataset and file information in the metadata. There are two
