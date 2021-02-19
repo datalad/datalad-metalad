@@ -126,20 +126,18 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
-from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
-from dataladmetadatamodel.mapper.reference import Reference
 
+from .metadata import get_top_level_metadata_objects
 from .pathutils.metadatapathparser import (
     MetadataPathParser,
     TreeMetadataPath,
     UUIDMetadataPath
 )
 from .pathutils.treesearch import TreeSearch
-
 
 default_mapper_family = "git"
 
@@ -180,36 +178,6 @@ def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
     }
 
 
-def get_top_level_metadata_objects(mapper_family, realm):
-    """
-    Load the two top-level elements of the metadata, i.e.
-    the tree version list and the uuid list.
-
-    We do this be creating references from known locations
-    in the mapper family and loading the referenced objects.
-    """
-    from dataladmetadatamodel.mapper import get_uuid_set_location, get_tree_version_list_location
-
-    tree_version_list_connector = Connector.from_reference(
-        Reference(
-            mapper_family,
-            "TreeVersionList",
-            get_tree_version_list_location(mapper_family)))
-
-    uuid_set_connector = Connector.from_reference(
-        Reference(
-            mapper_family,
-            "UUIDSet",
-            get_uuid_set_location(mapper_family)))
-
-    try:
-        return (
-            tree_version_list_connector.load_object(mapper_family, realm),
-            uuid_set_connector.load_object(mapper_family, realm))
-    except RuntimeError:
-        return None, None
-
-
 def show_dataset_metadata(mapper: str,
                           realm: str,
                           root_dataset_identifier: UUID,
@@ -219,9 +187,7 @@ def show_dataset_metadata(mapper: str,
                           ) -> Generator[dict, None, None]:
 
     dataset_level_metadata = \
-        metadata_root_record.dataset_level_metadata.load_object(
-            default_mapper_family,
-            realm)
+        metadata_root_record.dataset_level_metadata.load_object()
 
     result_json_object = {
         "dataset_level_metadata": {
@@ -265,9 +231,7 @@ def show_file_tree_metadata(mapper: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
-    file_tree = metadata_root_record.file_tree.load_object(
-            default_mapper_family,
-            realm)
+    file_tree = metadata_root_record.file_tree.load_object()
 
     # Determine matching file paths
     tree_search = TreeSearch(file_tree)
@@ -289,7 +253,7 @@ def show_file_tree_metadata(mapper: str,
         if metadata_connector is None:
             continue
 
-        metadata = metadata_connector.load_object(default_mapper_family, realm)
+        metadata = metadata_connector.load_object()
         result_json_object = {
             "file_level_metadata": {
                 "root_dataset_identifier": str(root_dataset_identifier),
