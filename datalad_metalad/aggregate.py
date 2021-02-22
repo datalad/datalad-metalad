@@ -58,7 +58,7 @@ __docformat__ = 'restructuredtext'
 
 
 import logging
-from typing import Generator, List
+from typing import List
 
 
 import dataclasses
@@ -82,9 +82,9 @@ from datalad.support.constraints import (
     EnsureNone
 )
 from datalad.support.constraints import EnsureChoice
-from dataladmetadatamodel.versionlist import TreeVersionList
+from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
 from dataladmetadatamodel.uuidset import UUIDSet
-
+from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
 from .metadata import get_top_level_metadata_objects
 
 
@@ -229,17 +229,18 @@ class Aggregate(Interface):
 
         realm = realm or "."
 
-        # Load destination
+        # Load destination tree version list and uuid set
         tree_version_list, uuid_set = get_top_level_metadata_objects(backend, realm)
-        if tree_version_list is None or uuid_set is None:
-            message = f"No {backend}-mapped datalad metadata model found in: {realm}"
-            lgr.error(message)
-            yield dict(
-                backend=backend,
-                realm=realm,
-                status='impossible',
-                message=message)
-            return
+        if tree_version_list is None:
+            lgr.warning(
+                f"no tree version list found in {realm}, "
+                f"creating an empty tree version list")
+            tree_version_list = TreeVersionList(backend, realm)
+        if uuid_set is None:
+            lgr.warning(
+                f"no uuid set found in {realm}, "
+                f"creating an empty set")
+            uuid_set = UUIDSet(backend, realm)
 
         # Collect aggregate information
         aggregate_items = []
@@ -266,7 +267,8 @@ class Aggregate(Interface):
                     ag_uuid_set,
                     ag_path))
 
-        yield from perform_aggregation(
+        perform_aggregation(
+            realm,
             tree_version_list,
             uuid_set,
             aggregate_items)
@@ -274,7 +276,10 @@ class Aggregate(Interface):
         tree_version_list.save()
         uuid_set.save()
 
+        flush_object_references(realm)
+
         yield dict(
+            action="meta_aggregate",
             backend=backend,
             realm=realm,
             status='ok',
@@ -283,44 +288,102 @@ class Aggregate(Interface):
         return
 
 
-def perform_aggregation(tree_version_list: TreeVersionList,
-                        uuid_set: UUIDSet,
+def perform_aggregation(destination_realm: str,
+                        tree_version_list: TreeVersionList,
+                        destination_uuid_set: UUIDSet,
                         aggregate_items: List[AggregateItem]
-                        ) -> Generator[dict, None, None]:
-
-    yield from copy_tree_version_lists(
-        tree_version_list,
-        aggregate_items)
-
-    yield from copy_uuid_sets(
-        uuid_set,
-        aggregate_items)
-
-
-def copy_tree_version_lists(tree_version_list: TreeVersionList,
-                            aggregate_items: List[AggregateItem]
-                            ) -> Generator[dict, None, None]:
-
-    for aggregate_item in aggregate_items:
-        copy_tree_version_list(
-            tree_version_list,
-            aggregate_item.source_tree_version_list,
-            aggregate_item.destination_path
-        )
-
-
-def copy_uuid_sets(uuid_set: UUIDSet,
-                   aggregate_items: List[AggregateItem]
-                   ) -> Generator[dict, None, None]:
+                        ):
 
     for aggregate_item in aggregate_items:
         copy_uuid_set(
-            uuid_set,
+            destination_realm,
+            destination_uuid_set,
             aggregate_item.source_uuid_set,
-            aggregate_item.destination_path
-        )
+            aggregate_item.destination_path)
+
+        continue
+        copy_tree_version_list(
+            destination_realm,
+            tree_version_list,
+            aggregate_item.source_tree_version_list,
+            aggregate_item.destination_path)
 
 
-def copy_tree_version_list(destination_tree_version_list: TreeVersionList,
+def copy_uuid_set(destination_realm: str,
+                  destination_uuid_set: UUIDSet,
+                  source_uuid_set: UUIDSet,
+                  destination_path: str):
+
+    """
+    For each uuid in the source uuid set, create a version
+    list in the destination uuid set, if it does not yet exist
+    and copy the metadata for all versions into the version list.
+
+    :param destination_realm: realm of the uuid set
+    :param destination_uuid_set: uuid set that should be updated
+    :param source_uuid_set: uuid set the should be copied into the new set
+    :param destination_path: the path under which the source uuid set should appear
+    """
+
+    # For every uuid in the source uuid set get the source version list
+    for uuid in source_uuid_set.uuids():
+
+        lgr.debug(f"aggregating metadata of dataset UUID: {uuid}")
+
+        src_version_list = source_uuid_set.get_version_list(uuid)
+
+        # If the destination does not contain a version list for the
+        # source UUID, we add a copy of the source version list with
+        # a the specified path prefix
+        if uuid not in destination_uuid_set.uuids():
+
+            lgr.debug(f"no version list for UUID: {uuid} in dest, creating it, by copying the source version list")
+            destination_uuid_set.set_version_list(
+                uuid,
+                src_version_list.deepcopy(
+                    new_realm=destination_realm,
+                    path_prefix=destination_path))
+
+        else:
+
+            # Get the destination version list
+            lgr.debug(f"updating destination version list for UUID: {uuid}")
+            dest_version_list = destination_uuid_set.get_version_list(uuid)
+
+            # Copy the individual version elements from source to destination.
+            for pd_version in src_version_list.versions():
+
+                lgr.debug(f"reading metadata element for pd version {pd_version} of UUID: {uuid}")
+                time_stamp, old_path, element = src_version_list.get_versioned_element(pd_version)
+
+                new_path = destination_path + "/" + old_path
+                lgr.debug(f"adding version {pd_version} with path {new_path} to UUID: {uuid}")
+                dest_version_list.set_versioned_element(
+                    pd_version,
+                    time_stamp,
+                    new_path,
+                    element.deepcopy(new_realm=destination_realm)
+                )
+
+                # Unget the versioned element
+                lgr.debug(f"persisting copied metadata element for pd version {pd_version} of UUID: {uuid}")
+                dest_version_list.unget_versioned_element(pd_version)
+
+                # Remove the source versioned element from memory
+                lgr.debug(f"purging source metadata element for pd version {pd_version} of UUID: {uuid}")
+                src_version_list.unget_versioned_element(pd_version)
+
+            # Unget the version list in the destination, that should persist it.
+            lgr.debug(f"persisting copied version list for UUID: {uuid}")
+            destination_uuid_set.unget_version_list(uuid)
+
+        # Remove the version list from memory
+        lgr.debug(f"purging source version list for UUID: {uuid}")
+        source_uuid_set.unget_version_list(uuid)
+
+
+def copy_tree_version_list(destination_realm: str,
+                           destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
                            destination_path: str):
+    pass
