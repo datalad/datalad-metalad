@@ -356,7 +356,11 @@ def copy_uuid_set(destination_realm: str,
                 lgr.debug(f"reading metadata element for pd version {pd_version} of UUID: {uuid}")
                 time_stamp, old_path, element = src_version_list.get_versioned_element(pd_version)
 
-                new_path = destination_path + "/" + old_path
+                new_path = destination_path + (
+                    "/"
+                    if (destination_path != "" and old_path != "")
+                    else "") + old_path
+
                 lgr.debug(f"adding version {pd_version} with path {new_path} to UUID: {uuid}")
                 dest_version_list.set_versioned_element(
                     pd_version,
