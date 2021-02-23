@@ -420,6 +420,12 @@ def copy_tree_version_list(destination_realm: str,
         time_stamp, source_dataset_tree = \
             source_tree_version_list.get_dataset_tree(source_pd_version)
 
+        if destination_path in root_dataset_tree:
+            lgr.warning(
+                f"replacing subtree {destination_path} for root dataset "
+                f" version {root_pd_version}")
+            root_dataset_tree.delete_subtree(destination_path)
+
         root_dataset_tree.add_subtree(
             source_dataset_tree.deepcopy("git", destination_realm),
             destination_path)
@@ -429,10 +435,12 @@ def copy_tree_version_list(destination_realm: str,
             str(time.time()),
             root_dataset_tree)
 
-        root_dataset_tree.save()
+        # Remove the trees from memory
+        destination_tree_version_list.unget_dataset_tree(
+            root_pd_version)
+        source_tree_version_list.unget_dataset_tree(
+            source_pd_version)
 
-
-        source_tree_version_list.unget_dataset_tree(source_pd_version)
     return
 
 
