@@ -58,6 +58,7 @@ __docformat__ = 'restructuredtext'
 
 
 import logging
+import time
 from typing import List
 
 
@@ -82,8 +83,9 @@ from datalad.support.constraints import (
     EnsureNone
 )
 from datalad.support.constraints import EnsureChoice
-from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
+from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.uuidset import UUIDSet
+from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
 from .metadata import get_top_level_metadata_objects
 
@@ -301,7 +303,6 @@ def perform_aggregation(destination_realm: str,
             aggregate_item.source_uuid_set,
             aggregate_item.destination_path)
 
-        continue
         copy_tree_version_list(
             destination_realm,
             tree_version_list,
@@ -390,4 +391,61 @@ def copy_tree_version_list(destination_realm: str,
                            destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
                            destination_path: str):
-    pass
+    """
+    Determine the root-dataset version, that is, the root
+    version the contains the source version.
+    Copy the dataset tree to the root dataset tree in the
+    given destination path.
+    """
+    for source_pd_version in source_tree_version_list.versions():
+
+        root_pd_version = get_root_version_for_subset_version(
+            source_pd_version,
+            destination_path)
+
+        if root_pd_version in destination_tree_version_list.versions():
+            lgr.debug(
+                f"reading root dataset tree for version "
+                f"{root_pd_version}")
+
+            _, root_dataset_tree = \
+                destination_tree_version_list.get_dataset_tree(
+                    root_pd_version)
+        else:
+            lgr.debug(
+                f"creating new root dataset tree for version "
+                f"{root_pd_version}")
+            root_dataset_tree = DatasetTree("git", destination_realm)
+
+        time_stamp, source_dataset_tree = \
+            source_tree_version_list.get_dataset_tree(source_pd_version)
+
+        root_dataset_tree.add_subtree(
+            source_dataset_tree.deepcopy("git", destination_realm),
+            destination_path)
+
+        destination_tree_version_list.set_dataset_tree(
+            root_pd_version,
+            str(time.time()),
+            root_dataset_tree)
+
+        root_dataset_tree.save()
+
+
+        source_tree_version_list.unget_dataset_tree(source_pd_version)
+    return
+
+
+def get_root_version_for_subset_version(sub_dataset_version: str,
+                                        sub_dataset_path: str
+                                        ) -> str:
+    """
+    Get the version of the root that contains the
+    given sub_dataset_version at the given
+    sub_dataset_path.
+    :param source_version:
+    :return:
+    """
+
+    lgr.warning("NOT IMPLEMENTED: get_root_version_for_subset_version")
+    return "00112233445566778899aabbccddeeff10112233"
