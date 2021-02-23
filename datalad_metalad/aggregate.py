@@ -47,11 +47,6 @@ md(rds) all possible paths would be:
                 Error("What can you do? Not much besides re-aggregating")
                 Error("What can we do? Add a structure that allows for 'detached' metadata")
 
-
-
-UUID set is more complex with multiple primary data versions that can carry
-metadata.
-
 """
 
 __docformat__ = 'restructuredtext'
