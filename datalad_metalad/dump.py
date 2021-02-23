@@ -428,16 +428,16 @@ class Dump(Interface):
     The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
     find all JSON files in the root directory of all datasets by specifying:
 
-        *:*.json
+        \*:\*.json
 
     as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
     go through metadata for all datasets, e.g.:
 
-      % datalad -f json_pp meta-dump *:*.json -r --reporton files
+      % datalad -f json_pp meta-dump \*:\*.json -r --reporton files
 
     or simply do not specify a specific dataset at all:
 
-      % datalad -f json_pp meta-dump :*.json -r --reporton files
+      % datalad -f json_pp meta-dump :\*.json -r --reporton files
 
     Examples:
 
