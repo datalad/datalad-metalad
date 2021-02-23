@@ -11,13 +11,13 @@ Interface for aggregating metadata from (sub)dataset into (super)datasets
 
 
 Aggregating a subdataset (sds) into the UUID set of the root dataset (rds)
-is relativly simple. (There is a possible error condition, where different UUIDS would
+is relatively simple. (There is a possible error condition, where different UUIDS would
 be added to the same rds-pd-version at the same path).
 
 
 Assumption:
 
-The sds are real subdatasets of the rds
+The sds are real sub-datasets of the rds
 
 
 
@@ -39,9 +39,9 @@ md(rds) all possible paths would be:
 
     for rds-version in relevant-rds-versions:
         for sds-pd-version, _, metadata-root-record in version-list(uuid):
-            if sds-pd-version is subdataset of rds-version:
+            if sds-pd-version is sub-dataset of rds-version:
                 sds-path = path of sds-pd-version in rds-version
-                add metadata_root_record to uuidset(rds).sds-pd-version, sds-path
+                add metadata_root_record to uuid-set(rds).sds-pd-version, sds-path
             else:
                 Error("Cannot find path of sds-uuid@sds-pd-version in any rds@version)
                 Error("What can you do? Not much besides re-aggregating")
@@ -49,7 +49,7 @@ md(rds) all possible paths would be:
 
 
 
-UUID setis more complex with multiple primary data versions that can carry
+UUID set is more complex with multiple primary data versions that can carry
 metadata.
 
 """
@@ -59,7 +59,7 @@ __docformat__ = 'restructuredtext'
 
 import logging
 import time
-from typing import List
+from typing import List, Optional
 
 
 import dataclasses
@@ -71,7 +71,7 @@ from datalad.interface.utils import (
 )
 from datalad.interface.base import build_doc
 from datalad.interface.common_opts import (
-    recursion_limit,
+    recursion_limit as default_recursion_limit,
     recursion_flag
 )
 from datalad.distribution.dataset import (
@@ -85,7 +85,7 @@ from datalad.support.constraints import (
 from datalad.support.constraints import EnsureChoice
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.uuidset import UUIDSet
-from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
+from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
 from .metadata import get_top_level_metadata_objects
 
@@ -195,7 +195,7 @@ class Aggregate(Interface):
             nargs="*",
             constraints=EnsureStr() | EnsureNone()),
         recursive=recursion_flag,
-        recursion_limit=recursion_limit)
+        recursion_limit=default_recursion_limit)
 
     @staticmethod
     @datasetmethod(name='meta_aggregate')
@@ -446,13 +446,12 @@ def copy_tree_version_list(destination_realm: str,
 
 def get_root_version_for_subset_version(sub_dataset_version: str,
                                         sub_dataset_path: str
-                                        ) -> str:
+                                        ) -> Optional[str]:
     """
     Get the version of the root that contains the
-    given sub_dataset_version at the given
-    sub_dataset_path.
-    :param source_version:
-    :return:
+    given sub_dataset_version at the given sub_dataset_path,
+    if it exists. If the configuration does not exist
+    return None
     """
 
     lgr.warning("NOT IMPLEMENTED: get_root_version_for_subset_version")
