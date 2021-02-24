@@ -151,7 +151,6 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         if publications:
             for publication in publications[JsonLdTags.LIST]:
-                # Yield authors
                 yield "publication.author", ", ".join(
                     [
                         p[JsonLdProperties.NAME]
