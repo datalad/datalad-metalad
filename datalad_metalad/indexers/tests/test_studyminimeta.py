@@ -4,7 +4,7 @@ from .common import MOCKED_STUDYMINIMETA_JSONLD
 from ..studyminimeta import STUDYMINIMETA_FORMAT_NAME, StudyMiniMetaIndexer
 
 
-def test_studyminimeta():
+def test_studyminimeta_indexing():
     """ Check proper indexing of JSON-LD studyminimeta description """
 
     indexer = StudyMiniMetaIndexer(STUDYMINIMETA_FORMAT_NAME)

@@ -4,7 +4,7 @@ from .common import MOCKED_STUDYMINIMETA_JSONLD
 from ..jsonld import JsonLdIndexer
 
 
-def test_studyminimeta():
+def test_generic_json_ld_indexing():
     """ Check proper indexing of JSON-LD studyminimeta description """
 
     indexer = JsonLdIndexer("json-ld")
