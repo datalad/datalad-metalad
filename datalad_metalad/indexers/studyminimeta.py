@@ -8,8 +8,10 @@ from datalad.metadata.indexers.base import MetadataIndexer
 STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'
 
 
-class StudyMiniMetaTags(enum.Enum):
-    pass
+class StudyMiniMetaIds(str, enum.Enum):
+    PERSON_LIST = "#personList"
+    PUBLICATION_LIST = "#publicationList"
+    STUDY = "#study"
 
 
 class StudyMiniMetaIndexer(MetadataIndexer):
@@ -56,13 +58,13 @@ class StudyMiniMetaIndexer(MetadataIndexer):
         persons = [
             element
             for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == "#personList"
+            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.PERSON_LIST
         ][0]
 
         study = [
             element
             for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == "#study"
+            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.STUDY
         ][0]
 
         dataset = [
@@ -83,7 +85,7 @@ class StudyMiniMetaIndexer(MetadataIndexer):
         publications = ([
             element
             for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == "#publicationList"
+            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.PUBLICATION_LIST
         ] or [None])[0]
 
         yield "dataset.author", ", ".join(
