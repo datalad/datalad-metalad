@@ -9,58 +9,139 @@ LDCreatorResult = namedtuple("LDCreatorResult", ["success", "json_ld_object", "k
 
 DATALAD_SCHEMA_BASE = "https://schema.datalad.org"
 
-AUTHOR_KEY = "author"
-CONTRIBUTOR_KEY = "contributor"
-CORRESPONDING_AUTHOR_KEY = "corresponding_author"
-DATASET_KEY = "dataset"
-DESCRIPTION_KEY = "description"
-FUNDING_KEY = "funding"
-ISSUE_KEY = "issue"
-LOCATION_KEY = "location"
-NAME_KEY = "name"
-PERSON_KEY = "person"
-PUBLICATION_KEY = "publication"
-STANDARD_KEY = "standard"
-STUDY_KEY = "study"
-VOLUME_KEY = "volume"
+
+class SMMProperties:
+    AFFILIATION = "affiliation"
+    AUTHOR = "author"
+    CONTACT_INFORMATION = "contact_information"
+    CONTRIBUTOR = "contributor"
+    CORRESPONDING_AUTHOR = "corresponding_author"
+    DATASET = "dataset"
+    DESCRIPTION = "description"
+    DOI = "doi"
+    END_DATE = "end_date"
+    FUNDING = "funding"
+    GIVEN_NAME = "given_name"
+    ISSUE = "issue"
+    KEYWORD = "keyword"
+    LAST_NAME = "last_name"
+    LOCATION = "location"
+    NAME = "name"
+    ORCID_ID = "orcid-id"
+    ORGANIZATION = "organization"
+    PAGES = "pages"
+    PERSON = "person"
+    PRINCIPAL_INVESTIGATOR = "principal_investigator"
+    PUBLICATION = "publication"
+    PUBLISHER = "publisher"
+    PURPOSE = "purpose"
+    STANDARD = "standard"
+    START_DATE = "start_date"
+    STUDY = "study"
+    TITLE = "title"
+    VOLUME = "volume"
+    YEAR = "year"
+
+
+class DataladIdCategory:
+    DATALAD_DATASET = "datalad_dataset"
+    ORGANIZATION = "organization"
+    PERSON = "person"
+    PUBLISHER = "publisher"
+
+
+class JsonLdTags:
+    GRAPH = "@graph"
+    ID = "@id"
+    LIST = "@list"
+    TYPE = "@type"
+
+
+class JsonLdTypes:
+    CONTACT_POINT = "ContactPoint"
+    CREATIVE_WORK = "CreativeWork"
+    DATASET = "Dataset"
+    DEFINED_TERM = "DefinedTerm"
+    DEFINED_TERM_SET = "DefinedTermSet"
+    ORGANIZATION = "Organization"
+    PERSON = "Person"
+    PUBLICATION_EVENT = "PublicationEvent"
+    PUBLICATION_ISSUE = "PublicationIssue"
+    PUBLICATION_VOLUME = "PublicationVolume"
+    SCHOLARLY_ARTICLE = "ScholarlyArticle"
+
+
+class JsonLdProperties:
+    ABSTRACT = "abstract"
+    ACCOUNTABLE_PERSON = "accountablePerson"
+    AFFILIATION = "affiliation"
+    AUTHOR = "author"
+    CONTACT_POINT = "contactPoint"
+    CONTRIBUTOR = "contributor"
+    DATASET = "dataset"
+    DATE_CREATED = "dateCreated"
+    DATE_PUBLISHED = "datePublished"
+    DESCRIPTION = "description"
+    EMAIL = "email"
+    FAMILY_NAME = "familyName"
+    FUNDER = "funder"
+    GIVEN_NAME = "givenName"
+    HAS_DEFINED_TERM = "hasDefinedTerm"
+    HAS_PART = "hasPart"
+    HEADLINE = "headline"
+    HONORIFIC_SUFFIX = "honorificSuffix"
+    IS_PART_OF = "isPartOf"
+    ISSUE_NUMBER = "issue_number"
+    KEYWORDS = "keywords"
+    NAME = "name"
+    PAGINATION = "pagination"
+    PERSON = "person"
+    PUBLICATION = "publication"
+    PUBLISHER = "publisher"
+    SAME_AS = "sameAs"
+    STUDY = "study"
+    TERM_CODE = "termCode"
+    URL = "url"
+    VERSION = "version"
+    VOLUME_NUMBER = "volumeNumber"
 
 
 # Automatically translated study-element properties
 STUDY_TRANSLATION_TABLE = {
-    "name": "name",
-    "principal_investigator": "accountablePerson",
-    "keyword": "keywords",
-    "purpose": "abstract",
-    "start_date": "dateCreated",
+    SMMProperties.NAME: JsonLdProperties.NAME,
+    SMMProperties.PRINCIPAL_INVESTIGATOR: JsonLdProperties.ACCOUNTABLE_PERSON,
+    SMMProperties.KEYWORD: JsonLdProperties.KEYWORDS,
+    SMMProperties.PURPOSE: JsonLdProperties.ABSTRACT,
+    SMMProperties.START_DATE: JsonLdProperties.DATE_CREATED
 }
 
 
 # Automatically translated person-element properties
 PERSON_TRANSLATION_TABLE = {
-    "given_name": "givenName",
-    "last_name": "familyName",
-    "title": "honorificSuffix",
-    "affiliation": "affiliation",
-    "orcid-id": "sameAs"
+    SMMProperties.GIVEN_NAME: JsonLdProperties.GIVEN_NAME,
+    SMMProperties.LAST_NAME: JsonLdProperties.FAMILY_NAME,
+    SMMProperties.TITLE: JsonLdProperties.HONORIFIC_SUFFIX,
+    SMMProperties.AFFILIATION: JsonLdProperties.AFFILIATION,
+    SMMProperties.ORCID_ID: JsonLdProperties.SAME_AS
 }
 
 
 # Automatically translated publication-element properties (to https://schema.org/ScholarlyArticle)
 PUBLICATION_TRANSLATION_TABLE = {
-    "title": "headline",
-    "year": "datePublished",
-    "doi": "sameAs",
-    "pages": "pagination",
-    CORRESPONDING_AUTHOR_KEY: "accountablePerson",
+    SMMProperties.TITLE: JsonLdProperties.HEADLINE,
+    SMMProperties.YEAR: JsonLdProperties.DATE_PUBLISHED,
+    SMMProperties.DOI: JsonLdProperties.SAME_AS,
+    SMMProperties.PAGES: JsonLdProperties.PAGINATION,
+    SMMProperties.CORRESPONDING_AUTHOR: JsonLdProperties.ACCOUNTABLE_PERSON
 }
 
 
 # Automatically translated dataset-element properties (to https://schema.org/Dataset)
 DATASET_TRANSLATION_TABLE = {
-    "name": "name",
-    "location": "url",
-    "keyword": "keywords",
-    "description": "description",
+    SMMProperties.NAME: JsonLdProperties.NAME,
+    SMMProperties.LOCATION: JsonLdProperties.URL,
+    SMMProperties.KEYWORD: JsonLdProperties.KEYWORDS,
+    SMMProperties.DESCRIPTION: JsonLdProperties.DESCRIPTION
 }
 
 
@@ -68,14 +149,18 @@ class LDCreator(object):
     def __init__(self, dataset_id: str, ref_commit: str, metadata_file_name: str):
         self.dataset_id = dataset_id
         self.ref_commit = ref_commit
-        self.base_id = self._get_dataset_jsonld_id(dataset_id) + "/{metadata_file_name}".format(
-            metadata_file_name=metadata_file_name)
+        self.base_id = self._get_dataset_jsonld_id(
+            dataset_id) + "/{metadata_file_name}".format(
+                metadata_file_name=metadata_file_name)
 
     def _get_person_name(self, spec: dict):
         return '{title} {given_name} {last_name}'.format(
-            title=spec["title"] + " " if "title" in spec else "",
-            given_name=spec["given_name"],
-            last_name=spec["last_name"])
+            title=(
+                spec[SMMProperties.TITLE] + " "
+                if SMMProperties.TITLE in spec
+                else ""),
+            given_name=spec[SMMProperties.GIVEN_NAME],
+            last_name=spec[SMMProperties.LAST_NAME])
 
     def _get_translated_dict(self, spec: Dict, translation_table: Dict[str, str]) -> Dict:
         return {
@@ -87,22 +172,22 @@ class LDCreator(object):
         return "#{local_part}".format(local_part=local_part)
 
     def _get_datalad_global_id(self, category: str, name: str):
-        return "{DATALAD_SCHEMA_BASE}/{category}#{name}".format(
-            DATALAD_SCHEMA_BASE=DATALAD_SCHEMA_BASE,
+        return "{datalad_schema_base}/{category}#{name}".format(
+            datalad_schema_base=DATALAD_SCHEMA_BASE,
             category=category,
             name=name)
 
     def _get_person_id(self, email: str) -> str:
-        return self._get_datalad_global_id("person", email)
+        return self._get_datalad_global_id(DataladIdCategory.PERSON, email)
 
     def _get_organization_id(self, name: str) -> str:
-        return self._get_datalad_global_id("organization", name)
+        return self._get_datalad_global_id(DataladIdCategory.ORGANIZATION, name)
 
     def _get_publisher_id(self, name: str) -> str:
-        return self._get_datalad_global_id("publisher", name)
+        return self._get_datalad_global_id(DataladIdCategory.PUBLISHER, name)
 
     def _get_dataset_jsonld_id(self, dataset_id: str) -> str:
-        return self._get_datalad_global_id("datalad_dataset", dataset_id)
+        return self._get_datalad_global_id(DataladIdCategory.DATALAD_DATASET, dataset_id)
 
     def _get_issue_id(self, publication_index: int) -> str:
         return self._get_local_id_with_part(
@@ -113,154 +198,155 @@ class LDCreator(object):
             "publication.{publication_index}.volume".format(publication_index=publication_index))
 
     def _get_volume_issue_dict(self, index: int, publication: dict) -> dict:
-        volume = publication.get(VOLUME_KEY, None)
-        issue = publication.get(ISSUE_KEY, None)
+        volume = publication.get(SMMProperties.VOLUME, None)
+        issue = publication.get(SMMProperties.ISSUE, None)
         if volume and issue:
             return {
-                "@id": "#issue({issue})".format(issue=issue),
-                "@type": "PublicationIssue",
-                "issueNumber": issue,
-                "isPartOf": {
-                    "@id": "#volume({volume})".format(volume=volume),
-                    "@type": "PublicationVolume",
-                    "volumeNumber": volume,
+                JsonLdTags.ID: "#issue({issue})".format(issue=issue),
+                JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_ISSUE,
+                JsonLdProperties.ISSUE_NUMBER: issue,
+                JsonLdProperties.IS_PART_OF: {
+                    JsonLdTags.ID: "#volume({volume})".format(volume=volume),
+                    JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_VOLUME,
+                    JsonLdProperties.VOLUME_NUMBER: volume,
                 }
             }
         if issue:
             return {
-                "@id": "#issue({issue})".format(issue=issue),
-                "@type": "PublicationIssue",
-                "issueNumber": issue
-        }
+                JsonLdTags.ID: "#issue({issue})".format(issue=issue),
+                JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_ISSUE,
+                JsonLdProperties.ISSUE_NUMBER: issue
+            }
         if volume:
             return {
-                "@id": "#volume({volume})".format(volume=volume),
-                "@type": "PublicationVolume",
-                "volumeNumber": volume
+                JsonLdTags.ID: "#volume({volume})".format(volume=volume),
+                JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_VOLUME,
+                JsonLdProperties.VOLUME_NUMBER: volume
             }
         return {}
 
     def _create_study_ld(self, study: dict) -> dict:
         return {
-            "@id": "#study",
-            "@type": "CreativeWork",
+            JsonLdTags.ID: "#study",
+            JsonLdTags.TYPE: JsonLdTypes.CREATIVE_WORK,
             **self._get_translated_dict(study, STUDY_TRANSLATION_TABLE),
             **{
-                "description": "end_date: {value}".format(value=value)
-                for key, value in study.items() if key == "end_date"
+                JsonLdProperties.DESCRIPTION: "end_date: {value}".format(value=value)
+                for key, value in study.items() if key == SMMProperties.END_DATE
             },
             **{
-                "contributor": [
+                JsonLdProperties.CONTRIBUTOR: [
                     {
-                        "@id": self._get_person_id(email),
+                        JsonLdTags.ID: self._get_person_id(email),
                     } for email in value
                 ]
-                for key, value in study.items() if key == CONTRIBUTOR_KEY
+                for key, value in study.items() if key == SMMProperties.CONTRIBUTOR
             },
             **{
-                "funder": [
+                JsonLdProperties.FUNDER: [
                     {
-                        "@id": self._get_organization_id(funder_name),
-                        "@type": "Organization",
-                        "name": funder_name
+                        JsonLdTags.ID: self._get_organization_id(funder_name),
+                        JsonLdTags.TYPE: JsonLdTypes.ORGANIZATION,
+                        JsonLdProperties.NAME: funder_name
                     }
-                    for funder_name in study[FUNDING_KEY]
+                    for funder_name in study[SMMProperties.FUNDING]
                 ]
-                for key, value in study.items() if key == FUNDING_KEY
+                for key, value in study.items() if key == SMMProperties.FUNDING
             }
         }
 
     def _create_dataset_ld(self, dataset: dict) -> dict:
         return {
-            "@id": self._get_dataset_jsonld_id(self.dataset_id),
-            "@type": "Dataset",
-            "version": self.ref_commit,
+            JsonLdTags.ID: self._get_dataset_jsonld_id(self.dataset_id),
+            JsonLdTags.TYPE: JsonLdTypes.DATASET,
+            JsonLdProperties.VERSION: self.ref_commit,
             **self._get_translated_dict(dataset, DATASET_TRANSLATION_TABLE),
             **{
-                "author": [
+                JsonLdProperties.AUTHOR: [
                     {
-                        "@id": self._get_person_id(email),
+                        JsonLdTags.ID: self._get_person_id(email),
                     } for email in value
                 ]
-                for key, value in dataset.items() if key == AUTHOR_KEY
+                for key, value in dataset.items() if key == SMMProperties.AUTHOR
             },
             **{
-                "funder": [
+                JsonLdProperties.FUNDER: [
                     {
-                        "@id": self._get_organization_id(funder_name),
-                        "@type": "Organization",
-                        "name": funder_name
+                        JsonLdTags.ID: self._get_organization_id(funder_name),
+                        JsonLdTags.TYPE: JsonLdTypes.ORGANIZATION,
+                        JsonLdProperties.NAME: funder_name
                     }
-                    for funder_name in dataset[FUNDING_KEY]
+                    for funder_name in dataset[SMMProperties.FUNDING]
                 ]
-                for key, value in dataset.items() if key == FUNDING_KEY
+                for key, value in dataset.items() if key == SMMProperties.FUNDING
             },
             **{
-                "hasPart": {
-                    "@id": "#standards",
-                    "@type": "DefinedTermSet",
-                    "hasDefinedTerm": [
+                JsonLdProperties.HAS_PART: {
+                    JsonLdTags.ID: "#standards",
+                    JsonLdTags.TYPE: JsonLdTypes.DEFINED_TERM_SET,
+                    JsonLdProperties.HAS_DEFINED_TERM: [
                         {
-                            "@id": self._get_datalad_global_id("standard", standard),
-                            "@type": "DefinedTerm",
-                            "termCode": standard
+                            JsonLdTags.ID: self._get_datalad_global_id("standard", standard),
+                            JsonLdTags.TYPE: JsonLdTypes.DEFINED_TERM,
+                            JsonLdProperties.TERM_CODE: standard
                         }
-                        for standard in dataset[STANDARD_KEY]
+                        for standard in dataset[SMMProperties.STANDARD]
                     ]
                 }
-                for _ in [0] if STANDARD_KEY in dataset
+                for _ in [0] if SMMProperties.STANDARD in dataset
             },
             **{
-                "description": "<this is an autogenerated description for dataset {dataset_id} ,"
-                               "since no description was provided by the author, and "
-                               "because google rich-results requires the description-property "
-                               "in schmema.org/Dataset types>".format(dataset_id=self.dataset_id)
-                for _ in [0] if DESCRIPTION_KEY not in dataset
+                JsonLdProperties.DESCRIPTION:
+                    "<this is an autogenerated description for dataset {dataset_id} ,"
+                    "since no description was provided by the author, and "
+                    "because google rich-results requires the description-property "
+                    "in schmema.org/Dataset types>".format(dataset_id=self.dataset_id)
+                for _ in [0] if SMMProperties.DESCRIPTION not in dataset
             }
         }
 
     def _create_publication_list_ld(self, publication_list: list) -> list:
         return [
             {
-                "@id": "#publication[{publication_index}]".format(publication_index=publication_index),
-                "@type": "ScholarlyArticle",
+                JsonLdTags.ID: "#publication[{publication_index}]".format(publication_index=publication_index),
+                JsonLdTags.TYPE: JsonLdTypes.SCHOLARLY_ARTICLE,
                 **self._get_translated_dict(publication, PUBLICATION_TRANSLATION_TABLE),
                 **{
-                    "author": [
+                    JsonLdProperties.AUTHOR: [
                         {
-                            "@id": self._get_person_id(email)
+                            JsonLdTags.ID: self._get_person_id(email)
                         } for email in value
                     ]
-                    for key, value in publication.items() if key == AUTHOR_KEY
+                    for key, value in publication.items() if key == SMMProperties.AUTHOR
                 },
                 **{
-                    "publisher": {
-                        "@id": self._get_publisher_id(publisher_name),
-                        "@type": "Organization",
-                        "name": publisher_name
+                    JsonLdProperties.PUBLISHER: {
+                        JsonLdTags.ID: self._get_publisher_id(publisher_name),
+                        JsonLdTags.TYPE: JsonLdTypes.ORGANIZATION,
+                        JsonLdProperties.NAME: publisher_name
                     }
-                    for key, publisher_name in publication.items() if key == "publisher"
+                    for key, publisher_name in publication.items() if key == SMMProperties.PUBLISHER
                 },
                 **{
-                    "publication": {
-                        "@id": self._get_datalad_global_id("publication_event", publication_event_name),
-                        "@type": "PublicationEvent",
-                        "name": publication_event_name
+                    JsonLdProperties.PUBLICATION: {
+                        JsonLdTags.ID: self._get_datalad_global_id("publication_event", publication_event_name),
+                        JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_EVENT,
+                        JsonLdProperties.NAME: publication_event_name
                     }
-                    for key, publication_event_name in publication.items() if key == "publication"
+                    for key, publication_event_name in publication.items() if key == SMMProperties.PUBLICATION
                 },
                 **{
-                    "description": "{CORRESPONDING_AUTHOR_KEY}: {value}".format(
-                        CORRESPONDING_AUTHOR_KEY=CORRESPONDING_AUTHOR_KEY,
+                    JsonLdProperties.DESCRIPTION: "{corresponding_author}: {value}".format(
+                        corresponding_author=SMMProperties.CORRESPONDING_AUTHOR,
                         value=value
                     )
-                    for key, value in publication.items() if key == CORRESPONDING_AUTHOR_KEY
+                    for key, value in publication.items() if key == SMMProperties.CORRESPONDING_AUTHOR
                 },
                 **{
-                    "isPartOf": {
+                    JsonLdProperties.IS_PART_OF: {
                         **self._get_volume_issue_dict(publication_index, publication)
                     }
-                    for _ in [0] if VOLUME_KEY in publication or ISSUE_KEY in publication
+                    for _ in [0] if SMMProperties.VOLUME in publication or SMMProperties.ISSUE in publication
                 }
             } for publication_index, publication in enumerate(publication_list)
         ]
@@ -268,18 +354,18 @@ class LDCreator(object):
     def _create_person_list_ld(self, persons: dict) -> list:
         return [
             {
-                "@id": self._get_person_id(email),
-                "@type": "Person",
-                "email": email,
-                "name": self._get_person_name(details),
+                JsonLdTags.ID: self._get_person_id(email),
+                JsonLdTags.TYPE: JsonLdTypes.PERSON,
+                JsonLdProperties.EMAIL: email,
+                JsonLdProperties.NAME: self._get_person_name(details),
                 **self._get_translated_dict(details, PERSON_TRANSLATION_TABLE),
                 **{
-                    "contactPoint": {
-                        "@id": "#contactPoint({email})".format(email=email),
-                        "@type": "ContactPoint",
-                        "description": value
+                    JsonLdProperties.CONTACT_POINT: {
+                        JsonLdTags.ID: "#contactPoint({email})".format(email=email),
+                        JsonLdTags.TYPE: JsonLdTypes.CONTACT_POINT,
+                        JsonLdProperties.DESCRIPTION: value
                     }
-                    for key, value in details.items() if key == "contact_information"
+                    for key, value in details.items() if key == SMMProperties.CONTACT_INFORMATION
                 },
             } for email, details in persons.items()
         ]
@@ -287,34 +373,34 @@ class LDCreator(object):
     def _create_ld_from_spec(self, spec: Dict[str, Union[Dict, List]]) -> LDCreatorResult:
         graph_elements = {
             key: {
-                STUDY_KEY: self._create_study_ld,
-                DATASET_KEY: self._create_dataset_ld,
-                PERSON_KEY: self._create_person_list_ld,
-                PUBLICATION_KEY: self._create_publication_list_ld
+                SMMProperties.STUDY: self._create_study_ld,
+                SMMProperties.DATASET: self._create_dataset_ld,
+                SMMProperties.PERSON: self._create_person_list_ld,
+                SMMProperties.PUBLICATION: self._create_publication_list_ld
             }[key](sub_spec)
             for key, sub_spec in spec.items()
         }
 
-        graph_elements["person"] = {
-            "@id": "#personList",
-            "@list": graph_elements["person"]
+        graph_elements[JsonLdProperties.PERSON] = {
+            JsonLdTags.ID: "#personList",
+            JsonLdTags.LIST: graph_elements[JsonLdProperties.PERSON]
         }
 
-        if "publication" in graph_elements:
-            graph_elements["publication"] = {
-                "@id": "#publicationList",
-                "@list": graph_elements["publication"]
+        if JsonLdProperties.PUBLICATION in graph_elements:
+            graph_elements[JsonLdProperties.PUBLICATION] = {
+                JsonLdTags.ID: "#publicationList",
+                JsonLdTags.LIST: graph_elements[JsonLdProperties.PUBLICATION]
             }
 
         json_ld = {
             "@context": {
                 "@vocab": "http://schema.org/",
             },
-            "@graph": [value for _, value in graph_elements.items()]
+            JsonLdTags.GRAPH: [value for _, value in graph_elements.items()]
         }
         return LDCreatorResult(True, json_ld, [value for _, value in graph_elements.items()], [])
 
-    def create_ld_from_spec(self, spec: dict):
+    def create_ld_from_spec(self, spec: dict) -> LDCreatorResult:
         try:
             return self._create_ld_from_spec(spec)
         except KeyError as key_error:
