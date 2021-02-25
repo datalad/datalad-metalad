@@ -584,3 +584,8 @@ def test_file_handling(directory_path: str):
         "metadata": {},
         "type": "all"
     }
+
+
+def test_process_type():
+    results = tuple(StudyMiniMetaExtractor()(None, None, "unsupported", None))
+    assert results == tuple()
