@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from datalad_metalad.extractors.studyminimeta.ld_creator import LDCreator
+from datalad_metalad.extractors.studyminimeta.ldcreator import LDCreator
 
 
 STUDYMINIMETA_PERSONS = {
