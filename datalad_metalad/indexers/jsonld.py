@@ -1,11 +1,10 @@
-import enum
 import os
 from typing import Any, Dict, List, Union
 
 from datalad.metadata.indexers.base import MetadataIndexer
 
 
-class JsonLdTags(str, enum.Enum):
+class JsonLdTags:
     ID = '@id'
     TYPE = '@type'
     LIST = '@list'
@@ -13,7 +12,7 @@ class JsonLdTags(str, enum.Enum):
     CONTEXT = '@context'
 
 
-class JsonLdProperties(str, enum.Enum):
+class JsonLdProperties:
     ACCOUNTABLE_PERSON = 'accountablePerson'
     AUTHOR = 'author'
     CONTRIBUTOR = 'contributor'
@@ -30,7 +29,7 @@ class JsonLdProperties(str, enum.Enum):
     URL = 'url'
 
 
-class JsonLdTypes(str, enum.Enum):
+class JsonLdTypes:
     DATASET = 'Dataset'
     DEFINED_TERM = 'DefinedTerm'
     DEFINED_TERM_SET = 'DefinedTermSet'

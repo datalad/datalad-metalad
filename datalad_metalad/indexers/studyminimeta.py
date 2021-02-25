@@ -1,4 +1,3 @@
-import enum
 from typing import Dict, Generator, List, Tuple, Union
 
 from .jsonld import JsonLdProperties, JsonLdTags, JsonLdTypes
@@ -8,7 +7,7 @@ from datalad.metadata.indexers.base import MetadataIndexer
 STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'
 
 
-class StudyMiniMetaIds(str, enum.Enum):
+class StudyMiniMetaIds:
     PERSON_LIST = "#personList"
     PUBLICATION_LIST = "#publicationList"
     STUDY = "#study"
