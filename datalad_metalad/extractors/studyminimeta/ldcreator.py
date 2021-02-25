@@ -168,9 +168,6 @@ class LDCreator(object):
                for key, value in spec.items() if key in translation_table
         }
 
-    def _get_local_id_with_part(self, local_part: str) -> str:
-        return "#{local_part}".format(local_part=local_part)
-
     def _get_datalad_global_id(self, category: str, name: str):
         return "{datalad_schema_base}/{category}#{name}".format(
             datalad_schema_base=DATALAD_SCHEMA_BASE,
@@ -188,14 +185,6 @@ class LDCreator(object):
 
     def _get_dataset_jsonld_id(self, dataset_id: str) -> str:
         return self._get_datalad_global_id(DataladIdCategory.DATALAD_DATASET, dataset_id)
-
-    def _get_issue_id(self, publication_index: int) -> str:
-        return self._get_local_id_with_part(
-            "publication.{publication_index}.issue".format(publication_index=publication_index))
-
-    def _get_volume_id(self, publication_index: int) -> str:
-        return self._get_local_id_with_part(
-            "publication.{publication_index}.volume".format(publication_index=publication_index))
 
     def _get_volume_issue_dict(self, index: int, publication: dict) -> dict:
         volume = publication.get(SMMProperties.VOLUME, None)
@@ -265,9 +254,10 @@ class LDCreator(object):
                 JsonLdProperties.AUTHOR: [
                     {
                         JsonLdTags.ID: self._get_person_id(email),
-                    } for email in value
+                    } for email in email_list
                 ]
-                for key, value in dataset.items() if key == SMMProperties.AUTHOR
+                for key, email_list in dataset.items()
+                if key == SMMProperties.AUTHOR
             },
             **{
                 JsonLdProperties.FUNDER: [
@@ -278,7 +268,8 @@ class LDCreator(object):
                     }
                     for funder_name in dataset[SMMProperties.FUNDING]
                 ]
-                for key, value in dataset.items() if key == SMMProperties.FUNDING
+                for key, value in dataset.items()
+                if key == SMMProperties.FUNDING
             },
             **{
                 JsonLdProperties.HAS_PART: {
@@ -293,7 +284,8 @@ class LDCreator(object):
                         for standard in dataset[SMMProperties.STANDARD]
                     ]
                 }
-                for _ in [0] if SMMProperties.STANDARD in dataset
+                for _ in [0]
+                if SMMProperties.STANDARD in dataset
             },
             **{
                 JsonLdProperties.DESCRIPTION:
@@ -301,7 +293,8 @@ class LDCreator(object):
                     "since no description was provided by the author, and "
                     "because google rich-results requires the description-property "
                     "in schmema.org/Dataset types>".format(dataset_id=self.dataset_id)
-                for _ in [0] if SMMProperties.DESCRIPTION not in dataset
+                for _ in [0]
+                if SMMProperties.DESCRIPTION not in dataset
             }
         }
 
@@ -315,9 +308,10 @@ class LDCreator(object):
                     JsonLdProperties.AUTHOR: [
                         {
                             JsonLdTags.ID: self._get_person_id(email)
-                        } for email in value
+                        } for email in email_list
                     ]
-                    for key, value in publication.items() if key == SMMProperties.AUTHOR
+                    for key, email_list in publication.items()
+                    if key == SMMProperties.AUTHOR
                 },
                 **{
                     JsonLdProperties.PUBLISHER: {
@@ -325,7 +319,8 @@ class LDCreator(object):
                         JsonLdTags.TYPE: JsonLdTypes.ORGANIZATION,
                         JsonLdProperties.NAME: publisher_name
                     }
-                    for key, publisher_name in publication.items() if key == SMMProperties.PUBLISHER
+                    for key, publisher_name in publication.items()
+                    if key == SMMProperties.PUBLISHER
                 },
                 **{
                     JsonLdProperties.PUBLICATION: {
@@ -333,20 +328,23 @@ class LDCreator(object):
                         JsonLdTags.TYPE: JsonLdTypes.PUBLICATION_EVENT,
                         JsonLdProperties.NAME: publication_event_name
                     }
-                    for key, publication_event_name in publication.items() if key == SMMProperties.PUBLICATION
+                    for key, publication_event_name in publication.items()
+                    if key == SMMProperties.PUBLICATION
                 },
                 **{
-                    JsonLdProperties.DESCRIPTION: "{corresponding_author}: {value}".format(
+                    JsonLdProperties.DESCRIPTION: "{corresponding_author}: {publication}".format(
                         corresponding_author=SMMProperties.CORRESPONDING_AUTHOR,
-                        value=value
+                        publication=publication[SMMProperties.CORRESPONDING_AUTHOR]
                     )
-                    for key, value in publication.items() if key == SMMProperties.CORRESPONDING_AUTHOR
+                    for _ in [0]
+                    if SMMProperties.CORRESPONDING_AUTHOR in publication
                 },
                 **{
                     JsonLdProperties.IS_PART_OF: {
                         **self._get_volume_issue_dict(publication_index, publication)
                     }
-                    for _ in [0] if SMMProperties.VOLUME in publication or SMMProperties.ISSUE in publication
+                    for _ in [0]
+                    if SMMProperties.VOLUME in publication or SMMProperties.ISSUE in publication
                 }
             } for publication_index, publication in enumerate(publication_list)
         ]
@@ -363,9 +361,10 @@ class LDCreator(object):
                     JsonLdProperties.CONTACT_POINT: {
                         JsonLdTags.ID: "#contactPoint({email})".format(email=email),
                         JsonLdTags.TYPE: JsonLdTypes.CONTACT_POINT,
-                        JsonLdProperties.DESCRIPTION: value
+                        JsonLdProperties.DESCRIPTION: details[SMMProperties.CONTACT_INFORMATION]
                     }
-                    for key, value in details.items() if key == SMMProperties.CONTACT_INFORMATION
+                    for _ in [0]
+                    if SMMProperties.CONTACT_INFORMATION in details
                 },
             } for email, details in persons.items()
         ]
@@ -403,5 +402,5 @@ class LDCreator(object):
     def create_ld_from_spec(self, spec: dict) -> LDCreatorResult:
         try:
             return self._create_ld_from_spec(spec)
-        except KeyError as key_error:
-            return LDCreatorResult(False, None, [], [str(key_error)])
+        except (KeyError, AttributeError) as exception:
+            return LDCreatorResult(False, None, [], [str(exception)])

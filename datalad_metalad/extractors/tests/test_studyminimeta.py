@@ -87,7 +87,7 @@ STUDYMINIMETA_DATASET = {
 }
 
 
-STUDYMINIMETA_METADATA_SPEC = {
+STUDYMINIMETA_METADATA_MAXIMAL_SPEC = {
     "study": STUDYMINIMETA_STUDY,
     "dataset": STUDYMINIMETA_DATASET,
     "person": STUDYMINIMETA_PERSONS,
@@ -95,7 +95,7 @@ STUDYMINIMETA_METADATA_SPEC = {
 }
 
 
-EXPECTED_JSON_LD = {
+EXPECTED_MAXIMAL_JSON_LD = {
     "@context": {
         "@vocab": "http://schema.org/"
     },
@@ -329,14 +329,142 @@ EXPECTED_JSON_LD = {
 }
 
 
-def test_jsonld_creator():
+def test_maximal_jsonld_creation():
     ldc = LDCreator(
         "id-0000--0000",
         "a02312398324778972389472834",
         ".studyminimeta.yaml")
 
     success, jsonld_object, keys, messages = ldc.create_ld_from_spec(
-        STUDYMINIMETA_METADATA_SPEC)
+        STUDYMINIMETA_METADATA_MAXIMAL_SPEC)
 
     assert success is True, messages
-    assert jsonld_object == EXPECTED_JSON_LD
+    assert jsonld_object == EXPECTED_MAXIMAL_JSON_LD
+
+
+def test_minimal_jsonld_creation():
+    ldc = LDCreator(
+        "id-0000--0000",
+        "a02312398324778972389472834",
+        ".studyminimeta.yaml")
+
+    minimal_spec = {
+        "study": {
+            "name": "Intelligence in Rodents",
+            "start_date": "31.10.1990",
+            "end_date": "22.12.2010",
+            "keyword": ["Rodent"],
+            "principal_investigator": "a@fz-juelich.de"
+        },
+        "dataset": {
+            "name": "rdonernesdf-s.dfs",
+            "location": "juseless:/data/project/riskystudy",
+            "keyword": ["fMRI"],
+            "author": ["a@fz-juelich.de"]
+        },
+        "person": {
+            "a@fz-juelich.de": {
+                "given_name": "Hans",
+                "last_name": "Haber"
+            }
+        }
+    }
+
+    minimal_jsonld_template = {
+        "@context": {
+            "@vocab": "http://schema.org/"
+        },
+        "@graph": [
+            {
+                "@id": "#study",
+                "@type": "CreativeWork",
+                "name": "Intelligence in Rodents",
+                "dateCreated": "31.10.1990",
+                "keywords": [
+                    "Rodent"
+                ],
+                "accountablePerson": "a@fz-juelich.de",
+                "description": "end_date: 22.12.2010"
+            },
+            {
+                "@id": "https://schema.datalad.org/datalad_dataset#id-0000--0000",
+                "@type": "Dataset",
+                "version": "a02312398324778972389472834",
+                "name": "rdonernesdf-s.dfs",
+                "url": "juseless:/data/project/riskystudy",
+                "keywords": [
+                    "fMRI"
+                ],
+                "author": [
+                    {
+                        "@id": "https://schema.datalad.org/person#a@fz-juelich.de"
+                    }
+                ],
+            },
+            {
+                "@id": "#personList",
+                "@list": [
+                    {
+                        "@id": "https://schema.datalad.org/person#a@fz-juelich.de",
+                        "@type": "Person",
+                        "email": "a@fz-juelich.de",
+                        "name": " Hans Haber",
+                        "givenName": "Hans",
+                        "familyName": "Haber"
+                    }
+                ]
+            }
+        ]
+    }
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(
+        minimal_spec)
+
+    assert success is True, messages
+
+    # Verify the description individually, since it is not in the
+    # minimal JSON-LD template
+    assert "description" in jsonld_object["@graph"][1]
+    assert isinstance(jsonld_object["@graph"][1]["description"], str)
+    del jsonld_object["@graph"][1]["description"]
+
+    assert jsonld_object == minimal_jsonld_template
+
+
+def test_error_key():
+    ldc = LDCreator(
+        "id-0000--0000",
+        "a02312398324778972389472834",
+        ".studyminimeta.yaml")
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec({})
+
+    print(messages)
+    assert success is False, messages
+
+
+def test_error_list():
+    ldc = LDCreator(
+        "id-0000--0000",
+        "a02312398324778972389472834",
+        ".studyminimeta.yaml")
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec([])
+    assert success is False, messages
+
+
+def test_error_type():
+    ldc = LDCreator(
+        "id-0000--0000",
+        "a02312398324778972389472834",
+        ".studyminimeta.yaml")
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec("")
+    assert success is False, messages
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(None)
+    assert success is False, messages
+
+    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(1)
+    assert success is False, messages
+
