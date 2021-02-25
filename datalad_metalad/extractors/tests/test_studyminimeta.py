@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+from unittest.mock import patch
 
+from datalad.tests.utils import with_tree
 from datalad_metalad.extractors.studyminimeta.ldcreator import LDCreator
+from datalad_metalad.extractors.studyminimeta.main import StudyMiniMetaExtractor
 
 
 STUDYMINIMETA_PERSONS = {
@@ -438,8 +441,6 @@ def test_error_key():
         ".studyminimeta.yaml")
 
     success, jsonld_object, keys, messages = ldc.create_ld_from_spec({})
-
-    print(messages)
     assert success is False, messages
 
 
@@ -468,3 +469,118 @@ def test_error_type():
     success, jsonld_object, keys, messages = ldc.create_ld_from_spec(1)
     assert success is False, messages
 
+
+proper_yaml_1 = """
+study:
+  name: Intelligence in Rodents
+  start_date: 31.10.1990
+  end_date: 22.12.2010
+  keyword:
+    - Rodent
+  principal_investigator: a@fz-juelich.de
+
+dataset:
+  name: Rodent-Intelligence Brainscans
+  location: juseless:/data/project/riskystudy
+  keyword:
+    - fMRI
+  author:
+    - a@fz-juelich.de
+
+person:
+  a@fz-juelich.de:
+    given_name: Hans
+    last_name: Glück
+"""
+
+
+error_yaml_1 = """
+study:
+no way
+this is correct: yaml
+"""
+
+
+error_yaml_2 = """
+study:
+  .    "
+
+  ---- errord
+"""
+
+
+
+
+class DummyDataset:
+    def __init__(self, path: str):
+        self.path = path
+        self.id = "dummy-dataset-0001"
+
+
+class TestableExtractor(StudyMiniMetaExtractor):
+    @staticmethod
+    def _get_absolute_studyminimeta_file_name(dataset) -> str:
+        return dataset.path + "/.studyminimeta.yaml"
+
+    @staticmethod
+    def _get_relative_studyminimeta_file_name(dataset) -> str:
+        return dataset.path + "/.studyminimeta.yaml"
+
+
+@with_tree({'.studyminimeta.yaml': proper_yaml_1})
+def test_successful_yaml_parsing(directory_path: str):
+
+    testable_extractor = TestableExtractor()
+    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    assert len(results) == 1
+    assert results[0]["metadata"] != {}
+    del results[0]["metadata"]
+    assert results[0] == {
+        "status": "ok",
+        "type": "all"
+    }
+
+
+@with_tree({'.studyminimeta.yaml': error_yaml_1})
+def test_unsuccessful_yaml_parsing(directory_path: str):
+
+    testable_extractor = TestableExtractor()
+    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    assert len(results) == 1
+    assert results[0]["message"].startswith("YAML parsing failed with: ")
+    del results[0]["message"]
+    assert results[0] == {
+        "status": "failed",
+        "metadata": {},
+        "type": "all"
+    }
+
+
+@with_tree({'.studyminimeta.yaml': error_yaml_2})
+def test_schema_violation(directory_path: str):
+
+    testable_extractor = TestableExtractor()
+    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    assert len(results) == 1
+    assert results[0] == {
+        "status": "failed",
+        "metadata": {},
+        "type": "all",
+        "message": "data structure conversion to JSON-LD failed"
+    }
+
+
+@with_tree({'some_file.yaml': error_yaml_1})
+def test_file_handling(directory_path: str):
+
+    testable_extractor = TestableExtractor()
+    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    assert len(results) == 1
+    assert results[0]["message"].startswith("file ")
+    assert results[0]["message"].endswith(" could not be opened")
+    del results[0]["message"]
+    assert results[0] == {
+        "status": "failed",
+        "metadata": {},
+        "type": "all"
+    }

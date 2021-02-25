@@ -63,7 +63,16 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             yield {
                 "status": "failed",
                 "metadata": {},
-                "type": "dataset"
+                "type": process_type,
+                "message": "file " + source_file + " could not be opened"
+            }
+            return
+        except yaml.YAMLError as e:
+            yield {
+                "status": "failed",
+                "metadata": {},
+                "type": process_type,
+                "message": "YAML parsing failed with: " + str(e)
             }
             return
 
@@ -81,7 +90,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             yield {
                 "status": "ok",
                 "metadata": ld_creator_result.json_ld_object,
-                "type": "dataset"
+                "type": process_type
             }
 
         else:
@@ -93,7 +102,8 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             yield {
                 "status": "failed",
                 "metadata": {},
-                "type": "dataset"
+                "type": process_type,
+                "message": "data structure conversion to JSON-LD failed"
             }
 
     def get_state(self, dataset):
