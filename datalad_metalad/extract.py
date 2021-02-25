@@ -62,8 +62,9 @@ from simplejson import dumps as jsondumps
 # API commands needed
 from datalad.core.local import status as _status
 
+from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
-from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata, MetadataInstance
+from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 
 
 lgr = logging.getLogger('datalad.metadata.extract')
@@ -214,8 +215,7 @@ class Extract(Interface):
                 # we said that we want to fail, rather then just moan about
                 # less metadata
                 raise ValueError(
-                    "Enabled metadata extractor '{}' not available".format(msrc),
-                )
+                    "Enabled metadata extractor '{}' not available".format(msrc))
             # load extractor implementation
             rec = extractors[msrc]
             rec['process_type'] = process_type \
@@ -461,24 +461,24 @@ class Extract(Interface):
                  ','.join(assure_list(meta['tag'])))))
 
 
-def _create_metadata_object(mapper_family, realm, absolute_path, extractor_name, version, metadata_result):
-    extractor_configuration = ExtractorConfiguration(
-        1,
-        {
-            "p1": 123.45,
-            "info": "demo parameter"
-        }
-    )
+def _create_metadata_object(
+        mapper_family: str,
+        realm: str,
+        intra_dataset_path: str,
+        extractor_name: str,
+        version: str,
+        metadata_result: str) -> Metadata:
 
-    metadata_instance = MetadataInstance(
-        str(int(time.time())),
+    metadata = Metadata(mapper_family, realm)
+    metadata.add_extractor_run(
+        time.time(),
+        extractor_name,
         "chm",
         "c.moench@fz-juelich.de",
-        extractor_configuration,
-        metadata_result["metadata"]
+        ExtractorConfiguration(version, {"parameter1": "value1"}),
+        {"inline_metadata": metadata_result}
     )
-
-    return Metadata(mapper_family, realm, {extractor_name: metadata_instance})
+    return metadata
 
 
 def _proc(ds, refcommit, sources, status, extractors, process_type):
@@ -486,7 +486,7 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
     contentmeta = {}
 
     root_dir = ds.path
-    md_dataset_tree = FileTree("git", root_dir)
+    md_dataset_tree = DatasetTree("git", root_dir)
     md_file_tree = FileTree("git", root_dir)
 
     print(f"_proc({ds}, {refcommit}, {sources}, {status}, {extractors}, {process_type}")
@@ -521,21 +521,25 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
             if res['type'] == 'file':
                 import json
 
-                path = res['path']
-                if path.startswith(ds.path):
-                    path = path[len(ds.path) + 1:]
-                print(f"PATH: {path}")
+                intra_dataset_path = res['path']
+                if intra_dataset_path.startswith(ds.path):
+                    intra_dataset_path = intra_dataset_path[len(ds.path) + 1:]
 
                 md_file_tree.add_metadata(
-                    path,
-                    _create_metadata_object("git", ds.path, msrc, path, 1, res)
-                )
+                    intra_dataset_path,
+                    _create_metadata_object(
+                        "git",
+                        ds.path,
+                        intra_dataset_path,
+                        msrc,
+                        "UNKNOWN VERSION",
+                        res))
 
             elif res['type'] == 'dataset':
                 import json
 
-                path = ds.path
-                print(f"DATASET PATH: {path}")
+                intra_dataset_path = ds.path
+                print(f"DATASET PATH: {intra_dataset_path}")
                 #md_ds_tree.add_metadata_source(
                 #    path,
                 #    msrc,
@@ -603,11 +607,9 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
         'Finished metadata extraction from %s', ds,
     )
 
-    print(md_file_tree)
-    for path, obj in md_file_tree.get_paths_recursive():
-        print(path, obj.value.object)
-
-    #print(md_ds_tree)
+    print(f"md_file_tree for dataset {ds.path}")
+    for file_path, metadata_connector in md_file_tree.get_paths_recursive():
+        print(f"{ds.path}:{file_path}:\t\t{metadata_connector.object}")
 
     # top-level code relies on the fact that any dataset metadata
     # is yielded before content metadata
