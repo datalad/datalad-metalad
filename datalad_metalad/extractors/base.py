@@ -7,13 +7,56 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata extractor base class"""
+import dataclasses
+import enum
+from typing import Any, BinaryIO, Dict, Optional, Union
+from uuid import UUID
+
+from datalad.distribution.dataset import Dataset
+
+
+@dataclasses.dataclass
+class FileInfo:
+    type: str           # TODO: state constants
+    git_sha_sum: str
+    byte_size: int
+    state: str          # TODO: state constants
+    path: str
+    intra_dataset_path: str
+
+
+@dataclasses.dataclass
+class ExtractorResult:
+    extractor_version: str
+    extraction_parameter: Dict[str, Any]
+    extraction_success: bool
+    extraction_result: Dict[str, Any]
+    immediate_data: Any
+
+
+class DataOutputCategory(enum.Enum):
+    """
+    Describe how extractors output metadata.
+    Metadata can be small, like a few numbers,
+    or large e.g. images or sets of images.
+
+    An extractor can either output to a single file
+    (FILE), or it can output a complex result,
+    containing  multiple files and sub-directories
+    to a directory (DIRECTORY), or it can return
+    the result as immediate data in the extractor
+    result object (IMMEDIATE).
+    """
+    FILE = 1
+    DIRECTORY = 2
+    IMMEDIATE = 3
 
 
 class MetadataExtractor(object):
     # ATM this doesn't do anything, but inheritance from this class enables
     # detection of new-style extractor API
 
-    def __call__(self, dataset, refcommit, process_type, status):
+    def xxx__call__(self, dataset, refcommit, process_type, status):
         """Run metadata extraction
 
         Any implementation gets a comprehensive description of a dataset
@@ -41,37 +84,39 @@ class MetadataExtractor(object):
         """
         raise NotImplementedError  # pragma: no cover
 
-    def get_required_content(self, dataset, process_type, status):
-        """Report records for dataset content that must be available locally
-
-        Any implementation can yield records in the given `status` that
-        correspond to dataset content that must be available locally for an
-        extractor to perform its work. It is acceptable to not yield such a
-        record, or no records at all. In such case, the extractor is expected
-        to handle the case of non-available content in some sensible way
-        internally.
-
-        The parameters are identical to those of
-        `MetadataExtractor.__call__()`.
-
-        Any content corresponding to a yielded record will be obtained
-        automatically before metadata extraction is initiated. Hence any
-        extractor reporting accurately can expect all relevant content
-        to be present locally.
-
-        Instead of a status record, it is also possible to return custom
-        dictionaries that must contain a 'path' key, containing the absolute
-        path to the required file within the given dataset.
-
-        Example implementation::
-
-            for s in status:
-                if s['path'].endswith('.pdf'):
-                    yield s
+    def extract(self,
+                output_location: Optional[Union[BinaryIO, str]] = None
+                ) -> ExtractorResult:
         """
-        # be default an individual extractor is expected to manage
-        # availability on its own
-        return []
+        Run metadata extraction.
+
+        The value of output_location depends on the data output
+        category for this extractor.
+
+        DataOutputCategory.IMMEDIATE:
+        The value of output_location is None
+
+        DataOutputCategory.FILE:
+        The value of output_location is file descriptor for a
+        empty binary file opened in read/write mode. The extractor
+        should write all the metadata it outputs to the file.
+        The content of the file will be added to the metadata.
+
+        DataOutputCategory.DIRECTORY:
+        The value of output_location is the path of a directory.
+        The extractor should write all its output to files or
+        subdirectories in the directory.
+        The content of the directory will be added to the
+        metadata
+        """
+        raise NotImplementedError
+
+    def get_id(self) -> UUID:
+        """ Report the universally unique ID of the extractor """
+        raise NotImplementedError
+
+    def get_data_output_category(self) -> DataOutputCategory:
+        raise NotImplementedError
 
     def get_state(self, dataset):
         """Report on extractor-related state and configuration
@@ -97,6 +142,94 @@ class MetadataExtractor(object):
         object instance is passed via the method's `dataset` argument.
         """
         return {}
+
+
+class DatasetMetadataExtractor(MetadataExtractor):
+    def __init__(self,
+                 dataset: Dataset,
+                 ref_commit: str,
+                 parameter: Optional[Dict[str, Any]] = None):
+        """
+        Parameters
+        ----------
+        dataset : Dataset
+          Dataset instance to extract metadata from.
+
+        ref_commit : str
+          SHA of the commit for which metadata should be created.
+          Can be used for identification purposed, such as '@id'
+          properties for JSON-LD documents on the dataset.
+          # TODO: can this be git tree-nodes hashes as well?
+
+        parameter: Dict[str, Any]
+          Runtime parameter for the extractor. These may or may not
+          override any defaults given in the dataset configuration.
+          The extractor has to report the final applied parameter
+          set in get_state.
+        """
+        self.dataset = dataset
+        self.ref_commit = ref_commit
+        self.parameter = parameter
+
+    def get_required_content(self) -> bool:
+        """
+        Specify whether the content of the file defined in file_info
+        must be available locally.
+
+        Returns
+        -------
+        True if the content must be available locally, False otherwise
+        """
+        raise NotImplementedError
+
+
+class FileMetadataExtractor(MetadataExtractor):
+    def __init__(self,
+                 dataset: Dataset,
+                 ref_commit: str,
+                 file_info: FileInfo,
+                 parameter: Optional[Dict[str, Any]] = None):
+        """
+        Parameters
+        ----------
+        dataset : Dataset
+          Dataset instance to extract metadata from.
+
+        refcommit : str
+          SHA of the commit for which metadata should be created.
+          Can be used for identification purposed, such as '@id'
+          properties for JSON-LD documents on the dataset.
+          # TODO: can this be git tree-nodes hashes as well?
+
+        file_info : FileInfo
+          Information about the file for which metadata should be
+          generated.
+          (File infos are filtered to not contain any untracked
+          content, or any files that are to be ignored for the
+          purpose of metadata extraction, e.g. content under
+          ".dataset/metadata".)
+
+        parameter: Dict[str, Any]
+          Runtime parameter for the extractor. These may or may not
+          override any defaults given in the dataset configuration.
+          The extractor has to report the final applied parameter
+          set in get_state.
+        """
+        self.dataset = dataset
+        self.ref_commit = ref_commit
+        self.file_info = file_info
+        self.parameter = parameter
+
+    def is_content_required(self) -> bool:
+        """
+        Specify whether the content of the file defined in file_info
+        must be available locally.
+
+        Returns
+        -------
+        True if the content must be available locally, False otherwise
+        """
+        raise NotImplementedError
 
 
 # XXX this is the legacy interface, keep around for a bit more and then

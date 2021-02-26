@@ -11,17 +11,22 @@
 __docformat__ = 'restructuredtext'
 
 import logging
+import tempfile
 import time
 import os.path as op
-
 from os import curdir
+from pathlib import PosixPath
 from six import (
     iteritems,
     text_type,
 )
+from typing import Optional, Tuple, Type, Union
+
 from datalad import cfg
+from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
+from datalad.interface.common_opts import recursion_flag
 from datalad.interface.results import (
     get_status_dict,
     success_status_map,
@@ -32,7 +37,12 @@ from datalad.distribution.dataset import (
     EnsureDataset,
     require_dataset,
 )
-from .extractors.base import MetadataExtractor
+from .extractors.base import (
+    DataOutputCategory,
+    DatasetMetadataExtractor,
+    FileInfo,
+    FileMetadataExtractor
+)
 
 from datalad.support.param import Parameter
 from datalad.support.constraints import (
@@ -111,68 +121,219 @@ class Extract(Interface):
     result_renderer = 'tailored'
 
     _params_ = dict(
-        sources=Parameter(
-            args=("--source",),
-            dest="sources",
-            metavar=("NAME"),
-            action='append',
-            doc="""Name of a metadata extractor to be executed.
-            If none is given, a set of default configured extractors,
-            plus any extractors enabled in a dataset's configuration
-            and invoked.
-            [CMD: This option can be given more than once CMD][PY: Multiple
-            extractors can be given as a list PY]."""),
-        process_type=Parameter(
-            args=("--process-type",),
-            doc="""type of information to process. If 'all',
-            metadata will be extracted for the entire dataset and its content.
-            If not specified, the dataset's configuration will determine
-            the selection, and will default to 'all'. Note that not processing
-            content can influence the dataset metadata composition (e.g. report
-            of total size). There is an auxiliary category 'extractors' that
-            will cause all enabled extractors to be loaded, and reports
-            on their status and configuration.""",
-            constraints=EnsureChoice(
-                None, 'all', 'dataset', 'content', 'extractors')),
+        extractorname=Parameter(
+            args=("extractorname",),
+            metavar="EXTRACTOR_NAME",
+            doc="Name of a metadata extractor to be executed."),
         path=Parameter(
             args=("path",),
             metavar="FILE",
-            nargs="*",
-            doc="Path of a file to extract metadata from.",
+            nargs="?",
+            doc="""Path of a file to extract metadata from. If this
+            argument is provided, we assume a file extractor is
+            requested, if the path is not given, we assume a dataset
+            level extractor is specified.""",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
-            doc=""""Dataset to extract metadata from. If no further
-            constraining path is given, metadata is extracted from all files
-            of the dataset.""",
+            doc=""""Dataset to extract metadata from. If no dataset
+            is given, the dataset is determined by the current work
+            directory.""",
             constraints=EnsureDataset() | EnsureNone()),
-        format=Parameter(
-            args=('--format',),
-            doc="""format to use for the 'metadata' result property. 'native'
-            will report the output of extractors as separate metadata
-            properties that are stored under the name of the associated
-            extractor; 'jsonld' composes a JSON-LD graph document, while
-            stripping any information that does not appear to be properly
-            typed linked data (extractor reports no '@context' field).""",
-            constraints=EnsureChoice(
-                'native', 'jsonld')),
-    )
+        into=Parameter(
+            args=("-i", "--into"),
+            doc=""""Dataset to extract metadata into. This must be
+            a parent dataset of dataset.""",
+            constraints=EnsureDataset() | EnsureNone()),
+        recursive=recursion_flag)
 
     @staticmethod
     @datasetmethod(name='meta_extract')
     @eval_results
-    def __call__(dataset=None, path=None, sources=None, process_type=None,
-                 format='native'):
+    def __call__(
+            extractorname: str,
+            path: Optional[str] = None,
+            dataset: Optional[str] = None,
+            into: Optional[str] = None,
+            recursive=False):
+
         ds = require_dataset(
             dataset or curdir,
             purpose="extract metadata",
-            check_installed=not path)
+            check_installed=path is not None)
 
-        # check what extractors we want as sources, and whether they are
-        # available
-        if not sources:
-            sources = ['metalad_core', 'metalad_annex'] \
-                + assure_list(get_metadata_type(ds))
+        if into:
+            require_dataset(
+                into,
+                purpose="extract metadata",
+                check_installed=True)
+
+        dataset_tree_path, file_tree_path = get_path_info(ds, path, into)
+        if into is not None:
+            realm = into
+        else:
+            realm = ds.path
+
+        ref_commit = ds.repo.get_hexsha()
+
+        extractor_class = get_extractor_class(extractorname)
+        if path is None:
+
+            # Try to perform dataset level metadata extraction
+            assert isinstance(extractor_class, type(DatasetMetadataExtractor))
+            extractor = extractor_class(ds, ref_commit)
+
+        else:
+
+            # Try to perform file level metadata extraction
+            assert isinstance(extractor_class, type(FileMetadataExtractor))
+            file_info = get_file_info(ds, path)
+            if file_info is None:
+                raise FileNotFoundError(
+                    "{} not found in dataset {}".format(
+                        path, dataset or curdir))
+
+            extractor = extractor_class(ds, ref_commit, file_info)
+
+        output_category = extractor.get_data_output_category()
+        if output_category == DataOutputCategory.IMMEDIATE:
+
+            # Process inline results
+            result = extractor.extract(None)
+
+        elif output_category == DataOutputCategory.FILE:
+
+            # Process file results
+            with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
+                result = extractor.extract(temporary_file_info.file)
+                print(f"adding file {temporary_file_info.name} to metadata")
+
+        elif output_category == DataOutputCategory.DIRECTORY:
+
+            # Process directory results
+            raise NotImplementedError
+
+        print(
+            f"adding metadata result to realm {repr(realm)}, "
+            f"dataset tree path {repr(dataset_tree_path)}, "
+            f"file tree path {repr(file_tree_path)}")
+
+        return result
+
+
+def get_extractor_class(extractor_name: str) -> Union[
+                                            Type[DatasetMetadataExtractor],
+                                            Type[FileMetadataExtractor]]:
+
+    """ Get an extractor from its name """
+    from pkg_resources import iter_entry_points  # delayed heavy import
+
+    entry_points = list(
+        iter_entry_points('datalad.metadata.extractors', extractor_name))
+
+    if not entry_points:
+        raise ValueError(
+            "Requested metadata extractor '{}' not available".format(
+                extractor_name))
+
+    entry_point, ignored_entry_points = entry_points[-1], entry_points[:-1]
+    lgr.debug(
+        'Using metadata extractor %s from distribution %s',
+        extractor_name,
+        entry_point.dist.project_name)
+
+    # Inform about overridden entry points
+    for ignored_entry_point in ignored_entry_points:
+        lgr.warn(
+            'Metadata extractor %s from distribution %s overrides '
+            'metadata extractor from distribution %s',
+            extractor_name,
+            entry_point.dist.name,
+            ignored_entry_point.dist.project_name)
+
+    return entry_point.load()
+
+
+def get_file_info(dataset: Dataset, path: str) -> Optional[FileInfo]:
+    """
+    Get information about the file in the dataset or
+    None, if the file is not part of the dataset.
+
+    :param dataset:
+    :param path:
+    :return:
+    """
+    if not path.startswith(dataset.path):
+        path = dataset.path + "/" + path    # TODO: how are paths represented in datalad?
+
+    path_status = (list(dataset.status(path)) or [None])[0]
+    if path_status is None:
+        return None
+
+    return FileInfo(
+        path_status["type"],
+        path_status["gitshasum"],
+        path_status["bytesize"],
+        path_status["state"],
+        path_status["path"],
+        path_status["path"][len(dataset.path) + 1:]
+    )
+
+
+def get_path_info(dataset: Dataset,
+                  path: Optional[str],
+                  into_dataset: Optional[str] = None
+                  ) -> Tuple[str, str]:
+    """
+    Determine the dataset tree path and the file tree path.
+
+    If the path is absolute, we can determine the containing dataset
+    and the metadatasets around it. If the path is not an element of
+    a locally known dataset, we signal an error.
+
+    If the pass is relative, we convert it to an absolute path
+    by appending it to the dataset or current directory and perform
+    the above check.
+    """
+    dataset_path = PosixPath(dataset.path)
+    if path is None:
+        return str(dataset_path), ""
+
+    given_file_path = PosixPath(path)
+    if given_file_path.is_absolute():
+        full_path = given_file_path
+    else:
+        full_path = (dataset_path / given_file_path).resolve()
+
+    file_tree_path = str(full_path.relative_to(dataset_path))
+
+    if into_dataset is None:
+        dataset_tree_path = ""
+    else:
+        into_dataset_path = PosixPath(into_dataset)
+        dataset_tree_path = str(dataset_path.relative_to(into_dataset_path))
+
+    return dataset_tree_path, file_tree_path
+
+
+class XXASDAS:
+
+    def xxx(self):
+        if recursive:
+            # when going recursive, we also want to capture all pre-aggregated
+            # metadata underneath the discovered datasets
+            # this trick looks for dataset records that have no query path
+            # assigned already (which will be used to match aggregate records)
+            # and assign them their own path). This will match all stored
+            # records and captures the aggregate --recursive case without
+            # a dedicated `path` argument.
+            extract_from_ds = {
+                k:
+                v
+                if len([i for i in v if not isinstance(i, Dataset)])
+                else v.union([k.pathobj])
+                for k, v in iteritems(extract_from_ds)
+            }
 
         # keep local, who knows what some extractors might pull in
         from pkg_resources import iter_entry_points  # delayed heavy import
@@ -259,6 +420,9 @@ class Extract(Interface):
                 )
             return
 
+
+
+        return
 
         # build a representation of the dataset's content (incl subds
         # records)
@@ -399,6 +563,27 @@ class Extract(Interface):
                 path=ds.path,
                 metadata=format_jsonld_metadata(nodes_by_context),
                 **res_props)
+
+    @staticmethod
+    def find_extract_ds(path: str):
+        if path:
+            extract_from_ds, errors = sort_paths_by_datasets(
+                ds, dataset, assure_list(path))
+            for e in errors:  # pragma: no cover
+                e.update(
+                    logger=lgr,
+                    refds=ds.path,
+                )
+                yield e
+        else:
+            extract_from_ds = OrderedDict({ds.pathobj: []})
+
+        # convert the values into sets to ease processing below
+        return {
+            Dataset(k): set(assure_list(v))
+            for k, v in iteritems(extract_from_ds)
+        }
+
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
