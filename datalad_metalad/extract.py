@@ -194,6 +194,7 @@ class Extract(Interface):
                         path, dataset or curdir))
 
             extractor = extractor_class(ds, ref_commit, file_info)
+            ensure_content_availability(extractor, file_info)
 
         output_category = extractor.get_data_output_category()
         if output_category == DataOutputCategory.IMMEDIATE:
@@ -213,7 +214,7 @@ class Extract(Interface):
             # Process directory results
             raise NotImplementedError
 
-        print(
+        lgr.info(
             f"adding metadata result to realm {repr(realm)}, "
             f"dataset tree path {repr(dataset_tree_path)}, "
             f"file tree path {repr(file_tree_path)}")
@@ -314,6 +315,24 @@ def get_path_info(dataset: Dataset,
         dataset_tree_path = str(dataset_path.relative_to(into_dataset_path))
 
     return dataset_tree_path, file_tree_path
+
+
+def ensure_content_availability(extractor: FileMetadataExtractor,
+                                file_info: FileInfo):
+
+    if extractor.is_content_required():
+        for result in extractor.dataset.get(path={file_info.path},
+                                            get_data=True,
+                                            return_type='generator',
+                                            result_renderer='disabled'):
+            if result.get("status", "") == "error":
+                lgr.error(
+                    "cannot make content of {} available in dataset {}".format(
+                        file_info.path, extractor.dataset))
+                return
+        lgr.debug(
+            "requested content {}:{} available".format(
+                extractor.dataset.path, file_info.intra_dataset_path))
 
 
 class XXASDAS:

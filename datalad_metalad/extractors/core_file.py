@@ -23,6 +23,9 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
     def get_data_output_category(self) -> DataOutputCategory:
         return DataOutputCategory.IMMEDIATE
 
+    def is_content_required(self) -> bool:
+        return True
+
     def extract(self, _=None) -> Dict[str, Any]:
         log_progress(
             lgr.info,
