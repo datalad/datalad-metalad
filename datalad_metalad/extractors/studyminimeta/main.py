@@ -9,7 +9,10 @@
 """Metadata extractor for studyminimeta metadata contained in a dataset
 
 The metadata source file can be specified via the
-'datalad.metadata.studyminimeta-source' configuration variable.
+'datalad.metadata.studyminimeta-source' configuration variable,
+which should contain the intra-dataset path to the metadata
+source file.
+
 The content of the file must be a JSON object that conforms to the
 studyminimeta metadata schema. It should be serialized in YAML.
 
@@ -29,10 +32,10 @@ lgr = logging.getLogger('datalad.metadata.extractors.studyminimeta')
 
 
 class StudyMiniMetaExtractor(MetadataExtractor):
-    def get_required_content(self, dataset, process_type, status):
-        for processed_status in status:
-            if processed_status['path'].endswith('.studyminimeta.yaml'):
-                yield processed_status
+    def get_required_content(self, dataset, process_type, element_infos):
+        for element_info in element_infos:
+            if element_info['path'] == self._get_absolute_studyminimeta_file_name(dataset):
+                yield element_info
 
     @staticmethod
     def _get_relative_studyminimeta_file_name(dataset) -> str:
@@ -61,7 +64,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
                 metadata_object = yaml.safe_load(input_stream)
         except FileNotFoundError:
             yield {
-                "status": "failed",
+                "status": "error",
                 "metadata": {},
                 "type": process_type,
                 "message": "file " + source_file + " could not be opened"
@@ -69,7 +72,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
             return
         except yaml.YAMLError as e:
             yield {
-                "status": "failed",
+                "status": "error",
                 "metadata": {},
                 "type": process_type,
                 "message": "YAML parsing failed with: " + str(e)
@@ -79,7 +82,8 @@ class StudyMiniMetaExtractor(MetadataExtractor):
         ld_creator_result = LDCreator(
             dataset.id,
             refcommit,
-            self._get_relative_studyminimeta_file_name(dataset)).create_ld_from_spec(metadata_object)
+            self._get_relative_studyminimeta_file_name(dataset)
+        ).create_ld_from_spec(metadata_object)
 
         if ld_creator_result.success:
             log_progress(
@@ -100,7 +104,7 @@ class StudyMiniMetaExtractor(MetadataExtractor):
                 'Error in studyminimeta metadata extraction from {path}'.format(path=ds.path)
             )
             yield {
-                "status": "failed",
+                "status": "error",
                 "metadata": {},
                 "type": process_type,
                 "message": "data structure conversion to JSON-LD failed"
