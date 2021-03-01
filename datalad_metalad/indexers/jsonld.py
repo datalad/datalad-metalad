@@ -12,7 +12,7 @@ class JsonLdTags:
     CONTEXT = '@context'
 
 
-class JsonLdProperties:
+class SchemaOrgProperties:
     ACCOUNTABLE_PERSON = 'accountablePerson'
     AUTHOR = 'author'
     CONTRIBUTOR = 'contributor'
@@ -29,7 +29,7 @@ class JsonLdProperties:
     URL = 'url'
 
 
-class JsonLdTypes:
+class SchemaOrgTypes:
     DATASET = 'Dataset'
     DEFINED_TERM = 'DefinedTerm'
     DEFINED_TERM_SET = 'DefinedTermSet'
@@ -52,23 +52,23 @@ class JsonLdIndexer(MetadataIndexer):
                 .replace('.', '_')
                 .replace(':', '-'))
 
-    def _create_json_ld_index(self, basekey, json_ld_object):
+    def _create_json_ld_index(self, base_key, json_ld_object):
         """
         Transform a complete JSON-LD object to an index, i.e.
         a set of key-value-pairs.
         """
         if json_ld_object is None:
-            yield basekey, None
+            yield base_key, None
             return
 
         if not isinstance(json_ld_object, (dict, list)):
-            yield basekey, str(json_ld_object)
+            yield base_key, str(json_ld_object)
             return
 
         if isinstance(json_ld_object, list):
             for index, element in enumerate(json_ld_object):
                 yield from self._create_json_ld_index(
-                    basekey + '[{index}]'.format(index=index),
+                    base_key + '[{index}]'.format(index=index),
                     element)
             return
 
@@ -83,7 +83,7 @@ class JsonLdIndexer(MetadataIndexer):
             for index, element in enumerate(json_ld_object[JsonLdTags.LIST]):
 
                 yield from self._create_json_ld_index(
-                    (basekey + '.' if basekey else '')
+                    (base_key + '.' if base_key else '')
                     + '{new_key_name}[{index}]'.format(
                         new_key_name=new_key_name,
                         index=index),
@@ -94,13 +94,13 @@ class JsonLdIndexer(MetadataIndexer):
             # Handle the @graph-node of JSON-LD here
             for index, element in enumerate(json_ld_object[JsonLdTags.GRAPH]):
                 yield from self._create_json_ld_index(
-                    (basekey + '.' if basekey else '')
+                    (base_key + '.' if base_key else '')
                     + 'graph[{index}]'.format(index=index),
                     element)
 
         if JsonLdTags.TYPE in json_ld_object:
             type_key = self._encode_key(json_ld_object[JsonLdTags.TYPE])
-            basekey = u'{}{}'.format(basekey + '.' if basekey else '', type_key)
+            base_key = u'{}{}'.format(base_key + '.' if base_key else '', type_key)
 
         for k, v in json_ld_object.items():
 
@@ -111,10 +111,10 @@ class JsonLdIndexer(MetadataIndexer):
                 continue
 
             key = self._encode_key(k)
-            new_basekey = u'{}{}'.format(basekey + '.' if basekey else '', key)
-            yield from self._create_json_ld_index(new_basekey, v)
+            new_base_key = u'{}{}'.format(base_key + '.' if base_key else '', key)
+            yield from self._create_json_ld_index(new_base_key, v)
 
         return
 
-    def create_index(self,json_ld_object: Union[Dict, List]) -> Dict[str, Any]:
+    def create_index(self, json_ld_object: Union[Dict, List]) -> Dict[str, Any]:
         yield from self._create_json_ld_index('', json_ld_object)

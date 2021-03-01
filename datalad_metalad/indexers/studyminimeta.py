@@ -1,6 +1,6 @@
 from typing import Dict, Generator, List, Tuple, Union
 
-from .jsonld import JsonLdProperties, JsonLdTags, JsonLdTypes
+from .jsonld import SchemaOrgProperties, JsonLdTags, SchemaOrgTypes
 from datalad.metadata.indexers.base import MetadataIndexer
 
 
@@ -69,16 +69,16 @@ class StudyMiniMetaIndexer(MetadataIndexer):
         dataset = [
             element
             for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.TYPE, None) == JsonLdTypes.DATASET
+            if element.get(JsonLdTags.TYPE, None) == SchemaOrgTypes.DATASET
         ][0]
 
         standards = [
-            part[JsonLdProperties.TERM_CODE]
+            part[SchemaOrgProperties.TERM_CODE]
             for part in dataset.get(
-                JsonLdProperties.HAS_PART,
-                {JsonLdProperties.HAS_DEFINED_TERM: []}
-            )[JsonLdProperties.HAS_DEFINED_TERM]
-            if part[JsonLdTags.TYPE] == JsonLdTypes.DEFINED_TERM
+                SchemaOrgProperties.HAS_PART,
+                {SchemaOrgProperties.HAS_DEFINED_TERM: []}
+            )[SchemaOrgProperties.HAS_DEFINED_TERM]
+            if part[JsonLdTags.TYPE] == SchemaOrgTypes.DEFINED_TERM
         ]
 
         publications = ([
@@ -89,27 +89,27 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         yield "dataset.author", ", ".join(
             [
-                p[JsonLdProperties.NAME]
-                for author_spec in dataset[JsonLdProperties.AUTHOR]
+                p[SchemaOrgProperties.NAME]
+                for author_spec in dataset[SchemaOrgProperties.AUTHOR]
                 for p in persons[JsonLdTags.LIST]
                 if p[JsonLdTags.ID] == author_spec[JsonLdTags.ID]
             ]
         )
 
-        yield "dataset.name", dataset[JsonLdProperties.NAME]
-        yield "dataset.location", dataset[JsonLdProperties.URL]
+        yield "dataset.name", dataset[SchemaOrgProperties.NAME]
+        yield "dataset.location", dataset[SchemaOrgProperties.URL]
 
-        if JsonLdProperties.DESCRIPTION in dataset:
-            yield "dataset.description", dataset[JsonLdProperties.DESCRIPTION]
+        if SchemaOrgProperties.DESCRIPTION in dataset:
+            yield "dataset.description", dataset[SchemaOrgProperties.DESCRIPTION]
 
-        if JsonLdProperties.KEYWORDS in dataset:
-            yield "dataset.keywords", ", ".join(dataset[JsonLdProperties.KEYWORDS])
+        if SchemaOrgProperties.KEYWORDS in dataset:
+            yield "dataset.keywords", ", ".join(dataset[SchemaOrgProperties.KEYWORDS])
 
-        if JsonLdProperties.FUNDER in dataset:
+        if SchemaOrgProperties.FUNDER in dataset:
             yield "dataset.funder", ", ".join(
                 [
-                    funder[JsonLdProperties.NAME]
-                    for funder in dataset[JsonLdProperties.FUNDER]
+                    funder[SchemaOrgProperties.NAME]
+                    for funder in dataset[SchemaOrgProperties.FUNDER]
                 ]
             )
 
@@ -118,31 +118,31 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         yield "person.email", ", ".join(
             [
-                person[JsonLdProperties.EMAIL]
+                person[SchemaOrgProperties.EMAIL]
                 for person in persons[JsonLdTags.LIST]
             ]
         )
 
         yield "person.name", ", ".join(
             [
-                person[JsonLdProperties.NAME]
+                person[SchemaOrgProperties.NAME]
                 for person in persons[JsonLdTags.LIST]
             ]
         )
 
-        yield JsonLdProperties.NAME, study[JsonLdProperties.NAME]
+        yield SchemaOrgProperties.NAME, study[SchemaOrgProperties.NAME]
 
         yield "accountable_person", [
-            p[JsonLdProperties.NAME]
+            p[SchemaOrgProperties.NAME]
             for p in persons[JsonLdTags.LIST]
-            if p[JsonLdProperties.EMAIL] == study[JsonLdProperties.ACCOUNTABLE_PERSON]
+            if p[SchemaOrgProperties.EMAIL] == study[SchemaOrgProperties.ACCOUNTABLE_PERSON]
         ][0]
 
-        if JsonLdProperties.CONTRIBUTOR in study:
+        if SchemaOrgProperties.CONTRIBUTOR in study:
             yield "contributor", ", ".join(
                 [
-                    p[JsonLdProperties.NAME]
-                    for contributor_spec in study[JsonLdProperties.CONTRIBUTOR]
+                    p[SchemaOrgProperties.NAME]
+                    for contributor_spec in study[SchemaOrgProperties.CONTRIBUTOR]
                     for p in persons[JsonLdTags.LIST]
                     if p[JsonLdTags.ID] == contributor_spec[JsonLdTags.ID]
                 ]
@@ -152,22 +152,22 @@ class StudyMiniMetaIndexer(MetadataIndexer):
             for publication in publications[JsonLdTags.LIST]:
                 yield "publication.author", ", ".join(
                     [
-                        p[JsonLdProperties.NAME]
-                        for author_spec in publication[JsonLdProperties.AUTHOR]
+                        p[SchemaOrgProperties.NAME]
+                        for author_spec in publication[SchemaOrgProperties.AUTHOR]
                         for p in persons[JsonLdTags.LIST]
                         if p[JsonLdTags.ID] == author_spec[JsonLdTags.ID]
                     ]
                 )
-                yield "publication.title", publication[JsonLdProperties.HEADLINE]
-                yield "publication.year", publication[JsonLdProperties.DATE_PUBLISHED]
+                yield "publication.title", publication[SchemaOrgProperties.HEADLINE]
+                yield "publication.year", publication[SchemaOrgProperties.DATE_PUBLISHED]
 
-        if JsonLdProperties.KEYWORDS in study:
-            yield "keywords", ", ".join(study.get(JsonLdProperties.KEYWORDS, []))
+        if SchemaOrgProperties.KEYWORDS in study:
+            yield "keywords", ", ".join(study.get(SchemaOrgProperties.KEYWORDS, []))
 
-        if JsonLdProperties.FUNDER in study:
+        if SchemaOrgProperties.FUNDER in study:
             yield "funder", ", ".join(
                 [
-                    funder[JsonLdProperties.NAME]
-                    for funder in study[JsonLdProperties.FUNDER]
+                    funder[SchemaOrgProperties.NAME]
+                    for funder in study[SchemaOrgProperties.FUNDER]
                 ]
             )
