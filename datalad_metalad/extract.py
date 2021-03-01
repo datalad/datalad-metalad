@@ -20,7 +20,8 @@ from six import (
     iteritems,
     text_type,
 )
-from typing import Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
+from uuid import UUID
 
 from datalad import cfg
 from datalad.distribution.dataset import Dataset
@@ -72,10 +73,24 @@ from simplejson import dumps as jsondumps
 # API commands needed
 from datalad.core.local import status as _status
 
+from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
+from dataladmetadatamodel.mapper import (
+    get_tree_version_list_location,
+    get_uuid_set_location
+)
+from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
+from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.uuidset import UUIDSet
+from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
 
+from .extractors.base import ExtractorResult
+from .metadata import get_top_level_metadata_objects
+
+
+default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.extract')
 
@@ -163,25 +178,27 @@ class Extract(Interface):
             check_installed=path is not None)
 
         if into:
-            require_dataset(
+            into_ds = require_dataset(
                 into,
                 purpose="extract metadata",
                 check_installed=True)
 
+        source_primary_data_version = ds.repo.get_hexsha()
+        extractor_class = get_extractor_class(extractorname)
+
         dataset_tree_path, file_tree_path = get_path_info(ds, path, into)
-        if into is not None:
-            realm = into
+        if into:
+            realm = into_ds.path
+            root_primary_data_version = into_ds.repo.get_hexsha()
         else:
             realm = ds.path
+            root_primary_data_version = source_primary_data_version
 
-        ref_commit = ds.repo.get_hexsha()
-
-        extractor_class = get_extractor_class(extractorname)
         if path is None:
 
             # Try to perform dataset level metadata extraction
             assert isinstance(extractor_class, type(DatasetMetadataExtractor))
-            extractor = extractor_class(ds, ref_commit)
+            extractor = extractor_class(ds, source_primary_data_version)
 
         else:
 
@@ -193,7 +210,7 @@ class Extract(Interface):
                     "{} not found in dataset {}".format(
                         path, dataset or curdir))
 
-            extractor = extractor_class(ds, ref_commit, file_info)
+            extractor = extractor_class(ds, source_primary_data_version, file_info)
             ensure_content_availability(extractor, file_info)
 
         output_category = extractor.get_data_output_category()
@@ -201,12 +218,24 @@ class Extract(Interface):
 
             # Process inline results
             result = extractor.extract(None)
+            if result.extraction_success:
+                add_immediate_metadata(
+                    extractorname,
+                    realm,
+                    root_primary_data_version,
+                    UUID(ds.id),
+                    source_primary_data_version,
+                    dataset_tree_path,
+                    file_tree_path,
+                    result)
+
+                yield result.extraction_result
 
         elif output_category == DataOutputCategory.FILE:
 
             # Process file results
             with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
-                result = extractor.extract(temporary_file_info.file)
+                result = extractor.extract(temporary_file_info)
                 print(f"adding file {temporary_file_info.name} to metadata")
 
         elif output_category == DataOutputCategory.DIRECTORY:
@@ -219,7 +248,7 @@ class Extract(Interface):
             f"dataset tree path {repr(dataset_tree_path)}, "
             f"file tree path {repr(file_tree_path)}")
 
-        return result
+        return
 
 
 def get_extractor_class(extractor_name: str) -> Union[
@@ -333,6 +362,81 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
         lgr.debug(
             "requested content {}:{} available".format(
                 extractor.dataset.path, file_info.intra_dataset_path))
+
+
+def add_immediate_metadata(extractor_name: str,
+                           realm: str,
+                           root_primary_data_version: str,
+                           dataset_id: UUID,
+                           dataset_primary_data_version: str,
+                           dataset_tree_path: str,
+                           file_tree_path: str,
+                           result: ExtractorResult):
+
+    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
+    if tree_version_list is None:
+        tree_version_list = TreeVersionList(default_mapper_family, realm)
+
+    # Get the dataset tree
+    if root_primary_data_version in tree_version_list.versions():
+        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
+    else:
+        time_stamp = str(time.time())
+        dataset_tree = DatasetTree(default_mapper_family, realm)
+        tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
+
+    mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+    if mrr is None:
+        # Create a metadata root record-object and a file tree-object
+        file_tree = FileTree(default_mapper_family, realm)
+        mrr = MetadataRootRecord(
+            default_mapper_family,
+            realm,
+            dataset_id,
+            dataset_primary_data_version,
+            Connector.from_object(None),
+            Connector.from_object(file_tree))
+        dataset_tree.add_dataset(dataset_tree_path, mrr)
+
+    else:
+        file_tree = mrr.get_file_tree()
+
+    if file_tree_path in file_tree:
+        metadata = file_tree.get_metadata(file_tree_path)
+    else:
+        metadata = Metadata(default_mapper_family, realm)
+        file_tree.add_metadata(file_tree_path, metadata)
+
+    metadata.add_extractor_run(
+        time.time(),
+        extractor_name,
+        "Christian Mönch",
+        "c.moench@fz-juelich.de",
+        ExtractorConfiguration(
+            result.extractor_version,
+            result.extraction_parameter),
+        result.immediate_data)
+
+    tree_version_list.save()
+
+    if uuid_set is None:
+        uuid_set = UUIDSet(default_mapper_family, realm)
+
+    if dataset_id in uuid_set.uuids():
+        version_list = uuid_set.get_version_list(dataset_id)
+    else:
+        version_list = VersionList(default_mapper_family, realm)
+        uuid_set.set_version_list(dataset_id, version_list)
+
+    version_list.set_versioned_element(
+        dataset_primary_data_version,
+        str(time.time()),
+        dataset_tree_path,
+        mrr)
+
+    uuid_set.save()
+
+    flush_object_references(realm)
 
 
 class XXASDAS:

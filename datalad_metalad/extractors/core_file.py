@@ -8,10 +8,10 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata extractor for files stored in Datalad's own core storage"""
 import logging
-from typing import Any, Dict
+from uuid import UUID
 
 from .. import get_file_id
-from .base import DataOutputCategory, FileMetadataExtractor
+from .base import DataOutputCategory, ExtractorResult, FileMetadataExtractor
 from datalad.log import log_progress
 
 
@@ -26,7 +26,13 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
     def is_content_required(self) -> bool:
         return True
 
-    def extract(self, _=None) -> Dict[str, Any]:
+    def get_id(self) -> UUID:
+        return UUID("89fae179-eceb-4af2-8088-dfebdae6e2c0")
+
+    def get_version(self) -> str:
+        return "0.0.1"
+
+    def extract(self, _=None) -> ExtractorResult:
         log_progress(
             lgr.info,
             "datalad_core_file_extractor",
@@ -36,10 +42,15 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
             label="Core file metadata extraction",
             unit="File")
 
-        return dict(
-            path=self.file_info.path,
-            intra_dataset_path=self.file_info.intra_dataset_path,
-            metadata={
+        return ExtractorResult(
+            extractor_version=self.get_version(),
+            extraction_parameter={},
+            extraction_success=True,
+            extraction_result={
+                "type": "file",
+                "status": "ok"
+            },
+            immediate_data={
                 "@id": get_file_id(dict(
                     path=self.file_info.path,
                     type=self.file_info.type)),
@@ -47,6 +58,4 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
                 "path": self.file_info.path,
                 "intra_dataset_path": self.file_info.intra_dataset_path,
                 "content_byte_size": self.file_info.byte_size
-            },
-            type="file",
-            status="ok")
+            })

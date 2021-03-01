@@ -7,6 +7,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata extractor base class"""
+import abc
 import dataclasses
 import enum
 from typing import Any, BinaryIO, Dict, Optional, Union
@@ -31,7 +32,7 @@ class ExtractorResult:
     extraction_parameter: Dict[str, Any]
     extraction_success: bool
     extraction_result: Dict[str, Any]
-    immediate_data: Any
+    immediate_data: Optional[Dict[str, Any]] = None
 
 
 class DataOutputCategory(enum.Enum):
@@ -52,38 +53,7 @@ class DataOutputCategory(enum.Enum):
     IMMEDIATE = 3
 
 
-class MetadataExtractor(object):
-    # ATM this doesn't do anything, but inheritance from this class enables
-    # detection of new-style extractor API
-
-    def xxx__call__(self, dataset, refcommit, process_type, status):
-        """Run metadata extraction
-
-        Any implementation gets a comprehensive description of a dataset
-        via the `status` argument. In many scenarios this can prevent
-        needless interaction with the dataset on disk, or specific
-        further queries via dataset or repository methods.
-
-        Parameters
-        ----------
-        dataset : Dataset
-          Dataset instance to extract metadata from.
-        refcommit : str
-          SHA of the commit that was determined to be the last metadata-relevant
-          change in the dataset. Can be used for identification purposed, such
-          '@id' properties for JSON-LD documents on the dataset.
-        process_type : {'all', 'dataset', 'content'}
-          Type of metadata to extract.
-        status : list
-          Status records produced by the `status` command for the given
-          dataset. Records are filtered to not contain any untracked
-          content, or any files that are to be ignored for the purpose
-          of metadata extraction (e.g. content under .dataset/metadata).
-          There are only records on content within the given dataset, not
-          about content of any existing subdatasets.
-        """
-        raise NotImplementedError  # pragma: no cover
-
+class MetadataExtractor(metaclass=abc.ABCMeta):
     def extract(self,
                 output_location: Optional[Union[BinaryIO, str]] = None
                 ) -> ExtractorResult:
@@ -113,6 +83,10 @@ class MetadataExtractor(object):
 
     def get_id(self) -> UUID:
         """ Report the universally unique ID of the extractor """
+        raise NotImplementedError
+
+    def get_version(self) -> str:
+        """ Report the version of the extractor """
         raise NotImplementedError
 
     def get_data_output_category(self) -> DataOutputCategory:
@@ -173,12 +147,8 @@ class DatasetMetadataExtractor(MetadataExtractor):
 
     def get_required_content(self) -> bool:
         """
-        Specify whether the content of the file defined in file_info
-        must be available locally.
-
-        Returns
-        -------
-        True if the content must be available locally, False otherwise
+        Get the content that the dataset level
+        extractor needs locally
         """
         raise NotImplementedError
 
