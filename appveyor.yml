@@ -2,10 +2,10 @@ build: false
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python35"
-      PYTHON_VERSION: "3.5.1"
+    - PYTHON: "C:\\Python36"
+      PYTHON_VERSION: "3.6.8"
       PYTHON_ARCH: "32"
-      MINICONDA: C:\Miniconda35
+      MINICONDA: C:\Miniconda36
 
 init:
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH% %MINICONDA%"
@@ -25,7 +25,7 @@ install:
   - appveyor DownloadFile https://downloads.kitenet.net/git-annex/windows/current/git-annex-installer.exe -FileName resources\git-annex-installer.exe
   # TODO get dcm2niix
   # extract git annex into the system Git installation path
-  - 7z x -o"C:\\Program Files\Git" resources\git-annex-installer.exe
+  - 7z x -y -o"C:\\Program Files\Git" resources\git-annex-installer.exe
   # info on how python is ticking
   - python -c "import sys; print(sys.path)"
   - pip install -r requirements.txt
