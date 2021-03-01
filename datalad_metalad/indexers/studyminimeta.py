@@ -1,6 +1,6 @@
 from typing import Dict, Generator, List, Tuple, Union
 
-from .jsonld import SchemaOrgProperties, JsonLdTags, SchemaOrgTypes
+from .jsonld import IndexerSchemaOrgProperties, IndexerJsonLdTags, IndexerSchemaOrgTypes
 from datalad.metadata.indexers.base import MetadataIndexer
 
 
@@ -56,60 +56,60 @@ class StudyMiniMetaIndexer(MetadataIndexer):
         """
         persons = [
             element
-            for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.PERSON_LIST
+            for element in study_mini_meta[IndexerJsonLdTags.GRAPH]
+            if element.get(IndexerJsonLdTags.ID, None) == StudyMiniMetaIds.PERSON_LIST
         ][0]
 
         study = [
             element
-            for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.STUDY
+            for element in study_mini_meta[IndexerJsonLdTags.GRAPH]
+            if element.get(IndexerJsonLdTags.ID, None) == StudyMiniMetaIds.STUDY
         ][0]
 
         dataset = [
             element
-            for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.TYPE, None) == SchemaOrgTypes.DATASET
+            for element in study_mini_meta[IndexerJsonLdTags.GRAPH]
+            if element.get(IndexerJsonLdTags.TYPE, None) == IndexerSchemaOrgTypes.DATASET
         ][0]
 
         standards = [
-            part[SchemaOrgProperties.TERM_CODE]
+            part[IndexerSchemaOrgProperties.TERM_CODE]
             for part in dataset.get(
-                SchemaOrgProperties.HAS_PART,
-                {SchemaOrgProperties.HAS_DEFINED_TERM: []}
-            )[SchemaOrgProperties.HAS_DEFINED_TERM]
-            if part[JsonLdTags.TYPE] == SchemaOrgTypes.DEFINED_TERM
+                IndexerSchemaOrgProperties.HAS_PART,
+                {IndexerSchemaOrgProperties.HAS_DEFINED_TERM: []}
+            )[IndexerSchemaOrgProperties.HAS_DEFINED_TERM]
+            if part[IndexerJsonLdTags.TYPE] == IndexerSchemaOrgTypes.DEFINED_TERM
         ]
 
         publications = ([
             element
-            for element in study_mini_meta[JsonLdTags.GRAPH]
-            if element.get(JsonLdTags.ID, None) == StudyMiniMetaIds.PUBLICATION_LIST
+            for element in study_mini_meta[IndexerJsonLdTags.GRAPH]
+            if element.get(IndexerJsonLdTags.ID, None) == StudyMiniMetaIds.PUBLICATION_LIST
         ] or [None])[0]
 
         yield "dataset.author", ", ".join(
             [
-                p[SchemaOrgProperties.NAME]
-                for author_spec in dataset[SchemaOrgProperties.AUTHOR]
-                for p in persons[JsonLdTags.LIST]
-                if p[JsonLdTags.ID] == author_spec[JsonLdTags.ID]
+                p[IndexerSchemaOrgProperties.NAME]
+                for author_spec in dataset[IndexerSchemaOrgProperties.AUTHOR]
+                for p in persons[IndexerJsonLdTags.LIST]
+                if p[IndexerJsonLdTags.ID] == author_spec[IndexerJsonLdTags.ID]
             ]
         )
 
-        yield "dataset.name", dataset[SchemaOrgProperties.NAME]
-        yield "dataset.location", dataset[SchemaOrgProperties.URL]
+        yield "dataset.name", dataset[IndexerSchemaOrgProperties.NAME]
+        yield "dataset.location", dataset[IndexerSchemaOrgProperties.URL]
 
-        if SchemaOrgProperties.DESCRIPTION in dataset:
-            yield "dataset.description", dataset[SchemaOrgProperties.DESCRIPTION]
+        if IndexerSchemaOrgProperties.DESCRIPTION in dataset:
+            yield "dataset.description", dataset[IndexerSchemaOrgProperties.DESCRIPTION]
 
-        if SchemaOrgProperties.KEYWORDS in dataset:
-            yield "dataset.keywords", ", ".join(dataset[SchemaOrgProperties.KEYWORDS])
+        if IndexerSchemaOrgProperties.KEYWORDS in dataset:
+            yield "dataset.keywords", ", ".join(dataset[IndexerSchemaOrgProperties.KEYWORDS])
 
-        if SchemaOrgProperties.FUNDER in dataset:
+        if IndexerSchemaOrgProperties.FUNDER in dataset:
             yield "dataset.funder", ", ".join(
                 [
-                    funder[SchemaOrgProperties.NAME]
-                    for funder in dataset[SchemaOrgProperties.FUNDER]
+                    funder[IndexerSchemaOrgProperties.NAME]
+                    for funder in dataset[IndexerSchemaOrgProperties.FUNDER]
                 ]
             )
 
@@ -118,56 +118,56 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
         yield "person.email", ", ".join(
             [
-                person[SchemaOrgProperties.EMAIL]
-                for person in persons[JsonLdTags.LIST]
+                person[IndexerSchemaOrgProperties.EMAIL]
+                for person in persons[IndexerJsonLdTags.LIST]
             ]
         )
 
         yield "person.name", ", ".join(
             [
-                person[SchemaOrgProperties.NAME]
-                for person in persons[JsonLdTags.LIST]
+                person[IndexerSchemaOrgProperties.NAME]
+                for person in persons[IndexerJsonLdTags.LIST]
             ]
         )
 
-        yield SchemaOrgProperties.NAME, study[SchemaOrgProperties.NAME]
+        yield IndexerSchemaOrgProperties.NAME, study[IndexerSchemaOrgProperties.NAME]
 
         yield "accountable_person", [
-            p[SchemaOrgProperties.NAME]
-            for p in persons[JsonLdTags.LIST]
-            if p[SchemaOrgProperties.EMAIL] == study[SchemaOrgProperties.ACCOUNTABLE_PERSON]
+            p[IndexerSchemaOrgProperties.NAME]
+            for p in persons[IndexerJsonLdTags.LIST]
+            if p[IndexerSchemaOrgProperties.EMAIL] == study[IndexerSchemaOrgProperties.ACCOUNTABLE_PERSON]
         ][0]
 
-        if SchemaOrgProperties.CONTRIBUTOR in study:
+        if IndexerSchemaOrgProperties.CONTRIBUTOR in study:
             yield "contributor", ", ".join(
                 [
-                    p[SchemaOrgProperties.NAME]
-                    for contributor_spec in study[SchemaOrgProperties.CONTRIBUTOR]
-                    for p in persons[JsonLdTags.LIST]
-                    if p[JsonLdTags.ID] == contributor_spec[JsonLdTags.ID]
+                    p[IndexerSchemaOrgProperties.NAME]
+                    for contributor_spec in study[IndexerSchemaOrgProperties.CONTRIBUTOR]
+                    for p in persons[IndexerJsonLdTags.LIST]
+                    if p[IndexerJsonLdTags.ID] == contributor_spec[IndexerJsonLdTags.ID]
                 ]
             )
 
         if publications:
-            for publication in publications[JsonLdTags.LIST]:
+            for publication in publications[IndexerJsonLdTags.LIST]:
                 yield "publication.author", ", ".join(
                     [
-                        p[SchemaOrgProperties.NAME]
-                        for author_spec in publication[SchemaOrgProperties.AUTHOR]
-                        for p in persons[JsonLdTags.LIST]
-                        if p[JsonLdTags.ID] == author_spec[JsonLdTags.ID]
+                        p[IndexerSchemaOrgProperties.NAME]
+                        for author_spec in publication[IndexerSchemaOrgProperties.AUTHOR]
+                        for p in persons[IndexerJsonLdTags.LIST]
+                        if p[IndexerJsonLdTags.ID] == author_spec[IndexerJsonLdTags.ID]
                     ]
                 )
-                yield "publication.title", publication[SchemaOrgProperties.HEADLINE]
-                yield "publication.year", publication[SchemaOrgProperties.DATE_PUBLISHED]
+                yield "publication.title", publication[IndexerSchemaOrgProperties.HEADLINE]
+                yield "publication.year", publication[IndexerSchemaOrgProperties.DATE_PUBLISHED]
 
-        if SchemaOrgProperties.KEYWORDS in study:
-            yield "keywords", ", ".join(study.get(SchemaOrgProperties.KEYWORDS, []))
+        if IndexerSchemaOrgProperties.KEYWORDS in study:
+            yield "keywords", ", ".join(study.get(IndexerSchemaOrgProperties.KEYWORDS, []))
 
-        if SchemaOrgProperties.FUNDER in study:
+        if IndexerSchemaOrgProperties.FUNDER in study:
             yield "funder", ", ".join(
                 [
-                    funder[SchemaOrgProperties.NAME]
-                    for funder in study[SchemaOrgProperties.FUNDER]
+                    funder[IndexerSchemaOrgProperties.NAME]
+                    for funder in study[IndexerSchemaOrgProperties.FUNDER]
                 ]
             )

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Union
 from datalad.metadata.indexers.base import MetadataIndexer
 
 
-class JsonLdTags:
+class IndexerJsonLdTags:
     ID = '@id'
     TYPE = '@type'
     LIST = '@list'
@@ -12,7 +12,7 @@ class JsonLdTags:
     CONTEXT = '@context'
 
 
-class SchemaOrgProperties:
+class IndexerSchemaOrgProperties:
     ACCOUNTABLE_PERSON = 'accountablePerson'
     AUTHOR = 'author'
     CONTRIBUTOR = 'contributor'
@@ -29,7 +29,7 @@ class SchemaOrgProperties:
     URL = 'url'
 
 
-class SchemaOrgTypes:
+class IndexerSchemaOrgTypes:
     DATASET = 'Dataset'
     DEFINED_TERM = 'DefinedTerm'
     DEFINED_TERM_SET = 'DefinedTermSet'
@@ -75,12 +75,12 @@ class JsonLdIndexer(MetadataIndexer):
         # We know now that json_ld_object is a dict.
         assert isinstance(json_ld_object, dict)
 
-        if JsonLdTags.LIST in json_ld_object:
+        if IndexerJsonLdTags.LIST in json_ld_object:
 
             # Handle the @list-node of JSON-LD here
-            new_key_name = json_ld_object.get(JsonLdTags.ID, 'list')
+            new_key_name = json_ld_object.get(IndexerJsonLdTags.ID, 'list')
 
-            for index, element in enumerate(json_ld_object[JsonLdTags.LIST]):
+            for index, element in enumerate(json_ld_object[IndexerJsonLdTags.LIST]):
 
                 yield from self._create_json_ld_index(
                     (base_key + '.' if base_key else '')
@@ -89,25 +89,25 @@ class JsonLdIndexer(MetadataIndexer):
                         index=index),
                     element)
 
-        if JsonLdTags.GRAPH in json_ld_object:
+        if IndexerJsonLdTags.GRAPH in json_ld_object:
 
             # Handle the @graph-node of JSON-LD here
-            for index, element in enumerate(json_ld_object[JsonLdTags.GRAPH]):
+            for index, element in enumerate(json_ld_object[IndexerJsonLdTags.GRAPH]):
                 yield from self._create_json_ld_index(
                     (base_key + '.' if base_key else '')
                     + 'graph[{index}]'.format(index=index),
                     element)
 
-        if JsonLdTags.TYPE in json_ld_object:
-            type_key = self._encode_key(json_ld_object[JsonLdTags.TYPE])
+        if IndexerJsonLdTags.TYPE in json_ld_object:
+            type_key = self._encode_key(json_ld_object[IndexerJsonLdTags.TYPE])
             base_key = u'{}{}'.format(base_key + '.' if base_key else '', type_key)
 
         for k, v in json_ld_object.items():
 
-            if k in (JsonLdTags.TYPE,
-                     JsonLdTags.LIST,
-                     JsonLdTags.GRAPH,
-                     JsonLdTags.CONTEXT):
+            if k in (IndexerJsonLdTags.TYPE,
+                     IndexerJsonLdTags.LIST,
+                     IndexerJsonLdTags.GRAPH,
+                     IndexerJsonLdTags.CONTEXT):
                 continue
 
             key = self._encode_key(k)
