@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from unittest.mock import patch
+from pathlib import PosixPath
+from unittest import mock
 
 from datalad.tests.utils import with_tree
 from datalad_metalad.extractors.studyminimeta.ldcreator import LDCreator
@@ -441,17 +442,8 @@ def test_error_key():
         ".studyminimeta.yaml")
 
     success, jsonld_object, keys, messages = ldc.create_ld_from_spec({})
-    assert success is False, messages
-
-
-def test_error_list():
-    ldc = LDCreator(
-        "id-0000--0000",
-        "a02312398324778972389472834",
-        ".studyminimeta.yaml")
-
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec([])
-    assert success is False, messages
+    assert success is False
+    assert messages == ["'person'"]
 
 
 def test_error_type():
@@ -460,14 +452,11 @@ def test_error_type():
         "a02312398324778972389472834",
         ".studyminimeta.yaml")
 
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec("")
-    assert success is False, messages
-
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(None)
-    assert success is False, messages
-
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(1)
-    assert success is False, messages
+    message_pattern = "'{}' object has no attribute 'items'"
+    for faulty_spec in ([], "", None, 1):
+        success, jsonld_object, keys, messages = ldc.create_ld_from_spec(faulty_spec)
+        assert success is False
+        assert messages == [message_pattern.format(type(faulty_spec).__name__)]
 
 
 proper_yaml_1 = """
@@ -509,29 +498,15 @@ study:
 """
 
 
+@mock.patch("datalad.distribution.dataset.Dataset")
+@with_tree({".studyminimeta.yaml": proper_yaml_1})
+def test_successful_yaml_parsing(dataset_mock, directory_path: str):
 
-
-class DummyDataset:
-    def __init__(self, path: str):
-        self.path = path
-        self.id = "dummy-dataset-0001"
-
-
-class TestableExtractor(StudyMiniMetaExtractor):
-    @staticmethod
-    def _get_absolute_studyminimeta_file_name(dataset) -> str:
-        return dataset.path + "/.studyminimeta.yaml"
-
-    @staticmethod
-    def _get_relative_studyminimeta_file_name(dataset) -> str:
-        return dataset.path + "/.studyminimeta.yaml"
-
-
-@with_tree({'.studyminimeta.yaml': proper_yaml_1})
-def test_successful_yaml_parsing(directory_path: str):
-
-    testable_extractor = TestableExtractor()
-    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    dataset_mock.configure_mock(**{
+        "pathobj": PosixPath(directory_path),
+        "config.obtain.return_value": ".studyminimeta.yaml"
+    })
+    results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
     assert len(results) == 1
     assert results[0]["metadata"] != {}
     del results[0]["metadata"]
@@ -541,46 +516,78 @@ def test_successful_yaml_parsing(directory_path: str):
     }
 
 
-@with_tree({'.studyminimeta.yaml': error_yaml_1})
-def test_unsuccessful_yaml_parsing(directory_path: str):
+@mock.patch("datalad.distribution.dataset.Dataset")
+@with_tree({"some_dir": {"somefile.yaml": proper_yaml_1}})
+def test_config_honouring(dataset_mock, directory_path: str):
 
-    testable_extractor = TestableExtractor()
-    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    dataset_mock.configure_mock(**{
+        "pathobj": PosixPath(directory_path),
+        "config.obtain.return_value": "some_dir/somefile.yaml"
+    })
+    results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
+    assert len(results) == 1
+    assert results[0]["metadata"] != {}
+    del results[0]["metadata"]
+    assert results[0] == {
+        "status": "ok",
+        "type": "all"
+    }
+
+
+@mock.patch("datalad.distribution.dataset.Dataset")
+@with_tree({".studyminimeta.yaml": error_yaml_1})
+def test_unsuccessful_yaml_parsing(dataset_mock, directory_path: str):
+
+    dataset_mock.configure_mock(**{
+        "pathobj": PosixPath(directory_path),
+        "config.obtain.return_value": ".studyminimeta.yaml"
+    })
+
+    results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
     assert len(results) == 1
     assert results[0]["message"].startswith("YAML parsing failed with: ")
     del results[0]["message"]
     assert results[0] == {
-        "status": "failed",
+        "status": "error",
         "metadata": {},
         "type": "all"
     }
 
 
+@mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({'.studyminimeta.yaml': error_yaml_2})
-def test_schema_violation(directory_path: str):
+def test_schema_violation(dataset_mock, directory_path: str):
 
-    testable_extractor = TestableExtractor()
-    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    dataset_mock.configure_mock(**{
+        "pathobj": PosixPath(directory_path),
+        "config.obtain.return_value": ".studyminimeta.yaml"
+    })
+
+    results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
     assert len(results) == 1
     assert results[0] == {
-        "status": "failed",
+        "status": "error",
         "metadata": {},
         "type": "all",
         "message": "data structure conversion to JSON-LD failed"
     }
 
 
-@with_tree({'some_file.yaml': error_yaml_1})
-def test_file_handling(directory_path: str):
+@mock.patch("datalad.distribution.dataset.Dataset")
+@with_tree({"some_file.yaml": error_yaml_1})
+def test_file_handling(dataset_mock, directory_path: str):
 
-    testable_extractor = TestableExtractor()
-    results = tuple(testable_extractor(DummyDataset(directory_path), "0000000", "all", "ok"))
+    dataset_mock.configure_mock(**{
+        "pathobj": PosixPath(directory_path),
+        "config.obtain.return_value": ".studyminimeta.yaml"
+    })
+    results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
     assert len(results) == 1
     assert results[0]["message"].startswith("file ")
     assert results[0]["message"].endswith(" could not be opened")
     del results[0]["message"]
     assert results[0] == {
-        "status": "failed",
+        "status": "error",
         "metadata": {},
         "type": "all"
     }
