@@ -3,8 +3,8 @@ from pathlib import PosixPath
 from unittest import mock
 
 from datalad.tests.utils import with_tree
-from datalad_metalad.extractors.studyminimeta.ldcreator import LDCreator
-from datalad_metalad.extractors.studyminimeta.main import StudyMiniMetaExtractor
+from ..studyminimeta.ldcreator import LDCreator
+from ..studyminimeta.main import StudyMiniMetaExtractor
 
 
 STUDYMINIMETA_PERSONS = {
