@@ -5,7 +5,8 @@ from ..jsonld import JsonLdIndexer
 
 
 def test_generic_json_ld_indexing():
-    """ Check proper indexing of JSON-LD studyminimeta description """
+
+    # Check proper indexing of generic JSON-LD description
 
     indexer = JsonLdIndexer("json-ld")
     generated_dict = {k: v for k, v in indexer.create_index(MOCKED_STUDYMINIMETA_JSONLD)}
