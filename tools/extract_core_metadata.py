@@ -7,7 +7,7 @@ from typing import List
 
 
 argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
-argument_parser.add_argument("--serial", action="store_true", help="run extractors in serial")
+argument_parser.add_argument("--max-processes", type=int, default=20, help="maximum number of parallel processes")
 argument_parser.add_argument("command", type=str, help="The command name")
 argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
 argument_parser.add_argument("metalad_arguments", nargs="*")
@@ -19,14 +19,18 @@ g_arguments = None
 running_processes: List[subprocess.Popen] = list()
 
 
+def ensure_process_limit(max_processes: int):
+    while len(running_processes) >= max_processes:
+        for index, p in enumerate(running_processes):
+            if p.poll() is not None:
+                del running_processes[index]
+                break
+
+
 def execute_command_line(command_line):
-    if not g_arguments.serial:
-        p = subprocess.Popen(command_line)
-        running_processes.append(p)
-    else:
-        r = subprocess.run(command_line)
-        if r.returncode != 0:
-            sys.stderr.write(f"command: {command_line} returned {r.returncode}\n")
+    ensure_process_limit(g_arguments.max_processes)
+    p = subprocess.Popen(command_line)
+    running_processes.append(p)
 
 
 def extract_dataset(realm: str, dataset_path: str, metalad_arguments: List[str]):
