@@ -189,6 +189,10 @@ def show_dataset_metadata(mapper: str,
     dataset_level_metadata = \
         metadata_root_record.dataset_level_metadata.load_object()
 
+    if dataset_level_metadata is None:
+        lgr.warning(f"no dataset level metadata for dataset uuid:{root_dataset_identifier}@{root_dataset_version}")
+        return
+
     result_json_object = {
         "dataset_level_metadata": {
             "root_dataset_identifier": str(root_dataset_identifier),
