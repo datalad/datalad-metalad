@@ -31,7 +31,7 @@ class ExtractorResult:
     extractor_version: str
     extraction_parameter: Dict[str, Any]
     extraction_success: bool
-    extraction_result: Dict[str, Any]
+    datalad_result_dict: Dict[str, Any]
     immediate_data: Optional[Dict[str, Any]] = None
 
 
@@ -85,7 +85,7 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
         """ Report the universally unique ID of the extractor """
         raise NotImplementedError
 
-    def get_version(self) -> str:
+    def get_version(self) -> str:       # TODO shall we remove this and regard it as part of the state?
         """ Report the version of the extractor """
         raise NotImplementedError
 
@@ -103,17 +103,18 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
         behavior. Only plain key-value items, with simple values, such a string
         int, float, or lists thereof, are supported.
 
-        Any change in the reported state in comparison to a recorded state for
-        an existing metadata aggregate will cause a re-extraction of metadata.
-        The nature of the state change does not matter, as the entire
-        dictionary will be compared.  Primarily, this is useful for reporting
+        State information can be dataset-specific. The respective Dataset
+        object instance is passed via the method's `dataset` argument.
+
+        The state information will be recorded together with the parameters
+        that the extractor used and assiciated with the emitted metadata.
+
+        Primarily, this is useful for reporting
         per-extractor version information (such as a version for the extractor
         output format, or critical version information on external software
         components employed by the extractor), and potential configuration
         settings that determine the behavior of on extractor.
 
-        State information can be dataset-specific. The respective Dataset
-        object instance is passed via the method's `dataset` argument.
         """
         return {}
 
@@ -147,10 +148,17 @@ class DatasetMetadataExtractor(MetadataExtractor):
 
     def get_required_content(self) -> bool:
         """
-        Get the content that the dataset level
-        extractor needs locally
+        Let the extractor get the content that it needs locally.
+        The default implementation is to do nothing.
+
+        Returns
+        -------
+        True if all required content could be fetched, False
+        otherwise. If False is returned, the extractor
+        infrastructure will signal an error and the extractor's
+        extract method will not be called.
         """
-        raise NotImplementedError
+        return True
 
 
 class FileMetadataExtractor(MetadataExtractor):
@@ -193,13 +201,19 @@ class FileMetadataExtractor(MetadataExtractor):
     def is_content_required(self) -> bool:
         """
         Specify whether the content of the file defined in file_info
-        must be available locally.
+        must be available locally. If this method returns True, the
+        metadata infrastructure will attempt to make the content
+        available locally before calling the extractor-method.
+
+        The default implementation returns False, i.e. indicates
+        that the content in not required locally for the extractor
+        to work.
 
         Returns
         -------
         True if the content must be available locally, False otherwise
         """
-        raise NotImplementedError
+        return False
 
 
 # XXX this is the legacy interface, keep around for a bit more and then

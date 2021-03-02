@@ -44,9 +44,9 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
 
         return ExtractorResult(
             extractor_version=self.get_version(),
-            extraction_parameter={},
+            extraction_parameter=self.parameter or {},
             extraction_success=True,
-            extraction_result={
+            datalad_result_dict={
                 "type": "file",
                 "status": "ok"
             },
@@ -57,5 +57,6 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
                 "type": self.file_info.type,
                 "path": self.file_info.path,
                 "intra_dataset_path": self.file_info.intra_dataset_path,
-                "content_byte_size": self.file_info.byte_size
+                "content_byte_size": self.file_info.byte_size,
+                "comment": "test-implementation"
             })

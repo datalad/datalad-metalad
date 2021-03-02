@@ -7,13 +7,11 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Run one or more metadata extractors on a dataset or file(s)"""
-
-__docformat__ = 'restructuredtext'
-
 import logging
 import tempfile
-import time
 import os.path as op
+import subprocess
+import time
 from os import curdir
 from pathlib import PosixPath
 from six import (
@@ -90,6 +88,9 @@ from .extractors.base import ExtractorResult
 from .metadata import get_top_level_metadata_objects
 
 
+__docformat__ = 'restructuredtext'
+
+
 default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.extract')
@@ -144,10 +145,12 @@ class Extract(Interface):
             args=("path",),
             metavar="FILE",
             nargs="?",
-            doc="""Path of a file to extract metadata from. If this
-            argument is provided, we assume a file extractor is
-            requested, if the path is not given, we assume a dataset
-            level extractor is specified.""",
+            doc="""Path of a file or dataset to extract metadata
+            from. If this argument is provided, we assume a file
+            extractor is requested, if the path is not given, or
+            if it identifies the root of a dataset, i.e. "", we
+            assume a dataset level metadata extractor is
+            specified.""",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
@@ -158,7 +161,9 @@ class Extract(Interface):
         into=Parameter(
             args=("-i", "--into"),
             doc=""""Dataset to extract metadata into. This must be
-            a parent dataset of dataset.""",
+            the dataset from which we extract metadata itself -which
+            is the default- or a parent dataset of the dataset from
+            which we extract metadata.""",
             constraints=EnsureDataset() | EnsureNone()),
         recursive=recursion_flag)
 
@@ -194,15 +199,19 @@ class Extract(Interface):
             realm = ds.path
             root_primary_data_version = source_primary_data_version
 
-        if path is None:
+        if not path:
 
             # Try to perform dataset level metadata extraction
+            lgr.info("extracting dataset level metadata for dataset at %s", ds.path)
+
             assert isinstance(extractor_class, type(DatasetMetadataExtractor))
             extractor = extractor_class(ds, source_primary_data_version)
 
         else:
 
             # Try to perform file level metadata extraction
+            lgr.info("extracting file level metadata for file at %s:%s", ds.path, path)
+
             assert isinstance(extractor_class, type(FileMetadataExtractor))
             file_info = get_file_info(ds, path)
             if file_info is None:
@@ -229,14 +238,26 @@ class Extract(Interface):
                     file_tree_path,
                     result)
 
-                yield result.extraction_result
+            yield result.datalad_result_dict
 
         elif output_category == DataOutputCategory.FILE:
 
-            # Process file results
             with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
+
                 result = extractor.extract(temporary_file_info)
-                print(f"adding file {temporary_file_info.name} to metadata")
+                if result.extraction_success:
+                    add_file_content_to_metadata(
+                        extractorname,
+                        realm,
+                        root_primary_data_version,
+                        UUID(ds.id),
+                        source_primary_data_version,
+                        dataset_tree_path,
+                        file_tree_path,
+                        result,
+                        temporary_file_info.name)
+
+                yield result.datalad_result_dict
 
         elif output_category == DataOutputCategory.DIRECTORY:
 
@@ -274,7 +295,7 @@ def get_extractor_class(extractor_name: str) -> Union[
 
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
-        lgr.warn(
+        lgr.warning(
             'Metadata extractor %s from distribution %s overrides '
             'metadata extractor from distribution %s',
             extractor_name,
@@ -303,11 +324,10 @@ def get_file_info(dataset: Dataset, path: str) -> Optional[FileInfo]:
     return FileInfo(
         path_status["type"],
         path_status["gitshasum"],
-        path_status["bytesize"],
+        path_status.get("bytesize", 0),
         path_status["state"],
-        path_status["path"],
-        path_status["path"][len(dataset.path) + 1:]
-    )
+        path_status["path"],            # TODO: use the dataset-tree path here?
+        path_status["path"][len(dataset.path) + 1:])
 
 
 def get_path_info(dataset: Dataset,
@@ -385,8 +405,7 @@ def add_immediate_metadata(extractor_name: str,
         dataset_tree = DatasetTree(default_mapper_family, realm)
         tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
 
-    mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
-    if mrr is None:
+    if dataset_tree_path not in dataset_tree:
         # Create a metadata root record-object and a file tree-object
         file_tree = FileTree(default_mapper_family, realm)
         mrr = MetadataRootRecord(
@@ -397,10 +416,10 @@ def add_immediate_metadata(extractor_name: str,
             Connector.from_object(None),
             Connector.from_object(file_tree))
         dataset_tree.add_dataset(dataset_tree_path, mrr)
-
     else:
-        file_tree = mrr.get_file_tree()
+        mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
 
+    file_tree = mrr.get_file_tree()
     if file_tree_path in file_tree:
         metadata = file_tree.get_metadata(file_tree_path)
     else:
@@ -439,6 +458,97 @@ def add_immediate_metadata(extractor_name: str,
     flush_object_references(realm)
 
 
+def add_file_content_to_metadata(extractor_name: str,
+                                 realm: str,
+                                 root_primary_data_version: str,
+                                 dataset_id: UUID,
+                                 dataset_primary_data_version: str,
+                                 dataset_tree_path: str,
+                                 file_tree_path: str,
+                                 result: ExtractorResult,
+                                 metadata_file_path: str):
+
+    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
+    if tree_version_list is None:
+        tree_version_list = TreeVersionList(default_mapper_family, realm)
+
+    # Get the dataset tree
+    if root_primary_data_version in tree_version_list.versions():
+        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
+    else:
+        time_stamp = str(time.time())
+        dataset_tree = DatasetTree(default_mapper_family, realm)
+        tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
+
+    mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+    if mrr is None:
+        # Create a metadata root record-object and a file tree-object
+        file_tree = FileTree(default_mapper_family, realm)
+        mrr = MetadataRootRecord(
+            default_mapper_family,
+            realm,
+            dataset_id,
+            dataset_primary_data_version,
+            Connector.from_object(None),
+            Connector.from_object(file_tree))
+        dataset_tree.add_dataset(dataset_tree_path, mrr)
+
+    else:
+        file_tree = mrr.get_file_tree()
+
+    if file_tree_path in file_tree:
+        metadata = file_tree.get_metadata(file_tree_path)
+    else:
+        metadata = Metadata(default_mapper_family, realm)
+        file_tree.add_metadata(file_tree_path, metadata)
+
+    # copy the temporary file content into the git repo
+    git_object_hash = copy_file_to_git(metadata_file_path, realm)
+
+    metadata.add_extractor_run(
+        time.time(),
+        extractor_name,
+        "Christian Mönch",
+        "c.moench@fz-juelich.de",
+        ExtractorConfiguration(
+            result.extractor_version,
+            result.extraction_parameter),
+        {
+            "type": "git-object",
+            "location": git_object_hash
+        })
+
+    tree_version_list.save()
+
+    if uuid_set is None:
+        uuid_set = UUIDSet(default_mapper_family, realm)
+
+    if dataset_id in uuid_set.uuids():
+        version_list = uuid_set.get_version_list(dataset_id)
+    else:
+        version_list = VersionList(default_mapper_family, realm)
+        uuid_set.set_version_list(dataset_id, version_list)
+
+    version_list.set_versioned_element(
+        dataset_primary_data_version,
+        str(time.time()),
+        dataset_tree_path,
+        mrr)
+
+    uuid_set.save()
+
+    flush_object_references(realm)
+
+
+def copy_file_to_git(file_path: str, realm: str):
+    arguments = ["git", f"--git-dir={realm + '/.git'}", "hash-object", "-w", "--", file_path]
+    result = subprocess.run(arguments, stdout=subprocess.PIPE)
+    if result.returncode != 0:
+        raise ValueError(f"execution of `{' '.join(arguments)}´ failed with {result.returncode}")
+    return result.stdout.decode().strip()
+
+
+x = """
 class XXASDAS:
 
     def xxx(self):
@@ -945,12 +1055,10 @@ def _proc(ds, refcommit, sources, status, extractors, process_type):
             res['parentds'] = ds.path
         yield res
 
-
 def _run_extractor(extractor_cls, name, ds, refcommit, status, process_type):
-    """Helper to control extractor using the right API
-
-    Central switch to deal with alternative/future APIs is inside
-    """
+    # Helper to control extractor using the right API
+    #
+    # Central switch to deal with alternative/future APIs is inside
     try:
         # detect supported API and interface as needed
         if issubclass(extractor_cls, MetadataExtractor):
@@ -997,10 +1105,9 @@ def _run_extractor(extractor_cls, name, ds, refcommit, status, process_type):
                      ds, name, exc_str(e)),
         )
 
-
 def _yield_res_from_pre2019_extractor(
         ds, name, extractor_cls, process_type, paths):  # pragma: no cover
-    """This implements dealing with our first extractor class concept"""
+    # This implements dealing with our first extractor class concept
 
     want_dataset_meta = process_type in ('all', 'dataset') \
         if process_type else ds.config.obtain(
@@ -1091,3 +1198,4 @@ def _ok_metadata(res, msrc, ds, loc):
 
         lgr.error(*msg)
         return False
+"""
