@@ -378,7 +378,13 @@ def get_path_info(dataset: Dataset,
         dataset_path = full_dataset_path.relative_to(full_into_dataset_path)
 
     if path is None:
-        return str(dataset_path), ""
+        dataset_path = str(dataset_path)
+        return (
+            ""
+            if dataset_path == "."
+            else dataset_path,
+            ""
+        )
 
     given_file_path = PosixPath(path)
     if given_file_path.is_absolute():
@@ -393,7 +399,12 @@ def get_path_info(dataset: Dataset,
     else:
         dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
 
-    return dataset_tree_path, file_tree_path
+    return (
+        ""
+        if dataset_tree_path == "."
+        else dataset_tree_path,
+        file_tree_path
+    )
 
 
 def ensure_content_availability(extractor: FileMetadataExtractor,
