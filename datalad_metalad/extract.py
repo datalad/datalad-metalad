@@ -441,11 +441,10 @@ def add_file_metadata_source(extractor_name: str,
 
     # Get the dataset tree
     if root_primary_data_version in tree_version_list.versions():
-        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
+        _, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
     else:
-        time_stamp = str(time.time())
         dataset_tree = DatasetTree(default_mapper_family, realm)
-        tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
+        tree_version_list.set_dataset_tree(root_primary_data_version, str(time.time()), dataset_tree)
 
     if dataset_tree_path not in dataset_tree:
         # Create a metadata root record-object and a file tree-object
