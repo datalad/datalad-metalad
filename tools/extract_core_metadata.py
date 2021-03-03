@@ -18,7 +18,7 @@ log_level = {
 
 
 argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
-argument_parser.add_argument("--max-processes", type=int, default=20, help="maximum number of parallel processes")
+argument_parser.add_argument("-m", "--max-processes", type=int, default=20, help="maximum number of parallel processes")
 argument_parser.add_argument("-l", "--log-level", type=str, default="warning", help="maximum number of parallel processes")
 argument_parser.add_argument("command", type=str, help="The command name")
 argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
@@ -54,7 +54,7 @@ def execute_command_line(purpose, command_line):
     ensure_process_limit(arguments.max_processes)
     p = subprocess.Popen(command_line)
     running_processes.append(p)
-    logger.info(f"started process {p.pid} to: {purpose}")
+    logger.info(f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
 
 def extract_dataset(realm: str, dataset_path: str, metalad_arguments: List[str]):
