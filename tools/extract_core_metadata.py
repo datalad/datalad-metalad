@@ -60,7 +60,9 @@ def execute_command_line(purpose, command_line):
 def extract_dataset(realm: str, dataset_path: str, metalad_arguments: List[str]):
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
-        "datalad", "meta-extract", "metalad_core_dataset", "-d", dataset_path, "-i", realm] + metalad_arguments
+        "datalad", "-l", arguments.log_level, "meta-extract",
+        "metalad_core_dataset", "-d", dataset_path, "-i", realm
+    ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
 

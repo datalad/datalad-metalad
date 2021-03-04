@@ -74,11 +74,8 @@ from datalad.core.local import status as _status
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
-from dataladmetadatamodel.mapper import (
-    get_tree_version_list_location,
-    get_uuid_set_location
-)
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
+from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, unlock_backend
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -289,7 +286,7 @@ class Extract(Interface):
             raise NotImplementedError
 
         lgr.info(
-            f"adding metadata result to realm {repr(realm)}, "
+            f"added metadata result to realm {repr(realm)}, "
             f"dataset tree path {repr(dataset_tree_path)}, "
             f"file tree path {repr(file_tree_path)}")
 
@@ -435,6 +432,8 @@ def add_file_metadata_source(extractor_name: str,
                              result: ExtractorResult,
                              metadata_source: dict):
 
+    lock_backend(realm)
+
     tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
     if tree_version_list is None:
         tree_version_list = TreeVersionList(default_mapper_family, realm)
@@ -502,6 +501,8 @@ def add_file_metadata_source(extractor_name: str,
 
     flush_object_references(realm)
 
+    unlock_backend(realm)
+
 
 def add_dataset_metadata_source(extractor_name: str,
                                 realm: str,
@@ -511,6 +512,8 @@ def add_dataset_metadata_source(extractor_name: str,
                                 dataset_tree_path: str,
                                 result: ExtractorResult,
                                 metadata_source: dict):
+
+    lock_backend(realm)
 
     tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
     if tree_version_list is None:
@@ -573,6 +576,8 @@ def add_dataset_metadata_source(extractor_name: str,
     uuid_set.save()
 
     flush_object_references(realm)
+
+    unlock_backend(realm)
 
 
 def add_file_metadata(extractor_name: str,
