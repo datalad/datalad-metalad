@@ -80,11 +80,11 @@ class Extract(Interface):
       Extract metadata with two extractors from a dataset in the current
       directory and also from all its files::
 
-        $ datalad extract-metadata -d . --source xmp --source metalad_core
+        $ datalad meta-extract -d . --source xmp --source metalad_core
 
       Extract XMP metadata from a single PDF that is not part of any dataset::
 
-        $ datalad extract-metadata --source xmp Downloads/freshfromtheweb.pdf
+        $ datalad meta-extract --source xmp Downloads/freshfromtheweb.pdf
 
 
     Customization of extraction:
