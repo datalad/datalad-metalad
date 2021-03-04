@@ -43,8 +43,8 @@ setup(
     long_description=long_description,
     packages=[pkg for pkg in find_packages('.') if pkg.startswith('datalad')],
     install_requires=[
-        'datalad>=0.12.3',
-        'pyyaml',
+        'datalad>=0.14',
+        'pyyaml'
     ],
     entry_points={
         'datalad.extensions': [
@@ -60,5 +60,8 @@ setup(
             'metalad_runprov=datalad_metalad.extractors.runprov:RunProvenanceExtractor',
             'metalad_studyminimeta=datalad_metalad.extractors.studyminimeta.main:StudyMiniMetaExtractor',
         ],
+        'datalad.metadata.indexers': [
+            'metalad_studyminimeta=datalad_metalad.indexers.studyminimeta:StudyMiniMetaIndexer',
+        ]
     },
 )
