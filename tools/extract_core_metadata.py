@@ -16,18 +16,6 @@ log_level = {
     "fatal": logging.FATAL
 }
 
-
-argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
-argument_parser.add_argument("-m", "--max-processes", type=int, default=20, help="maximum number of parallel processes")
-argument_parser.add_argument("-l", "--log-level", type=str, default="warning", help="maximum number of parallel processes")
-argument_parser.add_argument("command", type=str, help="The command name")
-argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
-argument_parser.add_argument("metalad_arguments", nargs="*")
-
-
-logger = logging.getLogger("extract_core_metadata")
-
-
 ignore_patterns = [
     re.compile(r"\.git.*"),
     re.compile(r"\.annex.*"),
@@ -35,23 +23,31 @@ ignore_patterns = [
     re.compile(r"\.datalad.*")
 ]
 
-
-arguments: Namespace = argument_parser.parse_args(sys.argv)
-
 running_processes: List[subprocess.Popen] = list()
 
 
-def ensure_process_limit(max_processes: int):
-    while len(running_processes) > max_processes:
+logger = logging.getLogger("extract_core_metadata")
+
+argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
+argument_parser.add_argument("-m", "--max-processes", type=int, default=20, help="maximum number of processes")
+argument_parser.add_argument("-l", "--log-level", type=str, default="warning", help="maximum number of parallel processes")
+argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
+argument_parser.add_argument("metalad_arguments", nargs="*")
+
+arguments: Namespace = argument_parser.parse_args(sys.argv[1:])
+
+
+def ensure_less_processes_than(max_processes: int):
+    while len(running_processes) >= max_processes:
         for index, p in enumerate(running_processes):
             if p.poll() is not None:
-                logger.info(f"process {p.pid} exited")
+                logger.debug(f"process {p.pid} exited")
                 del running_processes[index]
                 break
 
 
 def execute_command_line(purpose, command_line):
-    ensure_process_limit(arguments.max_processes)
+    ensure_less_processes_than(arguments.max_processes)
     p = subprocess.Popen(command_line)
     running_processes.append(p)
     logger.info(f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
@@ -69,14 +65,16 @@ def extract_dataset(realm: str, dataset_path: str, metalad_arguments: List[str])
 def extract_file(realm: str, dataset_path: str, file_path: str, metalad_arguments: List[str]):
     purpose = f"extract_file: {dataset_path}:{file_path}"
     command_line = [
-        "datalad", "meta-extract", "metalad_core_file", file_path, "-d", dataset_path, "-i", realm] + metalad_arguments
+        "datalad", "-l", arguments.log_level, "meta-extract",
+        "metalad_core_file", file_path, "-d", dataset_path, "-i", realm
+    ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
 
 def get_top_level_entry(path: str) -> os.DirEntry:
     p_path = PosixPath(path).resolve()
-    above_path = PosixPath("/".join(p_path.parts[:-1])).resolve()
-    return tuple(filter(lambda entry: entry.name == p_path.parts[-1], os.scandir(str(above_path))))[0]
+    parent_path = PosixPath("/".join(p_path.parts[:-1])).resolve()
+    return tuple(filter(lambda entry: entry.name == p_path.parts[-1], os.scandir(str(parent_path))))[0]
 
 
 def should_be_ignored(name: str) -> bool:
@@ -103,9 +101,14 @@ def extract_recursive(realm: str, dataset_entry: os.DirEntry, entry: os.DirEntry
 
 def main() -> int:
     logging.basicConfig(level=log_level[arguments.log_level])
+
+    if arguments.max_processes < 1:
+        print("Error: number of processes must be greater or equal to 1", file=sys.stderr)
+        return 1
+
     top_dir_entry = get_top_level_entry(arguments.dataset_path)
     extract_recursive(top_dir_entry.path, top_dir_entry, top_dir_entry, arguments.metalad_arguments)
-    ensure_process_limit(0)
+    ensure_less_processes_than(1)
     return 0
 
 
