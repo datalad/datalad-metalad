@@ -31,6 +31,8 @@ logger = logging.getLogger("extract_core_metadata")
 argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
 argument_parser.add_argument("-m", "--max-processes", type=int, default=20, help="maximum number of processes")
 argument_parser.add_argument("-l", "--log-level", type=str, default="warning", help="maximum number of parallel processes")
+argument_parser.add_argument("-r", "--recursive", type=bool, default=False, help="collect metadata recursively in the top-level dataset")
+argument_parser.add_argument("-e", "--extractor", type=str, default="metalad_core", help="extractor basename, will be exxtended by '_dataset' or '_file' (default: metalad_core)")
 argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
 argument_parser.add_argument("metalad_arguments", nargs="*")
 
@@ -53,20 +55,20 @@ def execute_command_line(purpose, command_line):
     logger.info(f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
 
-def extract_dataset(realm: str, dataset_path: str, metalad_arguments: List[str]):
+def extract_dataset_level_metadata(realm: str, dataset_path: str, metalad_arguments: List[str]):
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        "metalad_core_dataset", "-d", dataset_path, "-i", realm
+        f"{arguments.extractor}_dataset", "-d", dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
 
-def extract_file(realm: str, dataset_path: str, file_path: str, metalad_arguments: List[str]):
+def extract_file_level_metadata(realm: str, dataset_path: str, file_path: str, metalad_arguments: List[str]):
     purpose = f"extract_file: {dataset_path}:{file_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        "metalad_core_file", file_path, "-d", dataset_path, "-i", realm
+        f"{arguments.extractor}_file", file_path, "-d", dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
@@ -84,19 +86,52 @@ def should_be_ignored(name: str) -> bool:
     return False
 
 
+def extract_file_recursive(realm: str, dataset_entry: os.DirEntry, entry: os.DirEntry, metalad_arguments: List[str]):
+    if entry.is_dir():
+        child_entries = tuple(os.scandir(entry.path))
+        is_dataset = len(tuple(filter(lambda entry: entry.name == ".datalad", child_entries))) == 1
+        if is_dataset:
+            print(dataset_entry.path, entry.path)
+            if dataset_entry.path != entry.path:
+                return
+        for entry in child_entries:
+            if should_be_ignored(entry.name):
+                continue
+            extract_file_recursive(realm, dataset_entry, entry, metalad_arguments)
+    else:
+        extract_file_level_metadata(realm, dataset_entry.path, entry.path[len(dataset_entry.path) + 1:], metalad_arguments)
+
+
+def extract_individual(dataset_entry: os.DirEntry, metalad_arguments: List[str]):
+    extract_dataset_level_metadata(dataset_entry.path, dataset_entry.path, metalad_arguments)
+    extract_file_recursive(dataset_entry.path, dataset_entry, dataset_entry, metalad_arguments)
+
+
+def extract_individual_recursive(realm: str, dataset_entry: os.DirEntry, entry: os.DirEntry, metalad_arguments: List[str]):
+    if entry.is_dir():
+        child_entries = tuple(os.scandir(entry.path))
+        is_dataset = len(tuple(filter(lambda entry: entry.name == ".datalad", child_entries))) == 1
+        if is_dataset:
+            extract_individual(entry, metalad_arguments)
+        for entry in child_entries:
+            if should_be_ignored(entry.name):
+                continue
+            extract_individual_recursive(realm, dataset_entry, entry, metalad_arguments)
+
+
 def extract_recursive(realm: str, dataset_entry: os.DirEntry, entry: os.DirEntry, metalad_arguments: List[str]):
     if entry.is_dir():
         child_entries = tuple(os.scandir(entry.path))
         is_dataset = len(tuple(filter(lambda entry: entry.name == ".datalad", child_entries))) == 1
         if is_dataset:
-            extract_dataset(realm, entry.path, metalad_arguments)
+            extract_dataset_level_metadata(realm, entry.path, metalad_arguments)
             dataset_entry = entry
         for entry in child_entries:
             if should_be_ignored(entry.name):
                 continue
             extract_recursive(realm, dataset_entry, entry, metalad_arguments)
     else:
-        extract_file(realm, dataset_entry.path, entry.path[len(dataset_entry.path) + 1:], metalad_arguments)
+        extract_file_level_metadata(realm, dataset_entry.path, entry.path[len(dataset_entry.path) + 1:], metalad_arguments)
 
 
 def main() -> int:
@@ -107,7 +142,11 @@ def main() -> int:
         return 1
 
     top_dir_entry = get_top_level_entry(arguments.dataset_path)
-    extract_recursive(top_dir_entry.path, top_dir_entry, top_dir_entry, arguments.metalad_arguments)
+    if arguments.recursive is True:
+        extract_recursive(top_dir_entry.path, top_dir_entry, top_dir_entry, arguments.metalad_arguments)
+    else:
+        extract_individual_recursive(top_dir_entry.path, top_dir_entry, top_dir_entry, arguments.metalad_arguments)
+
     ensure_less_processes_than(1)
     return 0
 
