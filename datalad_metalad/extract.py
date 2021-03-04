@@ -9,27 +9,17 @@
 """Run one or more metadata extractors on a dataset or file(s)"""
 import logging
 import tempfile
-import os.path as op
 import subprocess
 import time
 from os import curdir
 from pathlib import PosixPath
-from six import (
-    iteritems,
-    text_type,
-)
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Optional, Tuple, Type, Union
 from uuid import UUID
 
-from datalad import cfg
 from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.common_opts import recursion_flag
-from datalad.interface.results import (
-    get_status_dict,
-    success_status_map,
-)
 from datalad.interface.utils import eval_results
 from datalad.distribution.dataset import (
     datasetmethod,
@@ -46,30 +36,8 @@ from .extractors.base import (
 from datalad.support.param import Parameter
 from datalad.support.constraints import (
     EnsureNone,
-    EnsureStr,
-    EnsureChoice,
-    EnsureBool,
+    EnsureStr
 )
-from . import (
-    get_refcommit,
-    exclude_from_metadata,
-    get_metadata_type,
-    collect_jsonld_metadata,
-    format_jsonld_metadata,
-)
-from datalad.utils import (
-    assure_list,
-    Path,
-    PurePosixPath,
-)
-from datalad.dochelpers import exc_str
-from datalad.log import log_progress
-from datalad.ui import ui
-import datalad.support.ansi_colors as ac
-from simplejson import dumps as jsondumps
-
-# API commands needed
-from datalad.core.local import status as _status
 
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
@@ -380,8 +348,7 @@ def get_path_info(dataset: Dataset,
             ""
             if dataset_path == "."
             else dataset_path,
-            ""
-        )
+            "")
 
     given_file_path = PosixPath(path)
     if given_file_path.is_absolute():
@@ -394,14 +361,14 @@ def get_path_info(dataset: Dataset,
     if into_dataset is None:
         dataset_tree_path = ""
     else:
-        dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
+        dataset_tree_path = str(
+            full_dataset_path.relative_to(full_into_dataset_path))
 
     return (
         ""
         if dataset_tree_path == "."
         else dataset_tree_path,
-        file_tree_path
-    )
+        file_tree_path)
 
 
 def ensure_content_availability(extractor: FileMetadataExtractor,
@@ -422,6 +389,57 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
                 extractor.dataset.path, file_info.intra_dataset_path))
 
 
+def get_top_nodes_and_mrr(realm: str,
+                          root_primary_data_version: str,
+                          dataset_id: UUID,
+                          dataset_primary_data_version: str,
+                          dataset_tree_path: str):
+
+    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
+    if tree_version_list is None:
+        tree_version_list = TreeVersionList(default_mapper_family, realm)
+
+    if uuid_set is None:
+        uuid_set = UUIDSet(default_mapper_family, realm)
+
+    if dataset_id in uuid_set.uuids():
+        uuid_version_list = uuid_set.get_version_list(dataset_id)
+    else:
+        uuid_version_list = VersionList(default_mapper_family, realm)
+        uuid_set.set_version_list(dataset_id, uuid_version_list)
+
+    # Get the dataset tree
+    if root_primary_data_version in tree_version_list.versions():
+        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
+    else:
+        time_stamp = str(time.time())
+        dataset_tree = DatasetTree(default_mapper_family, realm)
+        tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
+
+    if dataset_tree_path not in dataset_tree:
+        # Create a metadata root record-object and a dataset level metadata-object
+        dataset_level_metadata = Metadata(default_mapper_family, realm)
+        file_tree = FileTree(default_mapper_family, realm)
+        mrr = MetadataRootRecord(
+            default_mapper_family,
+            realm,
+            dataset_id,
+            dataset_primary_data_version,
+            Connector.from_object(dataset_level_metadata),
+            Connector.from_object(file_tree))
+        dataset_tree.add_dataset(dataset_tree_path, mrr)
+    else:
+        mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+
+    uuid_version_list.set_versioned_element(
+        dataset_primary_data_version,
+        str(time.time()),
+        dataset_tree_path,
+        mrr)
+
+    return tree_version_list, uuid_set, mrr
+
+
 def add_file_metadata_source(extractor_name: str,
                              realm: str,
                              root_primary_data_version: str,
@@ -434,30 +452,12 @@ def add_file_metadata_source(extractor_name: str,
 
     lock_backend(realm)
 
-    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
-    if tree_version_list is None:
-        tree_version_list = TreeVersionList(default_mapper_family, realm)
-
-    # Get the dataset tree
-    if root_primary_data_version in tree_version_list.versions():
-        _, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
-    else:
-        dataset_tree = DatasetTree(default_mapper_family, realm)
-        tree_version_list.set_dataset_tree(root_primary_data_version, str(time.time()), dataset_tree)
-
-    if dataset_tree_path not in dataset_tree:
-        # Create a metadata root record-object and a file tree-object
-        file_tree = FileTree(default_mapper_family, realm)
-        mrr = MetadataRootRecord(
-            default_mapper_family,
-            realm,
-            dataset_id,
-            dataset_primary_data_version,
-            Connector.from_object(None),
-            Connector.from_object(file_tree))
-        dataset_tree.add_dataset(dataset_tree_path, mrr)
-    else:
-        mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+    tree_version_list, uuid_set, mrr = get_top_nodes_and_mrr(
+        realm,
+        root_primary_data_version,
+        dataset_id,
+        dataset_primary_data_version,
+        dataset_tree_path)
 
     file_tree = mrr.get_file_tree()
     if file_tree is None:
@@ -481,24 +481,7 @@ def add_file_metadata_source(extractor_name: str,
         metadata_source)
 
     tree_version_list.save()
-
-    if uuid_set is None:
-        uuid_set = UUIDSet(default_mapper_family, realm)
-
-    if dataset_id in uuid_set.uuids():
-        version_list = uuid_set.get_version_list(dataset_id)
-    else:
-        version_list = VersionList(default_mapper_family, realm)
-        uuid_set.set_version_list(dataset_id, version_list)
-
-    version_list.set_versioned_element(
-        dataset_primary_data_version,
-        str(time.time()),
-        dataset_tree_path,
-        mrr)
-
     uuid_set.save()
-
     flush_object_references(realm)
 
     unlock_backend(realm)
@@ -515,31 +498,12 @@ def add_dataset_metadata_source(extractor_name: str,
 
     lock_backend(realm)
 
-    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
-    if tree_version_list is None:
-        tree_version_list = TreeVersionList(default_mapper_family, realm)
-
-    # Get the dataset tree
-    if root_primary_data_version in tree_version_list.versions():
-        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(root_primary_data_version)
-    else:
-        time_stamp = str(time.time())
-        dataset_tree = DatasetTree(default_mapper_family, realm)
-        tree_version_list.set_dataset_tree(root_primary_data_version, time_stamp, dataset_tree)
-
-    if dataset_tree_path not in dataset_tree:
-        # Create a metadata root record-object and a dataset level metadata-object
-        dataset_level_metadata = Metadata(default_mapper_family, realm)
-        mrr = MetadataRootRecord(
-            default_mapper_family,
-            realm,
-            dataset_id,
-            dataset_primary_data_version,
-            Connector.from_object(dataset_level_metadata),
-            Connector.from_object(None))
-        dataset_tree.add_dataset(dataset_tree_path, mrr)
-    else:
-        mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+    tree_version_list, uuid_set, mrr = get_top_nodes_and_mrr(
+        realm,
+        root_primary_data_version,
+        dataset_id,
+        dataset_primary_data_version,
+        dataset_tree_path)
 
     dataset_level_metadata = mrr.get_dataset_level_metadata()
     if dataset_level_metadata is None:
@@ -557,24 +521,7 @@ def add_dataset_metadata_source(extractor_name: str,
         metadata_source)
 
     tree_version_list.save()
-
-    if uuid_set is None:
-        uuid_set = UUIDSet(default_mapper_family, realm)
-
-    if dataset_id in uuid_set.uuids():
-        version_list = uuid_set.get_version_list(dataset_id)
-    else:
-        version_list = VersionList(default_mapper_family, realm)
-        uuid_set.set_version_list(dataset_id, version_list)
-
-    version_list.set_versioned_element(
-        dataset_primary_data_version,
-        str(time.time()),
-        dataset_tree_path,
-        mrr)
-
     uuid_set.save()
-
     flush_object_references(realm)
 
     unlock_backend(realm)
@@ -610,13 +557,13 @@ def add_file_metadata(extractor_name: str,
 
 
 def add_dataset_metadata(extractor_name: str,
-                      realm: str,
-                      root_primary_data_version: str,
-                      dataset_id: UUID,
-                      dataset_primary_data_version: str,
-                      dataset_tree_path: str,
-                      result: ExtractorResult,
-                      metadata_file_path: str):
+                         realm: str,
+                         root_primary_data_version: str,
+                         dataset_id: UUID,
+                         dataset_primary_data_version: str,
+                         dataset_tree_path: str,
+                         result: ExtractorResult,
+                         metadata_file_path: str):
 
     # copy the temporary file content into the git repo
     git_object_hash = copy_file_to_git(metadata_file_path, realm)
