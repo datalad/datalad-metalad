@@ -53,7 +53,7 @@ class DataOutputCategory(enum.Enum):
     IMMEDIATE = 3
 
 
-class MetadataExtractor(metaclass=abc.ABCMeta):
+class MetadataExtractorBase(metaclass=abc.ABCMeta):
     def extract(self,
                 output_location: Optional[Union[BinaryIO, str]] = None
                 ) -> ExtractorResult:
@@ -119,7 +119,7 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
         return {}
 
 
-class DatasetMetadataExtractor(MetadataExtractor):
+class DatasetMetadataExtractor(MetadataExtractorBase):
     def __init__(self,
                  dataset: Dataset,
                  ref_commit: str,
@@ -161,7 +161,7 @@ class DatasetMetadataExtractor(MetadataExtractor):
         return True
 
 
-class FileMetadataExtractor(MetadataExtractor):
+class FileMetadataExtractor(MetadataExtractorBase):
     def __init__(self,
                  dataset: Dataset,
                  ref_commit: str,
@@ -173,7 +173,7 @@ class FileMetadataExtractor(MetadataExtractor):
         dataset : Dataset
           Dataset instance to extract metadata from.
 
-        refcommit : str
+        ref_commit : str
           SHA of the commit for which metadata should be created.
           Can be used for identification purposed, such as '@id'
           properties for JSON-LD documents on the dataset.
@@ -216,7 +216,108 @@ class FileMetadataExtractor(MetadataExtractor):
         return False
 
 
-# XXX this is the legacy interface, keep around for a bit more and then
+# NB: This is the legacy interface. We keep it around to
+# use existing extractors with the file-dataset dichotomy.
+# We call them with either with:
+#
+#   a) process_type: "file" and a status object with a
+#      single file
+#
+#   b) process_type: "dataset" and a status object with dataset
+#
+#  Keep around for a bit more and then remove.
+#
+class MetadataExtractor(object):
+    # ATM this doesn't do anything, but inheritance from this class enables
+    # detection of new-style extractor API
+
+    def __call__(self, dataset, refcommit, process_type, status):
+        """Run metadata extraction
+
+        Any implementation gets a comprehensive description of a dataset
+        via the `status` argument. In many scenarios this can prevent
+        needless interaction with the dataset on disk, or specific
+        further queries via dataset or repository methods.
+
+        Parameters
+        ----------
+        dataset : Dataset
+          Dataset instance to extract metadata from.
+        refcommit : str
+          SHA of the commit that was determined to be the last metadata-relevant
+          change in the dataset. Can be used for identification purposed, such
+          '@id' properties for JSON-LD documents on the dataset.
+        process_type : {'all', 'dataset', 'content'}
+          Type of metadata to extract.
+        status : list
+          Status records produced by the `status` command for the given
+          dataset. Records are filtered to not contain any untracked
+          content, or any files that are to be ignored for the purpose
+          of metadata extraction (e.g. content under .dataset/metadata).
+          There are only records on content within the given dataset, not
+          about content of any existing subdatasets.
+        """
+        raise NotImplementedError  # pragma: no cover
+
+    def get_required_content(self, dataset, process_type, status):
+        """Report records for dataset content that must be available locally
+
+        Any implementation can yield records in the given `status` that
+        correspond to dataset content that must be available locally for an
+        extractor to perform its work. It is acceptable to not yield such a
+        record, or no records at all. In such case, the extractor is expected
+        to handle the case of non-available content in some sensible way
+        internally.
+
+        The parameters are identical to those of
+        `MetadataExtractor.__call__()`.
+
+        Any content corresponding to a yielded record will be obtained
+        automatically before metadata extraction is initiated. Hence any
+        extractor reporting accurately can expect all relevant content
+        to be present locally.
+
+        Instead of a status record, it is also possible to return custom
+        dictionaries that must contain a 'path' key, containing the absolute
+        path to the required file within the given dataset.
+
+        Example implementation::
+
+            for s in status:
+                if s['path'].endswith('.pdf'):
+                    yield s
+        """
+        # be default an individual extractor is expected to manage
+        # availability on its own
+        return []
+
+    def get_state(self, dataset):
+        """Report on extractor-related state and configuration
+
+        Extractors can reimplement this method to report arbitrary information
+        in a dictionary. This information will be included in the metadata
+        aggregate catalog in each dataset. Consequently, this information
+        should be brief/compact and limited to essential facts on a
+        comprehensive state of an extractor that "fully" determines its
+        behavior. Only plain key-value items, with simple values, such a string
+        int, float, or lists thereof, are supported.
+
+        Any change in the reported state in comparison to a recorded state for
+        an existing metadata aggregate will cause a re-extraction of metadata.
+        The nature of the state change does not matter, as the entire
+        dictionary will be compared.  Primarily, this is useful for reporting
+        per-extractor version information (such as a version for the extractor
+        output format, or critical version information on external software
+        components employed by the extractor), and potential configuration
+        settings that determine the behavior of on extractor.
+
+        State information can be dataset-specific. The respective Dataset
+        object instance is passed via the method's `dataset` argument.
+        """
+        return {}
+
+
+# XXX this is the legacy-legacy interface, keep around for a bit more and then
 # remove
 class BaseMetadataExtractor(object):  # pragma: no cover
 
