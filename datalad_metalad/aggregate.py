@@ -48,17 +48,12 @@ md(rds) all possible paths would be:
                 Error("What can we do? Add a structure that allows for 'detached' metadata")
 
 """
-
-__docformat__ = 'restructuredtext'
-
-
 import logging
 import time
-from typing import List, Optional
-
+from itertools import islice
+from typing import List, Optional, Tuple
 
 import dataclasses
-
 
 from datalad.interface.base import Interface
 from datalad.interface.utils import (
@@ -82,8 +77,11 @@ from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
+from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, unlock_backend
 from .metadata import get_top_level_metadata_objects
 
+
+__docformat__ = 'restructuredtext'
 
 lgr = logging.getLogger('datalad.metadata.aggregate')
 
@@ -97,42 +95,42 @@ class AggregateItem:
 
 @build_doc
 class Aggregate(Interface):
-    """Aggregate metadata of one or more (sub)datasets for later reporting.
+    """Aggregate metadata of one or more sub-datasets for later reporting.
 
-    Metadata aggregation refers to a procedure that extracts metadata present
-    in a dataset into a portable representation that is stored in a
-    standardized (internal) format. Moreover, metadata aggregation can also
-    extract metadata in this format from one dataset and store it in another
-    (super)dataset. Based on such collections of aggregated metadata it is then
-    possible to discover particular (sub)datasets and individual files in them,
-    without having to obtain the actual dataset repositories first (see the
-    DataLad 'meta-dump' command).
+    <REMARK>
+    Metadata storage is not forced to reside inside the dataset repository.
+    Metadata might be stored within the repository that is used by a
+    dataset, but it might as well be stored in another repository (or
+    a non-git backend, once those exist). To distinguish the metadata storage
+    from the dataset storage, we refer to the metadata storage as realm
+    (which for now is only a git-repository). For now, the realm for metadata
+    is usually the git-repository that holds the dataset.
 
-    To enable aggregation of metadata that are contained in files of a dataset,
-    one has to enable one or more metadata extractor for a dataset. DataLad
-    supports a number of common metadata standards, such as the Exchangeable
-    Image File Format (EXIF), Adobe's Extensible Metadata Platform (XMP), and
-    various audio file metadata systems like ID3. DataLad extension packages
-    can provide metadata data extractors for additional metadata sources.
-    The list of metadata extractors available to a particular DataLad
-    installation is reported by the 'wtf' command ('datalad wtf').
+    The distinction is the reason for the "double"-path arguments below.
+    for each metadata realm that should be integrated into the root realm,
+    we have to give the metadata realm itself and the intra-dataset-path
+    with regard to the root-repository.
+    </REMARK>
 
-    Enabling a metadata extractor for a dataset is done by adding its name to
-    the 'datalad.metadata.nativetype' configuration variable in the dataset's
-    configuration file (.datalad/config), e.g.::
+    Metadata aggregation refers to a procedure that combines metadata from
+    different sub-datasets into a root dataset, i.e. a dataset that contains
+    all the sub-datasets. Aggregated metadata is "prefixed" with the
+    intra-dataset-paths of the sub-datasets. The intra-dataset-path for a
+    sub-dataset is the path from the top-level directory of the root dataset,
+    i.e. the directory that contains the ".datalad"-entry, to the top-level
+    directory of the respective sub-dataset.
 
-      [datalad "metadata"]
-        nativetype = exif
-        nativetype = xmp
+    Aggregate assumes that metadata exists. To create metadata, use the
+    meta-extract command.
 
-    If an enabled metadata extractor is not available in a particular DataLad
-    installation, metadata extraction will not succeed in order to avoid
-    inconsistent aggregation results.
+    As a result of the aggregation, the metadata of all specified sub-datasets
+    will be available in the root metadata realm. A datalad meta-dump command
+    on the root-realm will therefore be able to consider all metadata from
+    the root dataset and all aggregated sub-datasets.
 
-    Enabling multiple extractors is supported. In this case, metadata are
-    extracted by each extractor individually, and stored alongside each other.
-    Metadata aggregation will also extract DataLad's internal metadata
-    ('metalad_core'), and git-annex file metadata ('metalad_annex').
+
+    NB! recursive aggregation is not implemented yet! Therefore the following
+    text might NOT be true.
 
     Metadata aggregation can be performed recursively, in order to aggregate
     all metadata from all subdatasets. By default, re-aggregation of metadata
@@ -141,31 +139,6 @@ class Aggregate(Interface):
     re-aggregation will be automatically skipped, if no relevant change is
     detected. This default behavior can be altered via the ``--force``
     argument.
-
-    Depending on the versatility of the present metadata and the number of
-    dataset or files, aggregated metadata can grow prohibitively large or take
-    a long time to process. See the documentation of the ``extract-metadata``
-    command for a number of configuration settings that can be used to tailor
-    this process on a per-dataset basis.
-
-    *Aggregation of aggregates*
-
-    Sometimes it is desirable to re-use existing metadata aggregates, instead
-    of performing a metadata extraction, even if a particular dataset is
-    locally available (e.g. because large files are not downloaded, or
-    extraction runtime is prohibitively long). Such behavior is enabled through
-    a special, rsync-like, path specification syntax. Consider three nested
-    datasets: `top` / `mid` / `bottom`. The syntax for aggregating a record on
-    `bottom` from `mid` into `top`, while being in the root top `top`, is::
-
-        datalad meta-aggregate mid/bottom
-
-    In order to use an aggregate on `bottom` from `bottom` itself, or to
-    trigger re-extraction in case of detected changes, add a trailing
-    path separator to the path. In POSIX-compatible machines, this looks like::
-
-        datalad meta-aggregate mid/bottom/
-
     """
     _params_ = dict(
         backend=Parameter(
@@ -174,19 +147,36 @@ class Aggregate(Interface):
             doc="""metadata storage backend to be used. Currently only
             "git" is supported.""",
             constraints=EnsureChoice("git")),
-        realm=Parameter(
-            args=("--realm",),
-            metavar="REALM",
-            doc="""realm where metadata will be aggregated into.
-            If not given, realm will be determined to be the
-            current working directory."""),
+        rootrealm=Parameter(
+            args=("rootrealm",),
+            metavar="ROOT_REALM",
+            doc="""Realm where metadata will be aggregated into."""),
         path=Parameter(
             args=("path",),
             metavar="PATH",
-            doc="""path to (sub)datasets whose metadata shall be
-            aggregated. When a given path is pointing into a dataset (instead of
-            to its root), the metadata of the containing dataset will be
-            aggregated.""",
+            doc="""
+            If -s, --separatepaths is defined (currently it IS
+            defined by default and cannot be change), the realm
+            that store metadata and the intra-dataset path for the
+            sub-dataset, whose metadata is stored in realm, are given
+            separately. Consequently path is interpreted a list of
+            pairs of:
+            
+            1. Intra dataset path of sub-dataset whose metadata is stored
+               in the METADATA_REALM.
+            2. Location of METADATA_REALM, i.e. metadata repository-path
+
+            For example, if the root dataset  path is "root_ds", and the
+            metadata of the root is located in "/metadata/root_ds", and
+            the sub-dataset we want to aggregate into the root dataset
+            is located in "root_ds/sub_ds1/sub_ds2", with its metadata
+            stored in the realm "/metadata/sub_ds2", we have to 
+            give the following command to aggregate the metadata of
+            sub_ds2 into the root dataset::
+            
+               datalad meta-extract /metadata/root_ds sub_ds1/sub_ds2 /metadata/sub_ds2
+                        
+            """,
             nargs="*",
             constraints=EnsureStr() | EnsureNone()),
         recursive=recursion_flag,
@@ -197,47 +187,18 @@ class Aggregate(Interface):
     @eval_results
     def __call__(
             backend="git",
-            realm=None,
+            rootrealm=None,     # TODO: rename to root_realm
             path=None,
             recursive=False,
             recursion_limit=None):
 
-        # TODO: for now we assume that a path describes:
-        #  a) a path to a git repo that contains dataset metadata
-        #  b) the path of the dataset within the super dataset.
-        #  _
-        #  Conceptually, these are two different things, the
-        #  sub-dataset path is independent from the metadata
-        #  storage. The assumptions just make it easier for now
-        #  to focus on the aggregate implementation.
+        separate_paths = True
+        if separate_paths is True:
+            path_realm_associations = process_separated_path_spec(path)
+        else:
+            path_realm_associations = process_congruent_path_spec(path)
 
-        assert len(path) % 2 == 0, "you must provide the same number of repos as paths"
-        path_realm_associations = tuple(zip(
-            map(
-                lambda index_value: index_value[1],
-                filter(
-                    lambda index_value: index_value[0] % 2 == 0,
-                    enumerate(path))),
-            map(
-                lambda index_value: index_value[1],
-                filter(
-                    lambda index_value: index_value[0] % 2 == 1,
-                    enumerate(path)))))
-
-        realm = realm or "."
-
-        # Load destination tree version list and uuid set
-        tree_version_list, uuid_set = get_top_level_metadata_objects(backend, realm)
-        if tree_version_list is None:
-            lgr.warning(
-                f"no tree version list found in {realm}, "
-                f"creating an empty tree version list")
-            tree_version_list = TreeVersionList(backend, realm)
-        if uuid_set is None:
-            lgr.warning(
-                f"no uuid set found in {realm}, "
-                f"creating an empty set")
-            uuid_set = UUIDSet(backend, realm)
+        root_realm = rootrealm or "."
 
         # Collect aggregate information
         aggregate_items = []
@@ -249,11 +210,11 @@ class Aggregate(Interface):
 
             if ag_tree_version_list is None or ag_uuid_set is None:
                 message = f"No {backend}-mapped datalad metadata model found in: {ag_realm}, " \
-                          f"ignoring metadata location {ag_realm}."
+                          f"ignoring metadata location {ag_realm} (and sub-dataset {ag_path})."
                 lgr.warning(message)
                 yield dict(
                     backend=backend,
-                    realm=realm,
+                    realm=root_realm,
                     status='error',
                     message=message)
                 continue
@@ -264,25 +225,55 @@ class Aggregate(Interface):
                     ag_uuid_set,
                     ag_path))
 
+        lock_backend(rootrealm)
+
+        tree_version_list, uuid_set = get_top_level_metadata_objects(backend, root_realm)
+        if tree_version_list is None:
+            lgr.warning(
+                f"no tree version list found in {root_realm}, "
+                f"creating an empty tree version list")
+            tree_version_list = TreeVersionList(backend, root_realm)
+        if uuid_set is None:
+            lgr.warning(
+                f"no uuid set found in {root_realm}, "
+                f"creating an empty set")
+            uuid_set = UUIDSet(backend, root_realm)
+
         perform_aggregation(
-            realm,
+            root_realm,
             tree_version_list,
             uuid_set,
             aggregate_items)
 
         tree_version_list.save()
         uuid_set.save()
+        flush_object_references(root_realm)
 
-        flush_object_references(realm)
+        unlock_backend(root_realm)
 
         yield dict(
             action="meta_aggregate",
             backend=backend,
-            realm=realm,
+            realm=root_realm,
             status='ok',
             message="aggregation performed")
 
         return
+
+
+def process_separated_path_spec(paths: List[str]) -> Tuple[Tuple[str, str], ...]:
+
+    if len(paths) % 2 != 0:
+        raise ValueError("You must provide the same number of intra-dataset-paths and realms")
+
+    return tuple(
+        zip(
+            islice(paths, 0, len(paths), 2),
+            islice(paths, 1, len(paths), 2)))
+
+
+def process_congruent_path_spec(paths: List[str]) -> Tuple[Tuple[str, str], ...]:
+    raise NotImplementedError
 
 
 def perform_aggregation(destination_realm: str,
