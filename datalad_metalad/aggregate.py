@@ -51,7 +51,8 @@ md(rds) all possible paths would be:
 import logging
 import time
 from itertools import islice
-from typing import List, Optional, Tuple
+from pathlib import PosixPath
+from typing import List, Tuple
 
 import dataclasses
 
@@ -150,7 +151,8 @@ class Aggregate(Interface):
         rootrealm=Parameter(
             args=("rootrealm",),
             metavar="ROOT_REALM",
-            doc="""Realm where metadata will be aggregated into."""),
+            doc="""Realm where metadata will be aggregated into, this
+                   is also interpreted as root dataset."""),
         path=Parameter(
             args=("path",),
             metavar="PATH",
@@ -200,6 +202,7 @@ class Aggregate(Interface):
 
         root_realm = rootrealm or "."
 
+        # TODO: we should read-lock all ag_realms
         # Collect aggregate information
         aggregate_items = []
         for ag_path, ag_realm in path_realm_associations:
@@ -261,18 +264,20 @@ class Aggregate(Interface):
         return
 
 
-def process_separated_path_spec(paths: List[str]) -> Tuple[Tuple[str, str], ...]:
-
+def process_separated_path_spec(paths: List[str]
+                                ) -> Tuple[Tuple[str, str], ...]:
     if len(paths) % 2 != 0:
-        raise ValueError("You must provide the same number of intra-dataset-paths and realms")
-
+        raise ValueError(
+            "You must provide the same number of "
+            "intra-dataset-paths and realms")
     return tuple(
         zip(
             islice(paths, 0, len(paths), 2),
             islice(paths, 1, len(paths), 2)))
 
 
-def process_congruent_path_spec(paths: List[str]) -> Tuple[Tuple[str, str], ...]:
+def process_congruent_path_spec(paths: List[str]
+                                ) -> Tuple[Tuple[str, str], ...]:
     raise NotImplementedError
 
 
@@ -385,60 +390,97 @@ def copy_tree_version_list(destination_realm: str,
     """
     for source_pd_version in source_tree_version_list.versions():
 
-        root_pd_version = get_root_version_for_subset_version(
-            source_pd_version,
-            destination_path)
+        for root_pd_version in get_root_version_for_subset_version(
+                destination_realm,
+                source_pd_version,
+                destination_path):
 
-        if root_pd_version in destination_tree_version_list.versions():
-            lgr.debug(
-                f"reading root dataset tree for version "
-                f"{root_pd_version}")
+            if root_pd_version in destination_tree_version_list.versions():
+                lgr.debug(
+                    f"reading root dataset tree for version "
+                    f"{root_pd_version}")
 
-            _, root_dataset_tree = \
-                destination_tree_version_list.get_dataset_tree(
-                    root_pd_version)
-        else:
-            lgr.debug(
-                f"creating new root dataset tree for version "
-                f"{root_pd_version}")
-            root_dataset_tree = DatasetTree("git", destination_realm)
+                _, root_dataset_tree = \
+                    destination_tree_version_list.get_dataset_tree(
+                        root_pd_version)
+            else:
+                lgr.debug(
+                    f"creating new root dataset tree for version "
+                    f"{root_pd_version}")
+                root_dataset_tree = DatasetTree("git", destination_realm)
 
-        time_stamp, source_dataset_tree = \
-            source_tree_version_list.get_dataset_tree(source_pd_version)
+            time_stamp, source_dataset_tree = \
+                source_tree_version_list.get_dataset_tree(source_pd_version)
 
-        if destination_path in root_dataset_tree:
-            lgr.warning(
-                f"replacing subtree {destination_path} for root dataset "
-                f" version {root_pd_version}")
-            root_dataset_tree.delete_subtree(destination_path)
+            if destination_path in root_dataset_tree:
+                lgr.warning(
+                    f"replacing subtree {destination_path} for root dataset "
+                    f" version {root_pd_version}")
+                root_dataset_tree.delete_subtree(destination_path)
 
-        root_dataset_tree.add_subtree(
-            source_dataset_tree.deepcopy("git", destination_realm),
-            destination_path)
+            root_dataset_tree.add_subtree(
+                source_dataset_tree.deepcopy("git", destination_realm),
+                destination_path)
 
-        destination_tree_version_list.set_dataset_tree(
-            root_pd_version,
-            str(time.time()),
-            root_dataset_tree)
+            destination_tree_version_list.set_dataset_tree(
+                root_pd_version,
+                str(time.time()),
+                root_dataset_tree)
 
-        # Remove the trees from memory
-        destination_tree_version_list.unget_dataset_tree(
-            root_pd_version)
-        source_tree_version_list.unget_dataset_tree(
-            source_pd_version)
+            # Remove the trees from memory
+            destination_tree_version_list.unget_dataset_tree(
+                root_pd_version)
+            source_tree_version_list.unget_dataset_tree(
+                source_pd_version)
 
     return
 
 
-def get_root_version_for_subset_version(sub_dataset_version: str,
+# TODO: this function should check all branches of all
+#  parent repositories, because more than one version of
+#  the root repository might contain the given path.
+def get_root_version_for_subset_version(root_dataset_path: str,
+                                        sub_dataset_version: str,
                                         sub_dataset_path: str
-                                        ) -> Optional[str]:
+                                        ) -> List[str]:
     """
-    Get the version of the root that contains the
+    Get the versions of the root that contains the
     given sub_dataset_version at the given sub_dataset_path,
-    if it exists. If the configuration does not exist
-    return None
+    if any exists. If the configuration does not exist
+    return an empty iterable.
     """
+    root_path = PosixPath(root_dataset_path).resolve()
+    current_path = (root_path / sub_dataset_path).resolve()
 
-    lgr.warning("NOT IMPLEMENTED: get_root_version_for_subset_version")
-    return "00112233445566778899aabbccddeeff10112233"
+    # Ensure that the sub-dataset path is under the root-dataset path
+    current_path.relative_to(root_path)
+
+    current_version = sub_dataset_version
+    current_path = current_path.parent
+    while len(current_path.parts) >= len(root_path.parts):
+
+        # Skip intermediate directories, i.e. check only on git
+        # repository roots.
+        if len(tuple(current_path.glob(".git"))) == 0:
+            current_path = current_path.parent
+            continue
+
+        current_version = find_version_containing(current_path, current_version)
+        if current_version == "":
+            return []
+        current_path = current_path.parent
+
+    return [current_version]
+
+
+def find_version_containing(path: PosixPath, current_version):
+    import subprocess
+
+    result = subprocess.run([
+        f"git", "--git-dir", str(path / ".git"), "log",
+        f"--find-object={current_version}",
+        f"--pretty=tformat:%h", "--no-abbrev"],
+        stdout=subprocess.PIPE
+    )
+
+    return result.stdout.decode().strip()
