@@ -10,7 +10,7 @@
 import abc
 import dataclasses
 import enum
-from typing import Any, BinaryIO, Dict, Optional, Union
+from typing import Any, IO, Dict, Optional, Union
 from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
@@ -55,7 +55,7 @@ class DataOutputCategory(enum.Enum):
 
 class MetadataExtractorBase(metaclass=abc.ABCMeta):
     def extract(self,
-                output_location: Optional[Union[BinaryIO, str]] = None
+                output_location: Optional[Union[IO, str]] = None
                 ) -> ExtractorResult:
         """
         Run metadata extraction.
