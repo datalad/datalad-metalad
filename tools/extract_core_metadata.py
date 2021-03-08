@@ -31,8 +31,9 @@ logger = logging.getLogger("extract_core_metadata")
 argument_parser = ArgumentParser(description="Parallel recursive metadata extraction")
 argument_parser.add_argument("-m", "--max-processes", type=int, default=20, help="maximum number of processes")
 argument_parser.add_argument("-l", "--log-level", type=str, default="warning", help="maximum number of parallel processes")
-argument_parser.add_argument("-r", "--recursive", type=bool, default=False, help="collect metadata recursively in the top-level dataset")
-argument_parser.add_argument("-e", "--extractor", type=str, default="metalad_core", help="extractor basename, will be exxtended by '_dataset' or '_file' (default: metalad_core)")
+argument_parser.add_argument("-r", "--recursive", action="store_true", default=False, help="collect metadata recursively in the top-level dataset")
+argument_parser.add_argument("-f", "--file-extractor", type=str, default="metalad_core_file", help="file extractor name (default: metalad_core_file)")
+argument_parser.add_argument("-d", "--dataset-extractor", type=str, default="metalad_core_dataset", help="dataset extractor name (default: metalad_core_dataset)")
 argument_parser.add_argument("dataset_path", type=str, help="The dataset from which metadata should be extracted")
 argument_parser.add_argument("metalad_arguments", nargs="*")
 
@@ -59,7 +60,7 @@ def extract_dataset_level_metadata(realm: str, dataset_path: str, metalad_argume
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.extractor}_dataset", "-d", dataset_path, "-i", realm
+        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
@@ -68,7 +69,7 @@ def extract_file_level_metadata(realm: str, dataset_path: str, file_path: str, m
     purpose = f"extract_file: {dataset_path}:{file_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.extractor}_file", file_path, "-d", dataset_path, "-i", realm
+        f"{arguments.file_extractor}", file_path, "-d", dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 

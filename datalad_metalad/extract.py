@@ -13,7 +13,7 @@ import subprocess
 import time
 from os import curdir
 from pathlib import PosixPath
-from typing import Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
@@ -30,7 +30,8 @@ from .extractors.base import (
     DataOutputCategory,
     DatasetMetadataExtractor,
     FileInfo,
-    FileMetadataExtractor
+    FileMetadataExtractor,
+    MetadataExtractor
 )
 
 from datalad.support.param import Parameter
@@ -169,7 +170,13 @@ class Extract(Interface):
             # Try to perform dataset level metadata extraction
             lgr.info("extracting dataset level metadata for dataset at %s", ds.path)
 
-            assert isinstance(extractor_class, type(DatasetMetadataExtractor))
+            if issubclass(extractor_class, MetadataExtractor):
+                yield from legacy_extract_dataset(
+                    realm, extractor_class, extractorname, ds, dataset,
+                    root_primary_data_version, source_primary_data_version)
+                return
+
+            assert issubclass(extractor_class, DatasetMetadataExtractor)
             extractor = extractor_class(ds, source_primary_data_version)
 
         else:
@@ -177,7 +184,13 @@ class Extract(Interface):
             # Try to perform file level metadata extraction
             lgr.info("extracting file level metadata for file at %s:%s", ds.path, path)
 
-            assert isinstance(extractor_class, type(FileMetadataExtractor))
+            if issubclass(extractor_class, MetadataExtractor):
+                yield from legacy_extract_file(
+                    realm, extractor_class, extractorname, ds, dataset,
+                    file_tree_path, root_primary_data_version, source_primary_data_version)
+                return
+
+            assert issubclass(extractor_class, FileMetadataExtractor)
             file_info = get_file_info(ds, path)
             if file_info is None:
                 raise FileNotFoundError(
@@ -473,8 +486,8 @@ def add_file_metadata_source(extractor_name: str,
     metadata.add_extractor_run(
         time.time(),
         extractor_name,
-        "Christian Mönch",
-        "c.moench@fz-juelich.de",
+        "Christian Mönch",      # TODO: get this from config, i.e. ds.repo.config.get("user.name")
+        "c.moench@fz-juelich.de",       # TODO: ds.repo.config.get("user.email")
         ExtractorConfiguration(
             result.extractor_version,
             result.extraction_parameter),
@@ -589,6 +602,108 @@ def copy_file_to_git(file_path: str, realm: str):
     if result.returncode != 0:
         raise ValueError(f"execution of `{' '.join(arguments)}´ failed with {result.returncode}")
     return result.stdout.decode().strip()
+
+
+def legacy_extract_dataset(realm: str,
+                           extractor_class: type(MetadataExtractor),
+                           extractor_name: str,
+                           dataset: Dataset,
+                           dataset_tree_path: str,
+                           root_primary_data_version: str,
+                           source_primary_data_version: str):
+
+    extractor = extractor_class()
+    status = [{"type": "dataset", "path": dataset_tree_path, "state": "clean"}]
+
+    try:
+        required_content = extractor.get_required_content(dataset, "dataset", status)
+        if required_content:
+            print(required_content)
+            raise NotImplementedError
+    except AttributeError:
+        pass
+
+    for result in extractor(dataset, dataset.repo.get_hexsha(), "dataset", status):
+        if result["status"] == "ok":
+            extractor_result = ExtractorResult(
+                "0.1",
+                extractor.get_state(dataset),
+                True,
+                result,
+                result["metadata"]
+            )
+
+            add_dataset_metadata_source(
+                extractor_name,
+                realm,
+                root_primary_data_version,
+                UUID("00000000-0000-0000-0000-000000000000"),
+                source_primary_data_version,
+                dataset_tree_path,
+                extractor_result,
+                extractor_result.immediate_data)
+        yield result
+
+
+def legacy_extract_file(realm: str,
+                        extractor_class: type(MetadataExtractor),
+                        extractor_name: str,
+                        dataset: Dataset,
+                        dataset_tree_path: str,
+                        file_tree_path: str,
+                        root_primary_data_version: str,
+                        source_primary_data_version: str):
+
+    extractor = extractor_class()
+    status = [{"type": "file", "path": dataset_tree_path + "/" + file_tree_path, "state": "clean"}]
+
+    try:
+        required_content = extractor.get_required_content(dataset, "content", status)
+        if required_content:
+            print(required_content)
+            raise NotImplementedError
+    except AttributeError:
+        pass
+
+    for result in extractor(dataset, dataset.repo.get_hexsha(), "content", status):
+        if result["status"] == "ok":
+            extractor_result = ExtractorResult(
+                "0.1",
+                extractor.get_state(dataset),
+                True,
+                result,
+                result["metadata"]
+            )
+
+            add_file_metadata_source(
+                extractor_name,
+                realm,
+                root_primary_data_version,
+                UUID("00000000-0000-0000-0000-000000000000"),
+                source_primary_data_version,
+                dataset_tree_path,
+                file_tree_path,
+                extractor_result,
+                extractor_result.immediate_data)
+        yield result
+
+
+def xxx_legacy_ensure_content_availability(dataset: Dataset, content_list: List[dict]):
+
+    for file_info in content_list:
+        print(file_info)
+        for result in dataset.get(path={file_info.path},
+                                  get_data=True,
+                                  return_type='generator',
+                                  result_renderer='disabled'):
+            if result.get("status", "") == "error":
+                lgr.error(
+                    "cannot make content of {} available in dataset {}".format(
+                        file_info.path, dataset))
+                return
+        lgr.debug(
+            "requested content {}:{} available".format(
+                dataset.path, file_info.intra_dataset_path))
 
 
 x = """
