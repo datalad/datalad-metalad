@@ -147,23 +147,28 @@ class Extract(Interface):
             dataset or curdir,
             purpose="extract metadata",
             check_installed=path is not None)
+        source_primary_data_version = ds.repo.get_hexsha()
 
         if into:
             into_ds = require_dataset(
                 into,
                 purpose="extract metadata",
                 check_installed=True)
-
-        source_primary_data_version = ds.repo.get_hexsha()
-        extractor_class = get_extractor_class(extractorname)
-
-        dataset_tree_path, file_tree_path = get_path_info(ds, path, into)
-        if into:
             realm = into_ds.path
             root_primary_data_version = into_ds.repo.get_hexsha()
         else:
             realm = ds.path
             root_primary_data_version = source_primary_data_version
+
+        extractor_class = get_extractor_class(extractorname)
+
+        dataset_tree_path, file_tree_path = get_path_info(ds, path, into)
+        #if into:
+        #    realm = into_ds.path
+        #    root_primary_data_version = into_ds.repo.get_hexsha()
+        #else:
+        #    realm = ds.path
+        #    root_primary_data_version = source_primary_data_version
 
         if not path:
 
@@ -172,7 +177,7 @@ class Extract(Interface):
 
             if issubclass(extractor_class, MetadataExtractor):
                 yield from legacy_extract_dataset(
-                    realm, extractor_class, extractorname, ds, dataset,
+                    realm, extractor_class, extractorname, ds, dataset_tree_path,
                     root_primary_data_version, source_primary_data_version)
                 return
 
@@ -186,7 +191,7 @@ class Extract(Interface):
 
             if issubclass(extractor_class, MetadataExtractor):
                 yield from legacy_extract_file(
-                    realm, extractor_class, extractorname, ds, dataset,
+                    realm, extractor_class, extractorname, ds, dataset_tree_path,
                     file_tree_path, root_primary_data_version, source_primary_data_version)
                 return
 
@@ -613,7 +618,7 @@ def legacy_extract_dataset(realm: str,
                            source_primary_data_version: str):
 
     extractor = extractor_class()
-    status = [{"type": "dataset", "path": dataset_tree_path, "state": "clean"}]
+    status = [{"type": "dataset", "path": realm + "/" + dataset_tree_path, "state": "clean"}]
 
     try:
         required_content = extractor.get_required_content(dataset, "dataset", status)
@@ -655,7 +660,7 @@ def legacy_extract_file(realm: str,
                         source_primary_data_version: str):
 
     extractor = extractor_class()
-    status = [{"type": "file", "path": dataset_tree_path + "/" + file_tree_path, "state": "clean"}]
+    status = [{"type": "file", "path": realm + "/" + dataset_tree_path + "/" + file_tree_path, "state": "clean"}]
 
     try:
         required_content = extractor.get_required_content(dataset, "content", status)
