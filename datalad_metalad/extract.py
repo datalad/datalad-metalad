@@ -58,7 +58,6 @@ from .metadata import get_top_level_metadata_objects
 
 __docformat__ = 'restructuredtext'
 
-
 default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.extract')
@@ -190,43 +189,77 @@ class Extract(Interface):
             root_primary_data_version,
             source_primary_data_version)
 
-        # Distinguish between dataset and file extract calls.
-        if not path:
-            yield from do_dataset_extraction(extraction_parameters)
-        else:
+        # If a path is given, we assume file-level metadata extraction is
+        # requested, and the extractor class is  a subclass of
+        # FileMetadataExtractor. If oath is not given, we assume that
+        # dataset-level extraction is requested and the extractor
+        # class is a subclass of DatasetMetadataExtractor
+        if path:
             yield from do_file_extraction(extraction_parameters)
+        else:
+            yield from do_dataset_extraction(extraction_parameters)
 
         return
+
 
 def do_dataset_extraction(ep: ExtractionParameter):
     # Try to perform dataset level metadata extraction
-    lgr.info("extracting dataset level metadata for dataset at %s", ep.source_dataset.path)
-
     if issubclass(ep.extractor_class, MetadataExtractor):
+
+        lgr.info(
+            "performing legacy dataset level metadata "
+            "extraction for dataset at at %s",
+            ep.source_dataset.path)
+
         yield from legacy_extract_dataset(ep)
         return
 
+    lgr.info(
+        "extracting dataset level metadata for dataset at %s",
+        ep.source_dataset.path)
+
     assert issubclass(ep.extractor_class, DatasetMetadataExtractor)
-    extractor = ep.extractor_class(ep.source_dataset, ep.source_primary_data_version)
+
+    extractor = ep.extractor_class(
+        ep.source_dataset,
+        ep.source_primary_data_version)
+
     yield from perform_dataset_metadata_extraction(ep, extractor)
 
 
 def do_file_extraction(ep: ExtractionParameter):
     # Try to perform file level metadata extraction
     if issubclass(ep.extractor_class, MetadataExtractor):
-        lgr.info("performing legacy file level metadata extraction for file at %s/%s", ep.source_dataset.path, ep.file_tree_path)
+
+        lgr.info(
+            "performing legacy file level metadata "
+            "extraction for file at %s/%s",
+            ep.source_dataset.path,
+            ep.file_tree_path)
+
         yield from legacy_extract_file(ep)
         return
 
-    lgr.info("performing file level extracting for file at %s/%s", ep.source_dataset.path, ep.file_tree_path)
+    lgr.info(
+        "performing file level extracting for file at %s/%s",
+        ep.source_dataset.path,
+        ep.file_tree_path)
+
     assert issubclass(ep.extractor_class, FileMetadataExtractor)
     file_info = get_file_info(ep.source_dataset, ep.file_tree_path)
     if file_info is None:
         raise FileNotFoundError(
-            "file not found {}/{}".format(ep.source_dataset.path, ep.file_tree_path))
+            "file not found {}/{}".format(
+                ep.source_dataset.path,
+                ep.file_tree_path))
 
-    extractor = ep.extractor_class(ep.source_dataset, ep.source_primary_data_version, file_info)
+    extractor = ep.extractor_class(
+        ep.source_dataset,
+        ep.source_primary_data_version,
+        file_info)
+
     ensure_content_availability(extractor, file_info)
+
     yield from perform_file_metadata_extraction(ep, extractor)
 
 
@@ -342,10 +375,6 @@ def get_file_info(dataset: Dataset, path: str) -> Optional[FileInfo]:
     """
     Get information about the file in the dataset or
     None, if the file is not part of the dataset.
-
-    :param dataset:
-    :param path:
-    :return:
     """
     if not path.startswith(dataset.path):
         path = dataset.path + "/" + path    # TODO: how are paths represented in datalad?
@@ -599,8 +628,7 @@ def legacy_extract_dataset(ep: ExtractionParameter):
                 extractor.get_state(ep.source_dataset),
                 True,
                 result,
-                result["metadata"]
-            )
+                result["metadata"])
 
             add_dataset_metadata_source(
                 ep,
@@ -630,8 +658,7 @@ def legacy_extract_file(ep: ExtractionParameter):
                 extractor.get_state(ep.source_dataset),
                 True,
                 result,
-                result["metadata"]
-            )
+                result["metadata"])
 
             add_file_metadata_source(
                 ep,
