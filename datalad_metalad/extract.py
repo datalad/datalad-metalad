@@ -16,7 +16,7 @@ import subprocess
 import time
 from os import curdir
 from pathlib import PosixPath
-from typing import Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union
 from uuid import UUID
 
 from dataclasses import dataclass
@@ -448,8 +448,8 @@ def get_path_info(dataset: Dataset,
         dataset_path = str(dataset_path)
         return (
             ""
-            if dataset_path == "."
-            else dataset_path,
+            if dataset_tree_path == "."
+            else dataset_tree_path,
             "")
 
     given_file_path = PosixPath(path)
@@ -632,6 +632,29 @@ def copy_file_to_git(file_path: str, realm: str):
     return result.stdout.decode().strip()
 
 
+def ensure_legacy_content_availability(ep: ExtractionParameter,
+                                       extractor: MetadataExtractor,
+                                       operation: str,
+                                       status: List[dict]):
+
+    try:
+        for required_element in extractor.get_required_content(ep.source_dataset, operation, status):
+            for result in ep.source_dataset.get(path={required_element.path},
+                                                get_data=True,
+                                                return_type='generator',
+                                                result_renderer='disabled'):
+                if result.get("status", "") == "error":
+                    lgr.error(
+                        "cannot make content of {} available in dataset {}".format(
+                            required_element.path, ep.source_dataset))
+                    return
+            lgr.debug(
+                "requested content {}:{} available".format(
+                    ep.source_dataset.path, required_element.path))
+    except AttributeError:
+        pass
+
+
 def legacy_extract_dataset(ep: ExtractionParameter):
 
     extractor = ep.extractor_class()
@@ -641,13 +664,7 @@ def legacy_extract_dataset(ep: ExtractionParameter):
         "state": "clean"
     }]
 
-    try:
-        required_content = extractor.get_required_content(ep.source_dataset, "dataset", status)
-        if required_content:
-            print(required_content)
-            raise NotImplementedError
-    except AttributeError:
-        pass
+    ensure_legacy_content_availability(ep, extractor, "dataset", status)
 
     for result in extractor(ep.source_dataset, ep.source_dataset.repo.get_hexsha(), "dataset", status):
         if result["status"] == "ok":
@@ -662,7 +679,6 @@ def legacy_extract_dataset(ep: ExtractionParameter):
                 ep,
                 extractor_result,
                 extractor_result.immediate_data)
-
         yield result
 
 
@@ -675,13 +691,7 @@ def legacy_extract_file(ep: ExtractionParameter):
         "state": "clean"
     }]
 
-    try:
-        required_content = extractor.get_required_content(ep.source_dataset, "content", status)
-        if required_content:
-            print(required_content)
-            raise NotImplementedError
-    except AttributeError:
-        pass
+    ensure_legacy_content_availability(ep, extractor, "content", status)
 
     for result in extractor(ep.source_dataset, ep.source_dataset.repo.get_hexsha(), "content", status):
         if result["status"] == "ok":
