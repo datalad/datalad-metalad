@@ -13,11 +13,12 @@ import subprocess
 import time
 from os import curdir
 from pathlib import PosixPath
-from typing import List, Optional, Tuple, Type, Union
+from typing import Optional, Tuple, Type, Union
 from uuid import UUID
 
 from dataclasses import dataclass
 
+from datalad.config import ConfigManager
 from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
@@ -74,6 +75,8 @@ class ExtractionParameter:
     file_tree_path: str
     root_primary_data_version: str
     source_primary_data_version: str
+    agent_name: str
+    agent_email: str
 
 
 @build_doc
@@ -178,6 +181,7 @@ class Extract(Interface):
         extractor_class = get_extractor_class(extractorname)
         dataset_tree_path, file_tree_path = get_path_info(source_dataset, path, into)
 
+        config_manager = ConfigManager()
         extraction_parameters = ExtractionParameter(
             realm,
             source_dataset,
@@ -187,7 +191,9 @@ class Extract(Interface):
             dataset_tree_path,
             file_tree_path,
             root_primary_data_version,
-            source_primary_data_version)
+            source_primary_data_version,
+            config_manager.get("user.name"),
+            config_manager.get("user.email"))
 
         # If a path is given, we assume file-level metadata extraction is
         # requested, and the extractor class is  a subclass of
@@ -268,6 +274,7 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
 
     output_category = extractor.get_data_output_category()
     if output_category == DataOutputCategory.IMMEDIATE:
+
         # Process immediate results
         result = extractor.extract(None)
         if result.extraction_success:
@@ -278,6 +285,7 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
         yield result.datalad_result_dict
 
     elif output_category == DataOutputCategory.FILE:
+
         # Process file-based results
         with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
             result = extractor.extract(temporary_file_info)
@@ -345,8 +353,7 @@ def get_extractor_class(extractor_name: str) -> Union[
     """ Get an extractor from its name """
     from pkg_resources import iter_entry_points  # delayed heavy import
 
-    entry_points = list(
-        iter_entry_points('datalad.metadata.extractors', extractor_name))
+    entry_points = list(iter_entry_points('datalad.metadata.extractors', extractor_name))
 
     if not entry_points:
         raise ValueError(
@@ -383,13 +390,14 @@ def get_file_info(dataset: Dataset, path: str) -> Optional[FileInfo]:
     if path_status is None:
         return None
 
+    # noinspection PyUnresolvedReferences
     return FileInfo(
-        path_status["type"],
-        path_status["gitshasum"],
-        path_status.get("bytesize", 0),
-        path_status["state"],
-        path_status["path"],            # TODO: use the dataset-tree path here?
-        path_status["path"][len(dataset.path) + 1:])
+        type=path_status["type"],
+        git_sha_sum=path_status["gitshasum"],
+        byte_size=path_status.get("bytesize", 0),
+        state=path_status["state"],
+        path=path_status["path"],            # TODO: use the dataset-tree path here?
+        intra_dataset_path=path_status["path"][len(dataset.path) + 1:])
 
 
 def get_path_info(dataset: Dataset,
@@ -410,10 +418,12 @@ def get_path_info(dataset: Dataset,
     if into_dataset is None:
         dataset_path = PosixPath(dataset.path)
         full_dataset_path = dataset_path.resolve()
+        dataset_tree_path = ""
     else:
         full_dataset_path = PosixPath(dataset.path).resolve()
         full_into_dataset_path = PosixPath(into_dataset).resolve()
         dataset_path = full_dataset_path.relative_to(full_into_dataset_path)
+        dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
 
     if path is None:
         dataset_path = str(dataset_path)
@@ -430,12 +440,6 @@ def get_path_info(dataset: Dataset,
         full_file_path = (full_dataset_path / given_file_path).resolve()
 
     file_tree_path = str(full_file_path.relative_to(full_dataset_path))
-
-    if into_dataset is None:
-        dataset_tree_path = ""
-    else:
-        dataset_tree_path = str(
-            full_dataset_path.relative_to(full_into_dataset_path))
 
     return (
         ""
@@ -530,8 +534,8 @@ def add_file_metadata_source(ep: ExtractionParameter,
     metadata.add_extractor_run(
         time.time(),
         ep.extractor_name,
-        "Christian Mönch",              # TODO: get this from config, i.e. ds.repo.config.get("user.name")
-        "c.moench@fz-juelich.de",       # TODO: ds.repo.config.get("user.email")
+        ep.agent_name,
+        ep.agent_email,
         ExtractorConfiguration(
             result.extractor_version,
             result.extraction_parameter),
@@ -560,8 +564,8 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
     dataset_level_metadata.add_extractor_run(
         time.time(),
         ep.extractor_name,
-        "Christian Mönch",
-        "c.moench@fz-juelich.de",
+        ep.agent_name,
+        ep.agent_email,
         ExtractorConfiguration(
             result.extractor_version,
             result.extraction_parameter),
@@ -600,6 +604,7 @@ def add_dataset_metadata(ep: ExtractionParameter,
         })
 
 
+# TODO: replace this with a call to datalad's git support functions
 def copy_file_to_git(file_path: str, realm: str):
     arguments = ["git", f"--git-dir={realm + '/.git'}", "hash-object", "-w", "--", file_path]
     result = subprocess.run(arguments, stdout=subprocess.PIPE)
@@ -611,7 +616,11 @@ def copy_file_to_git(file_path: str, realm: str):
 def legacy_extract_dataset(ep: ExtractionParameter):
 
     extractor = ep.extractor_class()
-    status = [{"type": "dataset", "path": ep.realm + "/" + ep.dataset_tree_path, "state": "clean"}]
+    status = [{
+        "type": "dataset",
+        "path": ep.realm + "/" + ep.dataset_tree_path,
+        "state": "clean"
+    }]
 
     try:
         required_content = extractor.get_required_content(ep.source_dataset, "dataset", status)
@@ -641,7 +650,11 @@ def legacy_extract_dataset(ep: ExtractionParameter):
 def legacy_extract_file(ep: ExtractionParameter):
 
     extractor = ep.extractor_class()
-    status = [{"type": "file", "path": ep.realm + "/" + ep.dataset_tree_path + "/" + ep.file_tree_path, "state": "clean"}]
+    status = [{
+        "type": "file",
+        "path": ep.realm + "/" + ep.dataset_tree_path + "/" + ep.file_tree_path,
+        "state": "clean"
+    }]
 
     try:
         required_content = extractor.get_required_content(ep.source_dataset, "content", status)
@@ -665,24 +678,6 @@ def legacy_extract_file(ep: ExtractionParameter):
                 extractor_result,
                 extractor_result.immediate_data)
         yield result
-
-
-def xxx_legacy_ensure_content_availability(dataset: Dataset, content_list: List[dict]):
-
-    for file_info in content_list:
-        print(file_info)
-        for result in dataset.get(path={file_info.path},
-                                  get_data=True,
-                                  return_type='generator',
-                                  result_renderer='disabled'):
-            if result.get("status", "") == "error":
-                lgr.error(
-                    "cannot make content of {} available in dataset {}".format(
-                        file_info.path, dataset))
-                return
-        lgr.debug(
-            "requested content {}:{} available".format(
-                dataset.path, file_info.intra_dataset_path))
 
 
 x = """
