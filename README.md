@@ -1,10 +1,15 @@
-# DataLad extension for semantic metadata handling
+# [Unstable] DataLad extension for semantic metadata handling
 
 [![Travis tests status](https://secure.travis-ci.org/datalad/datalad-metalad.png?branch=master)](https://travis-ci.org/datalad/datalad-metalad) [![Build status](https://ci.appveyor.com/api/projects/status/8jtp2fp3mwr5huyi/branch/master?svg=true)](https://ci.appveyor.com/project/mih/datalad-metalad) [![codecov.io](https://codecov.io/github/datalad/datalad-metalad/coverage.svg?branch=master)](https://codecov.io/github/datalad/datalad-metalad?branch=master) [![GitHub release](https://img.shields.io/github/release/datalad/datalad-metalad.svg)](https://GitHub.com/datalad/datalad-metalad/releases/) [![PyPI version fury.io](https://badge.fury.io/py/datalad-metalad.svg)](https://pypi.python.org/pypi/datalad-metalad/) [![Documentation](https://readthedocs.org/projects/datalad-metalad/badge/?version=latest)](http://docs.datalad.org/projects/metalad/en/latest)
 
+**NB! This software is currently under heavy re-writing. This includes the master
+branch, which is currently considered unstable.**
+
 This software is a [DataLad](http://datalad.org) extension that equips DataLad
 with an alternative command suite for metadata handling (extraction, aggregation,
-reporting). It is backward-compatible with the metadata storage format in DataLad
+reporting).
+
+It is backward-compatible with the metadata storage format in DataLad
 proper, while being substantially more performant (especially on large dataset
 hierarchies). Additionally, it provides new metadata extractors and improved
 variants of DataLad's own ones that are tuned for better performance and richer,
