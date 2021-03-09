@@ -7,8 +7,226 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata extractor base class"""
+import abc
+import dataclasses
+import enum
+from typing import Any, IO, Dict, Optional, Union
+from uuid import UUID
+
+from datalad.distribution.dataset import Dataset
 
 
+@dataclasses.dataclass
+class FileInfo:
+    type: str           # TODO: state constants
+    git_sha_sum: str
+    byte_size: int
+    state: str          # TODO: state constants
+    path: str
+    intra_dataset_path: str
+
+
+@dataclasses.dataclass
+class ExtractorResult:
+    extractor_version: str
+    extraction_parameter: Dict[str, Any]
+    extraction_success: bool
+    datalad_result_dict: Dict[str, Any]
+    immediate_data: Optional[Dict[str, Any]] = None
+
+
+class DataOutputCategory(enum.Enum):
+    """
+    Describe how extractors output metadata.
+    Metadata can be small, like a few numbers,
+    or large e.g. images or sets of images.
+
+    An extractor can either output to a single file
+    (FILE), or it can output a complex result,
+    containing  multiple files and sub-directories
+    to a directory (DIRECTORY), or it can return
+    the result as immediate data in the extractor
+    result object (IMMEDIATE).
+    """
+    FILE = 1
+    DIRECTORY = 2
+    IMMEDIATE = 3
+
+
+class MetadataExtractorBase(metaclass=abc.ABCMeta):
+    def extract(self,
+                output_location: Optional[Union[IO, str]] = None
+                ) -> ExtractorResult:
+        """
+        Run metadata extraction.
+
+        The value of output_location depends on the data output
+        category for this extractor.
+
+        DataOutputCategory.IMMEDIATE:
+        The value of output_location is None
+
+        DataOutputCategory.FILE:
+        The value of output_location is file descriptor for a
+        empty binary file opened in read/write mode. The extractor
+        should write all the metadata it outputs to the file.
+        The content of the file will be added to the metadata.
+
+        DataOutputCategory.DIRECTORY:
+        The value of output_location is the path of a directory.
+        The extractor should write all its output to files or
+        subdirectories in the directory.
+        The content of the directory will be added to the
+        metadata
+        """
+        raise NotImplementedError
+
+    def get_id(self) -> UUID:
+        """ Report the universally unique ID of the extractor """
+        raise NotImplementedError
+
+    def get_version(self) -> str:       # TODO shall we remove this and regard it as part of the state?
+        """ Report the version of the extractor """
+        raise NotImplementedError
+
+    def get_data_output_category(self) -> DataOutputCategory:
+        raise NotImplementedError
+
+    def get_state(self, dataset):
+        """Report on extractor-related state and configuration
+
+        Extractors can reimplement this method to report arbitrary information
+        in a dictionary. This information will be included in the metadata
+        aggregate catalog in each dataset. Consequently, this information
+        should be brief/compact and limited to essential facts on a
+        comprehensive state of an extractor that "fully" determines its
+        behavior. Only plain key-value items, with simple values, such a string
+        int, float, or lists thereof, are supported.
+
+        State information can be dataset-specific. The respective Dataset
+        object instance is passed via the method's `dataset` argument.
+
+        The state information will be recorded together with the parameters
+        that the extractor used and assiciated with the emitted metadata.
+
+        Primarily, this is useful for reporting
+        per-extractor version information (such as a version for the extractor
+        output format, or critical version information on external software
+        components employed by the extractor), and potential configuration
+        settings that determine the behavior of on extractor.
+
+        """
+        return {}
+
+
+class DatasetMetadataExtractor(MetadataExtractorBase):
+    def __init__(self,
+                 dataset: Dataset,
+                 ref_commit: str,
+                 parameter: Optional[Dict[str, Any]] = None):
+        """
+        Parameters
+        ----------
+        dataset : Dataset
+          Dataset instance to extract metadata from.
+
+        ref_commit : str
+          SHA of the commit for which metadata should be created.
+          Can be used for identification purposed, such as '@id'
+          properties for JSON-LD documents on the dataset.
+          # TODO: can this be git tree-nodes hashes as well?
+
+        parameter: Dict[str, Any]
+          Runtime parameter for the extractor. These may or may not
+          override any defaults given in the dataset configuration.
+          The extractor has to report the final applied parameter
+          set in get_state.
+        """
+        self.dataset = dataset
+        self.ref_commit = ref_commit
+        self.parameter = parameter
+
+    def get_required_content(self) -> bool:
+        """
+        Let the extractor get the content that it needs locally.
+        The default implementation is to do nothing.
+
+        Returns
+        -------
+        True if all required content could be fetched, False
+        otherwise. If False is returned, the extractor
+        infrastructure will signal an error and the extractor's
+        extract method will not be called.
+        """
+        return True
+
+
+class FileMetadataExtractor(MetadataExtractorBase):
+    def __init__(self,
+                 dataset: Dataset,
+                 ref_commit: str,
+                 file_info: FileInfo,
+                 parameter: Optional[Dict[str, Any]] = None):
+        """
+        Parameters
+        ----------
+        dataset : Dataset
+          Dataset instance to extract metadata from.
+
+        ref_commit : str
+          SHA of the commit for which metadata should be created.
+          Can be used for identification purposed, such as '@id'
+          properties for JSON-LD documents on the dataset.
+          # TODO: can this be git tree-nodes hashes as well?
+
+        file_info : FileInfo
+          Information about the file for which metadata should be
+          generated.
+          (File infos are filtered to not contain any untracked
+          content, or any files that are to be ignored for the
+          purpose of metadata extraction, e.g. content under
+          ".dataset/metadata".)
+
+        parameter: Dict[str, Any]
+          Runtime parameter for the extractor. These may or may not
+          override any defaults given in the dataset configuration.
+          The extractor has to report the final applied parameter
+          set in get_state.
+        """
+        self.dataset = dataset
+        self.ref_commit = ref_commit
+        self.file_info = file_info
+        self.parameter = parameter
+
+    def is_content_required(self) -> bool:
+        """
+        Specify whether the content of the file defined in file_info
+        must be available locally. If this method returns True, the
+        metadata infrastructure will attempt to make the content
+        available locally before calling the extractor-method.
+
+        The default implementation returns False, i.e. indicates
+        that the content in not required locally for the extractor
+        to work.
+
+        Returns
+        -------
+        True if the content must be available locally, False otherwise
+        """
+        return False
+
+
+# NB: This is the legacy interface. We keep it around to
+# use existing extractors with the file-dataset dichotomy.
+# We call them with either with:
+#
+#   a) process_type: "file" and a status object with a
+#      single file
+#
+#   b) process_type: "dataset" and a status object with dataset
+#
+#  Keep around for a bit more and then remove.
+#
 class MetadataExtractor(object):
     # ATM this doesn't do anything, but inheritance from this class enables
     # detection of new-style extractor API
@@ -99,7 +317,7 @@ class MetadataExtractor(object):
         return {}
 
 
-# XXX this is the legacy interface, keep around for a bit more and then
+# XXX this is the legacy-legacy interface, keep around for a bit more and then
 # remove
 class BaseMetadataExtractor(object):  # pragma: no cover
 

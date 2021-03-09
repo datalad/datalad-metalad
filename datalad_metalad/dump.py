@@ -6,168 +6,408 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Query a dataset's aggregated metadata"""
+"""
+Query a dataset's aggregated metadata
+
+We distinguish between two different result formats, large objects and
+small objects. Both contain the same information per metadata, but the
+large object contains all metadata in a single object, while the small
+objects contain only per-item, e.g. dataset or file, metadata together
+with context information.
+
+The large objects do not repeat information, but can become hard to
+manage in datasets with millions of subdatasets or files.
+
+The small objects are easy to manage, but identical information is
+repeated in them.
+
+We currently only support small objects
+
+Large object:
+{
+   "dataset-1": {
+       "dataset_level_metadata": {
+           "dataset-info": "some dataset info"
+           "extractor1.1": [
+                {
+                   "extraction_time": "11:00:11",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                {
+                   "extraction_time": "12:23:34",
+                   "parameter": { some other extraction parameter}
+                   metadata: [
+                      another HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor1.2": ...
+       }
+       "file_tree": {  LARGE object with file-based metadata }
+   },
+   "dataset-2": {
+       "dataset_level_metadata": {
+           "dataset-info": "another dataset info"
+           "extractor2.1": [
+                {
+                   "extraction_time": "1998",
+                   "parameter": { some extraction parameter}
+                   metadata: [
+                      a HUGE metadata blob
+                   ]
+                },
+                { more runs}
+           ]
+           "extractor2.2": ...
+       },
+       "file_tree": {  LARGE object with file-based metadata }
+}
+
+Such an object would be extremely large, especially if it
+contains metadata.
+
+The second approach focuses on minimal result sizes, but
+result repetition and therefore also information duplication.
+The non-splitable information is the metadata blob.
+For example:
+
+Small object 1:
+{
+    "dataset-1": {
+        "dataset_level_metadata": {
+            "dataset-info": "some dataset-1 info"
+            "extractor1.1": {
+                "extraction_time": "11:00:11",
+                "parameter": { some extraction parameter}
+                "metadata":  " a HUGE metadata blob "
+             }
+        }
+    }
+}
+
+Small object 2:
+{
+    "dataset-1": {
+        "dataset_level_metadata": {
+            "dataset-info": "some dataset-1 info"
+            "extractor1.2": {
+                "extraction_time": "12:23:34",
+                "parameter": { some other extraction parameter}
+                "metadata":  " another HUGE metadata blob "
+             }
+        }
+    }
+}
+
+
+We use the small object approach below
+"""
+
 
 __docformat__ = 'restructuredtext'
 
-
-import glob
+import enum
 import logging
-import os
-import os.path as op
-from six import (
-    iteritems,
-    text_type,
-)
-from datalad.interface.base import Interface
-from datalad.interface.results import (
-    get_status_dict,
-    success_status_map,
-)
-from datalad.interface.utils import eval_results
+from typing import Generator
+from uuid import UUID
+
+from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
+from datalad.interface.base import Interface
+from datalad.interface.utils import eval_results
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr,
     EnsureChoice,
 )
 from datalad.support.param import Parameter
-import datalad.support.ansi_colors as ac
-from datalad.support.json_py import (
-    load as json_load,
-    load_stream as json_streamload,
+from dataladmetadatamodel import JSONObject
+from dataladmetadatamodel.metadata import MetadataInstance
+from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.uuidset import UUIDSet
+from dataladmetadatamodel.versionlist import TreeVersionList
+
+from .metadata import get_top_level_metadata_objects
+from .pathutils.metadatapathparser import (
+    MetadataPathParser,
+    TreeMetadataPath,
+    UUIDMetadataPath
 )
-from datalad.distribution.dataset import (
-    Dataset,
-    EnsureDataset,
-    datasetmethod,
-    require_dataset,
-    resolve_path,
-)
-import datalad.utils as ut
-from datalad.utils import (
-    assure_list,
-)
-from datalad.ui import ui
-from . import (
-    aggregate_layout_version,
-    location_keys,
-    collect_jsonld_metadata,
-    format_jsonld_metadata,
-)
-from simplejson import dumps as jsondumps
+from .pathutils.treesearch import TreeSearch
 
-lgr = logging.getLogger('datalad.metadata.query')
+default_mapper_family = "git"
+
+lgr = logging.getLogger('datalad.metadata.dump')
 
 
-def get_ds_aggregate_db_locations(dspath, version='default', warn_absent=True):
-    """Returns the location of a dataset's aggregate metadata DB
-
-    Parameters
-    ----------
-    dspath : Path
-      Path to a dataset to query
-    version : str
-      DataLad aggregate metadata layout version. At the moment only a single
-      version exists. 'default' will return the locations for the current
-      default layout version.
-    warn_absent : bool
-      If True, warn if the desired DB version is not present and give hints on
-      what else is available. This is useful when using this function from
-      a user-facing command.
-
-    Returns
-    -------
-    db_location, db_object_base_path
-      Absolute paths to the DB itself, and to the basepath to resolve relative
-      object references in the database. Either path may not exist in the
-      queried dataset.
-    """
-    layout_version = aggregate_layout_version \
-        if version == 'default' else version
-
-    agginfo_relpath_template = op.join(
-        '.datalad',
-        'metadata',
-        'aggregate_v{}.json')
-    agginfo_relpath = agginfo_relpath_template.format(layout_version)
-    info_fpath = dspath / agginfo_relpath
-    agg_base_path = info_fpath.parent
-    # not sure if this is the right place with these check, better move then to
-    # a higher level
-    if warn_absent and not info_fpath.exists():  # pragma: no cover
-        # legacy code from a time when users could not be aware of whether
-        # they were doing metadata extraction, or querying aggregated metadata
-        # nowadays, and error is triggered long before it reaches this code
-        if version == 'default':
-            from datalad.consts import (
-                OLDMETADATA_DIR,
-                OLDMETADATA_FILENAME,
-            )
-            # caller had no specific idea what metadata version is
-            # needed/available This dataset does not have aggregated metadata.
-            # Does it have any other version?
-            info_glob = op.join(
-                text_type(dspath), agginfo_relpath_template).format('*')
-            info_files = glob.glob(info_glob)
-            msg = "Found no aggregated metadata info file %s." \
-                  % info_fpath
-            old_metadata_file = op.join(
-                text_type(dspath), OLDMETADATA_DIR, OLDMETADATA_FILENAME)
-            if op.exists(old_metadata_file):
-                msg += " Found metadata generated with pre-0.10 version of " \
-                       "DataLad, but it will not be used."
-            upgrade_msg = ""
-            if info_files:
-                msg += " Found following info files, which might have been " \
-                       "generated with newer version(s) of datalad: %s." \
-                       % (', '.join(info_files))
-                upgrade_msg = ", upgrade datalad"
-            msg += " You will likely need to either update the dataset from its " \
-                   "original location%s or reaggregate metadata locally." \
-                   % upgrade_msg
-            lgr.warning(msg)
-    return info_fpath, agg_base_path
+class ReportPolicy(enum.Enum):
+    INDIVIDUAL = "individual"
+    COMPLETE = "complete"
 
 
-# TODO add test
-def get_ds_aggregate_db(dspath, version='default', warn_absent=True):
-    """Load a dataset's aggregate metadata database
+class ReportOn(enum.Enum):
+    FILES = "files"
+    DATASETS = "datasets"
+    ALL = "all"
 
-    Parameters
-    ----------
-    dspath : Path
-      Path to a dataset to query
-    version : str
-      DataLad aggregate metadata layout version. At the moment only a single
-      version exists. 'default' will return the content of the current default
-      aggregate database version.
-    warn_absent : bool
-      If True, warn if the desired DB version is not present and give hints on
-      what else is available. This is useful when using this function from
-      a user-facing command.
 
-    Returns
-    -------
-    dict
-      A dictionary with the database content is returned. All paths in the
-      dictionary (datasets, metadata object archives) are
-      absolute.
-    """
-    info_fpath, agg_base_path = get_ds_aggregate_db_locations(
-        dspath, version, warn_absent)
-
-    # save to call even with a non-existing location
-    agginfos = json_load(text_type(info_fpath)) if info_fpath.exists() else {}
-
+def _create_result_record(mapper: str, realm: str, metadata_record: JSONObject, report_type: str):
     return {
-        # paths in DB on disk are always relative
-        # make absolute to ease processing during aggregation
-        dspath / p:
-        {k: agg_base_path / v if k in location_keys else v
-         for k, v in props.items()}
-        for p, props in agginfos.items()
+        "status": "ok",
+        "action": "meta_dump",
+        "source": {
+            "mapper": mapper,
+            "realm": realm
+        },
+        "type": report_type,
+        "metadata": metadata_record
     }
+
+
+def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
+    return {
+        "extraction_time": instance.time_stamp,
+        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+        "extractor_version": instance.configuration.version,
+        "extractor_parameter": instance.configuration.parameter,
+        "extractor_result": instance.metadata_location
+    }
+
+
+def show_dataset_metadata(mapper: str,
+                          realm: str,
+                          root_dataset_identifier: UUID,
+                          root_dataset_version: str,
+                          dataset_path: str,
+                          metadata_root_record: MetadataRootRecord
+                          ) -> Generator[dict, None, None]:
+
+    dataset_level_metadata = \
+        metadata_root_record.dataset_level_metadata.load_object()
+
+    if dataset_level_metadata is None:
+        lgr.warning(f"no dataset level metadata for dataset uuid:{root_dataset_identifier}@{root_dataset_version}")
+        return
+
+    result_json_object = {
+        "dataset_level_metadata": {
+            "root_dataset_identifier": str(root_dataset_identifier),
+            "root_dataset_version": root_dataset_version,
+            "dataset_identifier": str(metadata_root_record.dataset_identifier),
+            "dataset_version": metadata_root_record.dataset_version,
+            "dataset_path": dataset_path,
+        }
+    }
+
+    for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
+
+        instances = [
+            _create_metadata_instance_record(instance)
+            for instance in extractor_runs
+        ]
+
+        result_json_object["dataset_level_metadata"]["metadata"] = {
+            extractor_name: instances
+        }
+
+        yield _create_result_record(
+            mapper,
+            realm,
+            result_json_object,
+            "dataset"
+        )
+
+    # Remove dataset-level metadata when we are done with it
+    metadata_root_record.dataset_level_metadata.purge()
+
+
+def show_file_tree_metadata(mapper: str,
+                            realm: str,
+                            root_dataset_identifier: UUID,
+                            root_dataset_version: str,
+                            dataset_path: str,
+                            metadata_root_record: MetadataRootRecord,
+                            file_pattern: str,
+                            recursive: bool
+                            ) -> Generator[dict, None, None]:
+
+    file_tree = metadata_root_record.file_tree.load_object()
+
+    # Determine matching file paths
+    tree_search = TreeSearch(file_tree)
+    matches, not_found_paths = tree_search.get_matching_paths(
+        [file_pattern], recursive, auto_list_root=False)
+
+    for missing_path in not_found_paths:
+        lgr.warning(
+            f"could not locate file path {missing_path} "
+            f"in dataset {metadata_root_record.dataset_identifier}"
+            f"@{metadata_root_record.dataset_version} in "
+            f"realm {mapper}:{realm}")
+
+    for match_record in matches:
+        path = match_record.path
+        metadata_connector = match_record.node.value
+
+        # Ignore empty datasets
+        if metadata_connector is None:
+            continue
+
+        metadata = metadata_connector.load_object()
+        result_json_object = {
+            "file_level_metadata": {
+                "root_dataset_identifier": str(root_dataset_identifier),
+                "root_dataset_version": root_dataset_version,
+                "dataset_path": dataset_path,
+                "file_path": path
+            }
+        }
+
+        for extractor_name, extractor_runs in metadata.extractor_runs():
+            instances = [
+                _create_metadata_instance_record(instance)
+                for instance in extractor_runs
+            ]
+
+            result_json_object["file_level_metadata"]["metadata"] = {
+                extractor_name: instances
+            }
+
+            yield _create_result_record(
+                mapper,
+                realm,
+                result_json_object,
+                "file"
+            )
+
+    # Remove file tree metadata when we are done with it
+    metadata_root_record.file_tree.purge()
+
+
+def dump_from_dataset_tree(mapper: str,
+                           realm: str,
+                           tree_version_list: TreeVersionList,
+                           path: TreeMetadataPath,
+                           recursive: bool) -> Generator[dict, None, None]:
+    """ Dump dataset tree elements that are referenced in path """
+
+    # Normalize path representation
+    if not path or path.dataset_path is None:
+        path = TreeMetadataPath("", "")
+
+    # Get specified version, if none is specified, take the first from the
+    # tree version list.
+    requested_root_dataset_version = path.version
+    if requested_root_dataset_version is None:
+        requested_root_dataset_version = (
+            tuple(tree_version_list.versions())[0]   # TODO: add an item() method to VersionList
+            if path.version is None
+            else path.version)
+
+    # Fetch dataset tree for the specified version
+    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(requested_root_dataset_version)
+    root_mrr = dataset_tree.get_metadata_root_record("")
+    root_dataset_version = root_mrr.dataset_version
+    root_dataset_identifier = root_mrr.dataset_identifier
+
+    # Create a tree search object to search for the specified datasets
+    tree_search = TreeSearch(dataset_tree)
+    matches, not_found_paths = tree_search.get_matching_paths(
+        [path.dataset_path], recursive, auto_list_root=False)
+
+    for missing_path in not_found_paths:
+        lgr.error(
+            f"could not locate metadata for dataset path {missing_path} "
+            f"in tree version {path.version} in "
+            f"realm {mapper}:{realm}")
+
+    for match_record in matches:
+        yield from show_dataset_metadata(
+            mapper,
+            realm,
+            root_dataset_identifier,
+            root_dataset_version,
+            match_record.path,
+            match_record.node.value
+        )
+
+        # TODO: check the different file paths
+        yield from show_file_tree_metadata(
+            mapper,
+            realm,
+            root_dataset_identifier,
+            root_dataset_version,
+            match_record.path,
+            match_record.node.value,
+            path.local_path,
+            recursive
+        )
+
+    return
+
+
+def dump_from_uuid_set(mapper: str,
+                       realm: str,
+                       uuid_set: UUIDSet,
+                       path: UUIDMetadataPath,
+                       recursive: bool) -> Generator[dict, None, None]:
+
+    """ Dump UUID-identified dataset elements that are referenced in path """
+
+    # Get specified version, if none is specified, take the first from the
+    # UUID version list.
+    try:
+        version_list = uuid_set.get_version_list(path.uuid)
+    except KeyError:
+        lgr.error(
+            f"could not locate metadata for dataset with UUID {path.uuid} in "
+            f"realm {mapper}:{realm}")
+        return
+
+    requested_dataset_version = path.version
+    if requested_dataset_version is None:
+        requested_dataset_version = (
+            tuple(version_list.versions())[0]
+            if path.version is None
+            else path.version)
+
+    try:
+        time_stamp, dataset_path, metadata_root_record = \
+            version_list.get_versioned_element(requested_dataset_version)
+    except KeyError:
+        lgr.error(
+            f"could not locate metadata for version {requested_dataset_version} "
+            f"for dataset with UUID {path.uuid} in "
+            f"realm {mapper}:{realm}")
+        return
+
+    # Show dataset-level metadata
+    yield from show_dataset_metadata(
+        mapper,
+        realm,
+        path.uuid,
+        requested_dataset_version,
+        dataset_path,
+        metadata_root_record
+    )
+
+    # Show file-level metadata
+    yield from show_file_tree_metadata(
+        mapper,
+        realm,
+        path.uuid,
+        requested_dataset_version,
+        dataset_path,
+        metadata_root_record,
+        path.local_path,
+        recursive
+    )
+
+    return
 
 
 @build_doc
@@ -180,64 +420,73 @@ class Dump(Interface):
 
     2. metadata for files in a dataset (content metadata).
 
-    Both types can be queried with this command, and a specific type is
-    requested via the `--reporton` argument.
+    The DATASET_FILE_PATH_PATTERN argument specifies dataset and file patterns
+    that are matched against the dataset and file information in the metadata. There are two
+    format, UUID-based and dataset-tree based. The formats are:
+
+        TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
+        UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
+
+    (the tree-format is the default format and does not require a prefix).
+
+    The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
+    find all JSON files in the root directory of all datasets by specifying:
+
+        \*:\*.json
+
+    as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
+    go through metadata for all datasets, e.g.:
+
+      % datalad -f json_pp meta-dump \*:\*.json -r --reporton files
+
+    or simply do not specify a specific dataset at all:
+
+      % datalad -f json_pp meta-dump :\*.json -r --reporton files
 
     Examples:
 
-      Dump the metadata of a single file, the queried dataset is determined
-      based on the current working directory::
+      Dump the metadata of the file "dataset_description.json" in the
+      dataset "simon". (The queried dataset git-repository is determined
+      based on the current working directory)::
 
-        % datalad meta-dump somedir/subdir/thisfile.dat
+        % datalad meta-dump --reporton files simon:dataset_description.json
 
       Sometimes it is helpful to get metadata records formatted in a more
       accessible form, here as pretty-printed JSON::
 
-        % datalad -f json_pp meta-dump somedir/subdir/thisfile.dat
+        % datalad -f json_pp meta-dump simon:dataset_description.json
 
-      Same query as above, but specify which dataset to query (must be
-      containing the query path)::
+      Same query as above, but specify that all datasets should be queried
+      for the given path::
 
-        % datalad meta-dump -d . somedir/subdir/thisfile.dat
+        % datalad meta-dump -d . :somedir/subdir/thisfile.dat
 
       Dump any metadata record of any dataset known to the queried dataset::
 
-        % datalad meta-dump --recursive --reporton datasets
+        % datalad meta-dump -r --reporton datasets
 
-      Get a JSON-formatted report of metadata aggregates in a dataset, incl.
-      information on enabled metadata extractors, dataset versions, dataset
-      IDs, and dataset paths::
-
-        % datalad -f json meta-dump --reporton aggregates
     """
     # make the custom renderer the default, path reporting isn't the top
     # priority here
     result_renderer = 'tailored'
 
     _params_ = dict(
-        dataset=Parameter(
-            args=("-d", "--dataset"),
-            doc="""dataset to query. If not given, a dataset will be determined
-            based on the current working directory.""",
-            constraints=EnsureDataset() | EnsureNone()),
+        backend=Parameter(
+            args=("--backend",),
+            metavar="BACKEND",
+            doc="""metadata storage backend to be used.""",
+            constraints=EnsureChoice("git")),
+        realm=Parameter(
+            args=("--realm",),
+            metavar="REALM",
+            doc="""realm where the metadata is stored. If not given, realm will be determined
+            to be the current working directory."""),
         path=Parameter(
             args=("path",),
-            metavar="PATH",
-            doc="path(s) to query metadata for",
-            nargs="*",
-            constraints=EnsureStr() | EnsureNone()),
-        reporton=Parameter(
-            args=('--reporton',),
-            constraints=EnsureChoice('all', 'jsonld', 'datasets', 'files',
-                                     'aggregates'),
-            doc="""what type of metadata to report on: dataset-global
-            metadata only ('datasets'), metadata on dataset content/files only
-            ('files'), both ('all', default). 'jsonld' is an alternative mode
-            to report all available metadata with JSON-LD markup. A single
-            metadata result with the entire metadata graph matching the query
-            will be reported, all non-JSON-LD-type metadata will be ignored.
-            There is an auxiliary category 'aggregates' that reports on which
-            metadata aggregates are present in the queried dataset."""),
+            metavar="DATASET_FILE_PATH_PATTERN",
+            doc="path to query metadata for",
+            constraints=EnsureStr() | EnsureNone(),
+            nargs='?'),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -245,268 +494,50 @@ class Dump(Interface):
             on given paths or reference dataset. Note, setting this option
             does not cause any recursion into potential subdatasets on the
             filesystem. It merely determines what metadata is being reported
-            from the given/discovered reference dataset."""),
-    )
+            from the given/discovered reference dataset."""))
 
     @staticmethod
     @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
-            path=None,
-            dataset=None,
-            reporton='all',
+            backend="git",
+            realm=None,
+            path="",
             recursive=False):
-        # prep results
-        res_kwargs = dict(action='meta_dump', logger=lgr)
-        ds = require_dataset(
-            dataset=dataset,
-            check_installed=True,
-            purpose='aggregate metadata query')
-        if dataset:
-            res_kwargs['refds'] = ds.path
 
-        agginfos = get_ds_aggregate_db(
-            ds.pathobj,
-            version=str(aggregate_layout_version),
-            # we are handling errors below
-            warn_absent=False,
-        )
-        if not agginfos:
-            # if there has ever been an aggregation run, this file would
-            # exist, hence there has not been and we need to tell this
-            # to people
-            yield get_status_dict(
-                ds=ds,
-                status='impossible',
-                message='metadata aggregation has never been performed in '
-                'this dataset',
-                **res_kwargs)
-            return
+        realm = realm or "."
+        tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
 
-        if not path:
-            # implement https://github.com/datalad/datalad/issues/3282
-            path = ds.pathobj if isinstance(dataset, Dataset) else os.getcwd()
-
-        # check for paths that are not underneath this dataset
-        resolved_paths = set()
-        for p in assure_list(path):
-            p = resolve_path(p, dataset)
-            if p != ds.pathobj and ds.pathobj not in p.parents:
-                raise ValueError(
-                    'given path {} is not underneath dataset {}'.format(
-                        p, ds))
-            resolved_paths.add(p)
-
-        # sort paths into their containing dataset aggregate records
-        paths_by_ds = {}
-        while resolved_paths:
-            resolved_path = resolved_paths.pop()
-            # find the first dataset that matches
-            for aggdspath in sorted(agginfos, reverse=True):
-                if recursive and resolved_path in aggdspath.parents:
-                    ps = paths_by_ds.get(aggdspath, set())
-                    ps.add(aggdspath)
-                    paths_by_ds[aggdspath] = ps
-                elif aggdspath == resolved_path \
-                        or aggdspath in resolved_path.parents:
-                    ps = paths_by_ds.get(aggdspath, set())
-                    ps.add(resolved_path)
-                    paths_by_ds[aggdspath] = ps
-                    # stop when the containing dataset is found
-                    break
-
-        # which files do we need to have locally to perform the query
-        info_keys = \
-            ('dataset_info', 'content_info') \
-            if reporton in ('all', 'jsonld') else \
-            ('dataset_info',) if reporton == 'datasets' else \
-            ('content_info',) if reporton == 'files' else \
-            []
-        objfiles = [
-            text_type(agginfos[d][t])
-            for d in paths_by_ds
-            for t in info_keys
-            if t in agginfos[d]
-        ]
-        lgr.debug(
-            'Verifying/achieving local availability of %i metadata objects',
-            len(objfiles))
-        if objfiles:
-            for r in ds.get(
-                    path=objfiles,
-                    result_renderer='disabled',
-                    return_type='generator'):
-                # report only of not a success as this is an internal operation
-                # that a user would not (need to) expect
-                if success_status_map.get(r['status'], False) != 'success':  # pragma: no cover
-                    yield r
-
-        contexts = {}
-        nodes_by_context = {}
-        parentds = []
-        # loop over all records to get complete parentds relationships
-        for aggdspath in sorted(agginfos):
-            while parentds and parentds[-1] not in aggdspath.parents:
-                parentds.pop()
-            if aggdspath not in paths_by_ds:
-                # nothing to say about this
-                parentds.append(aggdspath)
-                continue
-            agg_record = agginfos[aggdspath]
-            if reporton == 'aggregates':
-                # we do not need to loop over the actual query paths, as
-                # the aggregates of the containing dataset will contain
-                # the desired info, if any exists
-
-                # convert pathobj before emitting until we became more clever
-                info = {k: text_type(v) if isinstance(v, ut.PurePath) else v
-                        for k, v in iteritems(agg_record)}
-                info.update(
-                    path=text_type(aggdspath),
-                    type='dataset',
-                )
-                if aggdspath == ds.pathobj:
-                    info['layout_version'] = aggregate_layout_version
-                if parentds:
-                    info['parentds'] = text_type(parentds[-1])
-                yield dict(
-                    info,
-                    status='ok',
-                    **res_kwargs
-                )
-                parentds.append(aggdspath)
-                continue
-
-            # pull out actual metadata records
-            for res in _yield_metadata_records(
-                    aggdspath,
-                    agg_record,
-                    paths_by_ds[aggdspath],
-                    reporton,
-                    parentds=parentds[-1] if parentds else None):
-                if reporton != 'jsonld':
-                    yield dict(
-                        res,
-                        **res_kwargs
-                    )
-                    continue
-                collect_jsonld_metadata(
-                    aggdspath, res, nodes_by_context, contexts)
-
-            parentds.append(aggdspath)
-        if reporton == 'jsonld':
+        # We require both entry points to exist for valid metadata
+        if tree_version_list is None or uuid_set is None:
+            message = f"No {backend}-mapped datalad metadata model found in: {realm}"
+            lgr.warning(message)
             yield dict(
-                status='ok',
-                type='dataset',
-                path=ds.path,
-                metadata=format_jsonld_metadata(nodes_by_context),
-                refcommit=agginfos[ds.pathobj]['refcommit'],
-                **res_kwargs)
-
-    @staticmethod
-    def custom_result_renderer(res, **kwargs):
-        if res['status'] != 'ok' or not res.get('action', None) == 'meta_dump':
-            # logging complained about this already
+                backend=backend,
+                realm=realm,
+                status='impossible',
+                message=message)
             return
-        if kwargs.get('reporton', None) == 'jsonld':
-            # special case of a JSON-LD report request
-            # all reports are consolidated into a single
-            # graph, dumps just that (no pretty printing, can
-            # be done outside)
-            ui.message(jsondumps(
-                res['metadata'],
-                # support utf-8 output
-                ensure_ascii=False,
-                # this cannot happen, spare the checks
-                check_circular=False,
-                # this will cause the output to not necessarily be
-                # JSON compliant, but at least contain all info that went
-                # in, and be usable for javascript consumers
-                allow_nan=True,
-            ))
-            return
-        # list the path, available metadata keys, and tags
-        path = op.relpath(res['path'],
-                       res['refds']) if res.get('refds', None) else res['path']
-        meta = res.get('metadata', {})
-        ui.message('{path}{type}:{spacer}{meta}{tags}'.format(
-            path=ac.color_word(path, ac.BOLD),
-            type=' ({})'.format(
-                ac.color_word(res['type'], ac.MAGENTA)) if 'type' in res else '',
-            spacer=' ' if len([m for m in meta if m != 'tag']) else '',
-            meta=','.join(k for k in sorted(meta.keys())
-                          if k not in ('tag', '@context', '@id'))
-                 if meta else ' -' if 'metadata' in res else
-                 ' {}'.format(
-                     ','.join(e for e in res['extractors']
-                              if e not in ('datalad_core', 'metalad_core', 'metalad_annex'))
-                 ) if 'extractors' in res else '',
-            tags='' if 'tag' not in meta else ' [{}]'.format(
-                 ','.join(assure_list(meta['tag'])))))
 
+        parser = MetadataPathParser(path)
+        metadata_path = parser.parse()
 
-def _yield_metadata_records(
-        aggdspath, agg_record, query_paths, reporton, parentds):
-    dsmeta = None
-    if reporton in ('datasets', 'all', 'jsonld') \
-            and 'dataset_info' in agg_record:
-        # we do not need path matching here, we already know
-        # that something in this dataset is relevant
-        objfile = text_type(agg_record['dataset_info'])
-        # TODO if it doesn't exist but is requested say impossible?
-        dsmeta = json_load(objfile)
-        info = dict(
-            path=text_type(aggdspath),
-            status='ok',
-            type='dataset',
-            metadata=dsmeta,
-            # some things that should be there, but maybe not
-            # -- make optional to be more robust
-            dsid=agg_record.get('id', None),
-            refcommit=agg_record.get('refcommit', None),
-            datalad_version=agg_record.get('datalad_version', None),
-        )
-        if parentds:
-            info['parentds'] = parentds
-        yield info
-    if reporton in ('files', 'all', 'jsonld') and 'content_info' in agg_record:
-        objfile = text_type(agg_record['content_info'])
-        # TODO if it doesn't exist but is requested say impossible?
-        for file_record in json_streamload(objfile):
-            if 'path' not in file_record:  # pragma: no cover
-                yield dict(
-                    status='error',
-                    message=(
-                        "content metadata contains record "
-                        "without a 'path' specification: %s",
-                        agg_record),
-                    type='dataset',
-                    path=aggdspath,
-                )
-                continue
-            # absolute path for this file record
-            # metadata record always uses POSIX conventions
-            fpath = aggdspath / ut.PurePosixPath(file_record['path'])
-            if not any(p == fpath or p in fpath.parents
-                       for p in query_paths):
-                # ignore any file record that doesn't match any query
-                # path (direct hit or git-annex-like recursion within a
-                # dataset)
-                continue
-            if dsmeta is not None and \
-                    '@context' in dsmeta and \
-                    '@context' not in file_record:
-                file_record['@context'] = dsmeta['@context']
-            info = dict(
-                path=text_type(fpath),
-                parentds=text_type(aggdspath),
-                status='ok',
-                type='file',
-                metadata={k: v for k, v in iteritems(file_record)
-                          if k not in ('path',)},
-                # really old extracts did not have 'id'
-                dsid=agg_record.get('id', None),
-                refcommit=agg_record['refcommit'],
-                datalad_version=agg_record['datalad_version'],
+        if isinstance(metadata_path, TreeMetadataPath):
+            yield from dump_from_dataset_tree(
+                backend,
+                realm,
+                tree_version_list,
+                metadata_path,
+                recursive
             )
-            yield info
+
+        elif isinstance(metadata_path, UUIDMetadataPath):
+            yield from dump_from_uuid_set(
+                backend,
+                realm,
+                uuid_set,
+                metadata_path,
+                recursive
+            )
+
+        return
