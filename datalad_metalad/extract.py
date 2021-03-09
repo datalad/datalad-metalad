@@ -85,41 +85,57 @@ class ExtractionParameter:
 
 @build_doc
 class Extract(Interface):
-    """Run one or more metadata extractors on a dataset or file.
+    """Run a metadata extractor on a dataset or file.
 
-    This command does not modify a dataset, but may initiate required data
-    transfers to perform metadata extraction that requires local file content
-    availability. This command does not support recursion into sub-dataset.
+    This command distinguishes between dataset-level extraction and
+    file-level extraction.
 
-    The result(s) are structured like the metadata DataLad would extract
-    during metadata aggregation (in fact, this command is employed during
-    aggregation). There is one result per dataset/file.
+    If no "path" argument is given, the command
+    assumes that a given extractor is a dataset-level extractor and
+    executes it on the dataset that is given by the current working
+    directory or by the "-d" argument.
+
+    If a path is given, the command assumes that the given extractor is
+    a file-level extractor and executes it on the file that is given as
+    path parameter. If the file level extractor requests the content of
+    a file that is not present, the command might "get" the file content
+    to make it locally available.
+
+    [NOT IMPLEMENTED YET] The extractor configuration can be
+    parameterized with key-value pairs given as additional arguments.
+
+    The results are written into the repository of the source dataset
+    or into the repository of the dataset given by the "-i" parameter.
+    If the same extractor is executed on the same element (dataset or
+    file) with the same configuration, any existing results will be
+    overwritten.
 
     Examples:
 
-      Extract metadata with two extractors from a dataset in the current
-      directory and also from all its files::
+      Use the metalad_core_file-extractor to extract metadata from the
+      file "subdir/data_file_1.txt". The dataset is given by the
+      current working directory:
 
-        $ datalad meta-extract -d . --source xmp --source metalad_core
+        $ datalad meta-extract metalad_core_file subdir/data_file_1.txt
 
-      Extract XMP metadata from a single PDF that is not part of any dataset::
+      Use the metalad_core_file-extractor to extract metadata from the
+      file "subdir/data_file_1.txt" in the dataset ds0001.
 
-        $ datalad meta-extract --source xmp Downloads/freshfromtheweb.pdf
+        $ datalad meta-extract -d ds0001 metalad_core_file subdir/data_file_1.txt
 
+      Use the metalad_core_dataset-extractor to extract dataset-level
+      metadata from the dataset given by the current working directory.
 
-    Customization of extraction:
+        $ datalad meta-extract metalad_core_dataset
 
-    The following configuration settings can be used to customize extractor
-    behavior
+      Use the metalad_core_dataset-extractor to extract dataset-level
+      metadata from the dataset in /datasets/ds0001.
 
-    ``datalad.metadata.extract-from-<extractorname> = {all|dataset|content}``
-       which type of information an enabled extractor will be operating on
-       (see --process-type argument for details)
+        $ datalad meta-extract -d /datasets/ds0001 metalad_core_dataset
 
-    ``datalad.metadata.exclude-path = <path>``
-      ignore all content underneath the given path for metadata extraction,
-      must be relative to the root of the dataset and in POSIX convention,
-      and can be given multiple times
+      The command can also take legacy datalad-metalad extractors and
+      will execute them in either "content" or "dataset" mode, depending
+      on the presence of the "path"-parameter.
     """
     result_renderer = 'tailored'
 
