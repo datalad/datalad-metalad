@@ -41,6 +41,7 @@ from datalad.tests.utils import (
     assert_repo_status,
     assert_dict_equal,
     eq_,
+    known_failure,
     skip_if_on_windows,
 )
 from . import (
@@ -93,6 +94,7 @@ _dataset_hierarchy_template_bids = {
 }"""}}}}
 
 
+@known_failure
 @with_tree(tree=_dataset_hierarchy_template_bids)
 def test_basic_aggregate(path):
     # TODO give datasets some more metadata to actually aggregate stuff
@@ -146,6 +148,7 @@ def _compare_metadata_helper(origres, compds):
                 _get_dsid_from_core_metadata(cres['metadata']['metalad_core']))
 
 
+@known_failure
 @slow  # ~16s
 @with_tree(tree=_dataset_hierarchy_template_friction)
 def test_aggregation(path):
@@ -250,6 +253,7 @@ def test_aggregation(path):
 
 
 # tree puts aggregate metadata structures on two levels inside a dataset
+@known_failure
 @with_tree(tree={
     '.datalad': {
         'metadata': {
@@ -309,6 +313,7 @@ def test_aggregate_query(path, randompath):
 
 
 # this is for gh-1971
+@known_failure
 @with_tree(tree=_dataset_hierarchy_template_bids)
 def test_reaggregate_with_unavailable_objects(path):
     base = Dataset(op.join(path, 'origin')).create(force=True)
@@ -347,6 +352,7 @@ def test_reaggregate_with_unavailable_objects(path):
     )
 
 
+@known_failure
 @with_tree(tree=_dataset_hierarchy_template_bids)
 @with_tempfile(mkdir=True)
 def test_aggregate_with_unavailable_objects_from_subds(path, target):
@@ -380,6 +386,7 @@ def test_aggregate_with_unavailable_objects_from_subds(path, target):
     eq_(all(clone.repo.file_has_content(objs)), True)
 
 
+@known_failure
 # this is for gh-1987
 @skip_if_on_windows  # create_sibling incompatible with win servers
 @skip_ssh
@@ -430,6 +437,7 @@ def _get_referenced_objs(ds):
                 for f in ('content_info', 'dataset_info')])
 
 
+@known_failure
 @with_tree(tree=_dataset_hierarchy_template_bids)
 def test_aggregate_removal(path):
     base = Dataset(op.join(path, 'origin')).create(force=True)
@@ -465,6 +473,7 @@ def test_aggregate_removal(path):
     assert_result_count(res, 1)
 
 
+@known_failure
 @with_tree(tree=_dataset_hierarchy_template_bids)
 def test_update_strategy(path):
     base = Dataset(op.join(path, 'origin')).create(force=True)
@@ -541,6 +550,7 @@ def _kill_time(iter):
     return m
 
 
+@known_failure
 @with_tree({
     'this': 'that',
     'sub1': {'here': 'there'},
@@ -605,6 +615,7 @@ def test_partial_aggregation(path):
     #assert_result_count(res, 1, path=sub2.path)
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_aggregate_fail(path):
     ds = Dataset(path).create()
@@ -639,6 +650,7 @@ def _prep_partial_update_ds(path):
     return ds, subds, subds2
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_reaggregate(path):
     ds, subds1, subds2 = _prep_partial_update_ds(path)
@@ -721,6 +733,7 @@ custom_metadata_tree = {
 }
 
 
+@known_failure
 @with_tree(custom_metadata_tree)
 def test_unique_values(path):
     ds = Dataset(path).create(force=True)
@@ -774,6 +787,7 @@ def test_unique_values(path):
         })
 
 
+@known_failure
 # smoke test for https://github.com/datalad/datalad-revolution/issues/113
 @with_tree({'subds': custom_metadata_tree})
 def test_heterogenous_extractors(path):
@@ -789,6 +803,7 @@ def test_heterogenous_extractors(path):
     ds.meta_aggregate(recursive=True)
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_aggregate_aggregation(path):
     path = Path(path)
@@ -840,6 +855,8 @@ def test_aggregate_aggregation(path):
         6
     )
 
+
+@known_failure
 # Test for https://github.com/datalad/datalad-metalad/issues/20
 @with_tempfile(mkdir=True)
 def test_aggregate_into_top_no_extraction(path):

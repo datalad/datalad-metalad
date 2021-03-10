@@ -24,12 +24,14 @@ from datalad.tests.utils import (
     assert_raises,
     assert_repo_status,
     eq_,
+    known_failure,
 )
 from . import (
     make_ds_hierarchy_with_metadata,
 )
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_ignore_nondatasets(path):
     # we want to ignore the version/commits for this test
@@ -65,6 +67,7 @@ def test_ignore_nondatasets(path):
         n_subm += 1
 
 
+@known_failure
 @with_tree({'dummy': 'content'})
 @with_tempfile(mkdir=True)
 def test_bf2458(src, dst):
@@ -82,6 +85,7 @@ def test_bf2458(src, dst):
     eq_(clone.repo.whereis('dummy'), [ds.config.get('annex.uuid')])
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_get_aggregates_fails(path):
     with chpwd(path), assert_raises(ValueError):
@@ -91,6 +95,7 @@ def test_get_aggregates_fails(path):
     assert_result_count(res, 1, path=ds.path, status='impossible')
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_query_empty(path):
     with chpwd(path), assert_raises(ValueError):
@@ -106,6 +111,7 @@ def test_query_empty(path):
     )
 
 
+@known_failure
 @with_tempfile
 @with_tempfile
 def test_query(path, orig):

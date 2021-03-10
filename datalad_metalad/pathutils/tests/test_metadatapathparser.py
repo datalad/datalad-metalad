@@ -1,7 +1,10 @@
 import unittest
+from uuid import UUID
 
-from datalad_metalad.pathutils.metadatapathparser import MetadataPathParser, \
-    TreeMetadataPath, UUIDMetadataPath
+from datalad_metalad.pathutils.metadatapathparser import (
+    MetadataPathParser,
+    TreeMetadataPath,
+    UUIDMetadataPath)
 
 
 class TestMetadataPathParser(unittest.TestCase):
@@ -34,7 +37,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, None)
-        self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.uuid, UUID("00112233-0011-2233-4455-66778899aabb"))
         self.assertEqual(result.local_path, "/a/b/c")
 
     def test_uuid_relative(self):
@@ -42,7 +45,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, None)
-        self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.uuid, UUID("00112233-0011-2233-4455-66778899aabb"))
         self.assertEqual(result.local_path, "x/b/c")
 
     def test_uuid_empty(self):
@@ -50,7 +53,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, None)
-        self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.uuid, UUID("00112233-0011-2233-4455-66778899aabb"))
         self.assertEqual(result.local_path, "")
 
     def test_uuid_version(self):
@@ -58,7 +61,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, "111222")
-        self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.uuid, UUID("00112233-0011-2233-4455-66778899aabb"))
         self.assertEqual(result.local_path, "/a/b")
 
     def test_uuid_version_empty_path(self):
@@ -66,7 +69,7 @@ class TestMetadataPathParser(unittest.TestCase):
         result = parser.parse()
         self.assertIsInstance(result, UUIDMetadataPath)
         self.assertEqual(result.version, "111222")
-        self.assertEqual(result.uuid, "00112233-0011-2233-4455-66778899aabb")
+        self.assertEqual(result.uuid, UUID("00112233-0011-2233-4455-66778899aabb"))
         self.assertEqual(result.local_path, "")
 
     def test_blank_path(self):

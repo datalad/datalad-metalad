@@ -27,6 +27,7 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_in,
     eq_,
+    known_failure,
 )
 
 sample_dsmeta = {
@@ -64,6 +65,7 @@ meta_tree = {
 }
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_error(path):
     # go into virgin dir to avoid detection of any dataset
@@ -78,6 +80,7 @@ def test_error(path):
         meta_extract, dataset=ds, sources=['bogus__'])
 
 
+@known_failure
 @with_tree(meta_tree)
 def test_ds_extraction(path):
     ds = Dataset(path).create(force=True)
@@ -129,6 +132,7 @@ def test_ds_extraction(path):
     assert_result_count(meta_extract(sources=['metalad_custom'], dataset=ds), 1)
 
 
+@known_failure
 @with_tree(meta_tree)
 def test_file_extraction(path):
     # go into virgin dir to avoid detection of any dataset

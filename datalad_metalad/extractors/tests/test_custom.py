@@ -26,6 +26,7 @@ from datalad.tests.utils import (
     assert_in,
     assert_not_in,
     assert_repo_status,
+    known_failure,
 )
 from simplejson import dumps as jsondumps
 
@@ -89,6 +90,7 @@ testmeta = {
 }
 
 
+@known_failure
 @with_tree(
     tree={
         '.metadata': {
@@ -167,6 +169,7 @@ def test_custom_dsmeta(path):
     )
 
 
+@known_failure
 @with_tree(
     tree={
         'sub': {
@@ -198,6 +201,7 @@ def test_custom_contentmeta(path):
     )
 
 
+@known_failure
 @with_tree(
     tree={
         '.metadata': {

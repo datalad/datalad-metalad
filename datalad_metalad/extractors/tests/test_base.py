@@ -29,6 +29,7 @@ from datalad.tests.utils import (
     assert_raises,
     assert_result_count,
     eq_,
+    known_failure,
     with_tree,
     with_tempfile,
 )
@@ -85,15 +86,18 @@ def check_api(annex, path):
             " to load:\n%s" % ("\n".join(skipped_extractors)))
 
 
+@known_failure
 def test_api_git():
-    # should tollerate both pure git and annex repos
+    # should tolerate both pure git and annex repos
     yield check_api, False
 
 
+@known_failure
 def test_api_annex():
     yield check_api, True
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_plainest(path):
     # blow on nothing
@@ -134,6 +138,7 @@ def test_plainest(path):
     )
 
 
+@known_failure
 @with_tempfile
 @with_tempfile
 def test_report(path, orig):

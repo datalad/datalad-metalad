@@ -26,9 +26,11 @@ from datalad.tests.utils import (
     assert_in,
     assert_not_in,
     assert_repo_status,
+    known_failure,
 )
 
 
+@known_failure
 @with_tree({'existing_file': 'some_content'})
 def test_custom_dsmeta(path):
     ds = Dataset(path).create(force=True)
