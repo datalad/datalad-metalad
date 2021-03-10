@@ -29,6 +29,7 @@ from datalad.tests.utils import (
     eq_,
     create_tree,
     assert_repo_status,
+    known_failure
 )
 
 
@@ -55,6 +56,7 @@ def test_get_metadata_type_oldcfg(path):
     eq_(get_metadata_type(ds), 'mamboschwambo')
 
 
+@known_failure
 @with_tempfile(mkdir=True)
 def test_get_refcommit(path):
     # # dataset without a single commit
