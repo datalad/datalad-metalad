@@ -2,7 +2,7 @@ from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.mapper.reference import Reference
 
 
-def get_top_level_metadata_objects(mapper_family, realm):
+def get_top_level_metadata_objects(mapper_family: str, realm: str):
     """
     Load the two top-level elements of the metadata, i.e.
     the tree version list and the uuid list.
