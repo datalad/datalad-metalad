@@ -12,10 +12,9 @@ or run a file-level metadata extractor on a file
 """
 import logging
 import tempfile
-import subprocess
 import time
 from os import curdir
-from pathlib import PosixPath
+from pathlib import Path
 from typing import List, Optional, Tuple, Type, Union
 from uuid import UUID
 
@@ -438,11 +437,11 @@ def get_path_info(dataset: Dataset,
     by appending it to the dataset or current directory and perform
     the above check.
     """
-    full_dataset_path = PosixPath(dataset.path).resolve()
+    full_dataset_path = Path(dataset.path).resolve()
     if into_dataset is None:
         dataset_tree_path = ""
     else:
-        full_into_dataset_path = PosixPath(into_dataset).resolve()
+        full_into_dataset_path = Path(into_dataset).resolve()
         dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
 
     if path is None:
@@ -452,7 +451,7 @@ def get_path_info(dataset: Dataset,
             else dataset_tree_path,
             "")
 
-    given_file_path = PosixPath(path)
+    given_file_path = Path(path)
     if given_file_path.is_absolute():
         full_file_path = given_file_path
     else:

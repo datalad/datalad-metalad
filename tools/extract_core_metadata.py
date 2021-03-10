@@ -4,7 +4,7 @@ import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
-from pathlib import PosixPath
+from pathlib import Path
 from typing import List
 
 
@@ -75,8 +75,8 @@ def extract_file_level_metadata(realm: str, dataset_path: str, file_path: str, m
 
 
 def get_top_level_entry(path: str) -> os.DirEntry:
-    p_path = PosixPath(path).resolve()
-    parent_path = PosixPath("/".join(p_path.parts[:-1])).resolve()
+    p_path = Path(path).resolve()
+    parent_path = Path("/".join(p_path.parts[:-1])).resolve()
     return tuple(filter(lambda entry: entry.name == p_path.parts[-1], os.scandir(str(parent_path))))[0]
 
 

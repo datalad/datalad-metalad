@@ -51,7 +51,7 @@ md(rds) all possible paths would be:
 import logging
 import time
 from itertools import islice
-from pathlib import PosixPath
+from pathlib import Path
 from typing import List, Tuple
 
 import dataclasses
@@ -449,7 +449,7 @@ def get_root_version_for_subset_version(root_dataset_path: str,
     if any exists. If the configuration does not exist
     return an empty iterable.
     """
-    root_path = PosixPath(root_dataset_path).resolve()
+    root_path = Path(root_dataset_path).resolve()
     current_path = (root_path / sub_dataset_path).resolve()
 
     # Ensure that the sub-dataset path is under the root-dataset path
@@ -473,7 +473,7 @@ def get_root_version_for_subset_version(root_dataset_path: str,
     return [current_version]
 
 
-def find_version_containing(path: PosixPath, current_version):
+def find_version_containing(path: Path, current_version):
     import subprocess
 
     result = subprocess.run([

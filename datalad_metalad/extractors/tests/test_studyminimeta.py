@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from pathlib import PosixPath
+from pathlib import Path
 from unittest import mock
 
 from datalad.tests.utils import with_tree
@@ -503,7 +503,7 @@ study:
 def test_successful_yaml_parsing(dataset_mock, directory_path: str):
 
     dataset_mock.configure_mock(**{
-        "pathobj": PosixPath(directory_path),
+        "pathobj": Path(directory_path),
         "config.obtain.return_value": ".studyminimeta.yaml"
     })
     results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
@@ -521,7 +521,7 @@ def test_successful_yaml_parsing(dataset_mock, directory_path: str):
 def test_config_honouring(dataset_mock, directory_path: str):
 
     dataset_mock.configure_mock(**{
-        "pathobj": PosixPath(directory_path),
+        "pathobj": Path(directory_path),
         "config.obtain.return_value": "some_dir/somefile.yaml"
     })
     results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
@@ -539,7 +539,7 @@ def test_config_honouring(dataset_mock, directory_path: str):
 def test_unsuccessful_yaml_parsing(dataset_mock, directory_path: str):
 
     dataset_mock.configure_mock(**{
-        "pathobj": PosixPath(directory_path),
+        "pathobj": Path(directory_path),
         "config.obtain.return_value": ".studyminimeta.yaml"
     })
 
@@ -559,7 +559,7 @@ def test_unsuccessful_yaml_parsing(dataset_mock, directory_path: str):
 def test_schema_violation(dataset_mock, directory_path: str):
 
     dataset_mock.configure_mock(**{
-        "pathobj": PosixPath(directory_path),
+        "pathobj": Path(directory_path),
         "config.obtain.return_value": ".studyminimeta.yaml"
     })
 
@@ -578,7 +578,7 @@ def test_schema_violation(dataset_mock, directory_path: str):
 def test_file_handling(dataset_mock, directory_path: str):
 
     dataset_mock.configure_mock(**{
-        "pathobj": PosixPath(directory_path),
+        "pathobj": Path(directory_path),
         "config.obtain.return_value": ".studyminimeta.yaml"
     })
     results = tuple(StudyMiniMetaExtractor()(dataset_mock, "0000000", "all", "ok"))
