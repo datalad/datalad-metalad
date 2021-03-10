@@ -2,7 +2,7 @@ import unittest
 from typing import List
 
 from dataladmetadatamodel.filetree import FileTree
-from datalad_metalad.pathutils.treesearch import MatchRecord, TreeSearch
+from ..treesearch import MatchRecord, TreeSearch
 
 
 class TestJoin(unittest.TestCase):

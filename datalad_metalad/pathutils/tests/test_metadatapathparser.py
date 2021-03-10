@@ -1,7 +1,7 @@
 import unittest
 from uuid import UUID
 
-from datalad_metalad.pathutils.metadatapathparser import (
+from ..metadatapathparser import (
     MetadataPathParser,
     TreeMetadataPath,
     UUIDMetadataPath)
