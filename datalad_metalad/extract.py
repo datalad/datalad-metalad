@@ -41,11 +41,13 @@ from .extractors.base import (
     MetadataExtractorBase
 )
 
-from datalad.support.param import Parameter
+from datalad.support.annexrepo import AnnexRepo
+from datalad.support.gitrepo import GitRepo
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr
 )
+from datalad.support.param import Parameter
 
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
@@ -70,7 +72,7 @@ lgr = logging.getLogger('datalad.metadata.extract')
 
 @dataclass
 class ExtractionParameter:
-    realm: str
+    realm: Union[AnnexRepo, GitRepo]
     source_dataset: Dataset
     source_dataset_id: UUID
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
@@ -192,10 +194,10 @@ class Extract(Interface):
                 into,
                 purpose="extract metadata",
                 check_installed=True)
-            realm = into_ds.path
+            realm = into_ds.repo
             root_primary_data_version = into_ds.repo.get_hexsha()
         else:
-            realm = source_dataset.path
+            realm = source_dataset.repo
             root_primary_data_version = source_primary_data_version
 
         extractor_class = get_extractor_class(extractorname)
@@ -405,7 +407,9 @@ def get_file_info(dataset: Dataset, path: str) -> Optional[FileInfo]:
     if not path.startswith(dataset.path):
         path = dataset.path + "/" + path    # TODO: how are paths represented in datalad?
 
-    path_status = (list(dataset.status(path)) or [None])[0]
+    path_status = (list(dataset.status(
+        path,
+        result_renderer='disabled')) or [None])[0]
     if path_status is None:
         return None
 
@@ -434,18 +438,14 @@ def get_path_info(dataset: Dataset,
     by appending it to the dataset or current directory and perform
     the above check.
     """
+    full_dataset_path = PosixPath(dataset.path).resolve()
     if into_dataset is None:
-        dataset_path = PosixPath(dataset.path)
-        full_dataset_path = dataset_path.resolve()
         dataset_tree_path = ""
     else:
-        full_dataset_path = PosixPath(dataset.path).resolve()
         full_into_dataset_path = PosixPath(into_dataset).resolve()
-        dataset_path = full_dataset_path.relative_to(full_into_dataset_path)
         dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
 
     if path is None:
-        dataset_path = str(dataset_path)
         return (
             ""
             if dataset_tree_path == "."
@@ -486,17 +486,17 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
 
 
 def get_top_nodes_and_mrr(ep: ExtractionParameter):
-    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, ep.realm)
+    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, ep.realm.path)
     if tree_version_list is None:
-        tree_version_list = TreeVersionList(default_mapper_family, ep.realm)
+        tree_version_list = TreeVersionList(default_mapper_family, ep.realm.path)
 
     if uuid_set is None:
-        uuid_set = UUIDSet(default_mapper_family, ep.realm)
+        uuid_set = UUIDSet(default_mapper_family, ep.realm.path)
 
     if ep.source_dataset_id in uuid_set.uuids():
         uuid_version_list = uuid_set.get_version_list(ep.source_dataset_id)
     else:
-        uuid_version_list = VersionList(default_mapper_family, ep.realm)
+        uuid_version_list = VersionList(default_mapper_family, ep.realm.path)
         uuid_set.set_version_list(ep.source_dataset_id, uuid_version_list)
 
     # Get the dataset tree
@@ -504,16 +504,16 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
         time_stamp, dataset_tree = tree_version_list.get_dataset_tree(ep.root_primary_data_version)
     else:
         time_stamp = str(time.time())
-        dataset_tree = DatasetTree(default_mapper_family, ep.realm)
+        dataset_tree = DatasetTree(default_mapper_family, ep.realm.path)
         tree_version_list.set_dataset_tree(ep.root_primary_data_version, time_stamp, dataset_tree)
 
     if ep.dataset_tree_path not in dataset_tree:
         # Create a metadata root record-object and a dataset level metadata-object
-        dataset_level_metadata = Metadata(default_mapper_family, ep.realm)
-        file_tree = FileTree(default_mapper_family, ep.realm)
+        dataset_level_metadata = Metadata(default_mapper_family, ep.realm.path)
+        file_tree = FileTree(default_mapper_family, ep.realm.path)
         mrr = MetadataRootRecord(
             default_mapper_family,
-            ep.realm,
+            ep.realm.path,
             ep.source_dataset_id,
             ep.source_primary_data_version,
             Connector.from_object(dataset_level_metadata),
@@ -535,19 +535,19 @@ def add_file_metadata_source(ep: ExtractionParameter,
                              result: ExtractorResult,
                              metadata_source: dict):
 
-    lock_backend(ep.realm)
+    lock_backend(ep.realm.path)
 
     tree_version_list, uuid_set, mrr = get_top_nodes_and_mrr(ep)
 
     file_tree = mrr.get_file_tree()
     if file_tree is None:
-        file_tree = FileTree(default_mapper_family, ep.realm)
+        file_tree = FileTree(default_mapper_family, ep.realm.path)
         mrr.set_file_tree(file_tree)
 
     if ep.file_tree_path in file_tree:
         metadata = file_tree.get_metadata(ep.file_tree_path)
     else:
-        metadata = Metadata(default_mapper_family, ep.realm)
+        metadata = Metadata(default_mapper_family, ep.realm.path)
         file_tree.add_metadata(ep.file_tree_path, metadata)
 
     metadata.add_extractor_run(
@@ -562,22 +562,22 @@ def add_file_metadata_source(ep: ExtractionParameter,
 
     tree_version_list.save()
     uuid_set.save()
-    flush_object_references(ep.realm)
+    flush_object_references(ep.realm.path)
 
-    unlock_backend(ep.realm)
+    unlock_backend(ep.realm.path)
 
 
 def add_dataset_metadata_source(ep: ExtractionParameter,
                                 result: ExtractorResult,
                                 metadata_source: dict):
 
-    lock_backend(ep.realm)
+    lock_backend(ep.realm.path)
 
     tree_version_list, uuid_set, mrr = get_top_nodes_and_mrr(ep)
 
     dataset_level_metadata = mrr.get_dataset_level_metadata()
     if dataset_level_metadata is None:
-        dataset_level_metadata = Metadata(default_mapper_family, ep.realm)
+        dataset_level_metadata = Metadata(default_mapper_family, ep.realm.path)
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
     dataset_level_metadata.add_extractor_run(
@@ -592,9 +592,9 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
 
     tree_version_list.save()
     uuid_set.save()
-    flush_object_references(ep.realm)
+    flush_object_references(ep.realm.path)
 
-    unlock_backend(ep.realm)
+    unlock_backend(ep.realm.path)
 
 
 def add_file_metadata(ep: ExtractionParameter,
@@ -623,13 +623,9 @@ def add_dataset_metadata(ep: ExtractionParameter,
         })
 
 
-# TODO: replace this with a call to datalad's git support functions
-def copy_file_to_git(file_path: str, realm: str):
-    arguments = ["git", f"--git-dir={realm + '/.git'}", "hash-object", "-w", "--", file_path]
-    result = subprocess.run(arguments, stdout=subprocess.PIPE)
-    if result.returncode != 0:
-        raise ValueError(f"execution of `{' '.join(arguments)}´ failed with {result.returncode}")
-    return result.stdout.decode().strip()
+def copy_file_to_git(file_path: str, realm: Union[AnnexRepo, GitRepo]):
+    arguments = [f"--git-dir={realm.path + '/.git'}", "hash-object", "-w", "--", file_path]
+    return realm.call_git_oneline(arguments)
 
 
 def ensure_legacy_content_availability(ep: ExtractionParameter,
@@ -660,7 +656,7 @@ def legacy_extract_dataset(ep: ExtractionParameter):
     extractor = ep.extractor_class()
     status = [{
         "type": "dataset",
-        "path": ep.realm + "/" + ep.dataset_tree_path,
+        "path": ep.realm.path + "/" + ep.dataset_tree_path,
         "state": "clean"
     }]
 
@@ -687,7 +683,7 @@ def legacy_extract_file(ep: ExtractionParameter):
     extractor = ep.extractor_class()
     status = [{
         "type": "file",
-        "path": ep.realm + "/" + ep.dataset_tree_path + "/" + ep.file_tree_path,
+        "path": ep.realm.path + "/" + ep.dataset_tree_path + "/" + ep.file_tree_path,
         "state": "clean"
     }]
 
