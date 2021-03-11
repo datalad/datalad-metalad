@@ -20,11 +20,9 @@ from uuid import UUID
 
 from dataclasses import dataclass
 
-from datalad.config import ConfigManager
 from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
-from datalad.interface.common_opts import recursion_flag
 from datalad.interface.utils import eval_results
 from datalad.distribution.dataset import (
     datasetmethod,
@@ -141,8 +139,8 @@ class Extract(Interface):
     result_renderer = 'tailored'
 
     _params_ = dict(
-        extractorname=Parameter(
-            args=("extractorname",),
+        extractor_name=Parameter(
+            args=("--extractor-name",),
             metavar="EXTRACTOR_NAME",
             doc="Name of a metadata extractor to be executed."),
         path=Parameter(
@@ -168,18 +166,16 @@ class Extract(Interface):
             the dataset from which we extract metadata itself (the
             default) or a parent dataset of the dataset from
             which we extract metadata.""",
-            constraints=EnsureDataset() | EnsureNone()),
-        recursive=recursion_flag)
+            constraints=EnsureDataset() | EnsureNone()))
 
     @staticmethod
     @datasetmethod(name='meta_extract')
     @eval_results
     def __call__(
-            extractorname: str,
+            extractor_name: str,
             path: Optional[str] = None,
-            dataset: Optional[str] = None,
-            into: Optional[str] = None,
-            recursive=False):
+            dataset: Optional[Union[Dataset, str]] = None,
+            into: Optional[Union[Dataset, str]] = None):
 
         # Get basic arguments
         source_dataset = require_dataset(
@@ -194,27 +190,26 @@ class Extract(Interface):
                 purpose="extract metadata",
                 check_installed=True)
             realm = into_ds.repo
-            root_primary_data_version = into_ds.repo.get_hexsha()
+            root_primary_data_version = into_ds.repo.get_hexsha()       # TODO: check for adjusted/managed branch, use get_corresponding_branch
         else:
             realm = source_dataset.repo
             root_primary_data_version = source_primary_data_version
 
-        extractor_class = get_extractor_class(extractorname)
+        extractor_class = get_extractor_class(extractor_name)
         dataset_tree_path, file_tree_path = get_path_info(source_dataset, path, into)
 
-        config_manager = ConfigManager()
         extraction_parameters = ExtractionParameter(
             realm,
             source_dataset,
             UUID(source_dataset.id),
             extractor_class,
-            extractorname,
+            extractor_name,
             dataset_tree_path,
             file_tree_path,
             root_primary_data_version,
             source_primary_data_version,
-            config_manager.get("user.name"),
-            config_manager.get("user.email"))
+            dataset.config.get("user.name"),
+            dataset.config.get("user.email"))
 
         # If a path is given, we assume file-level metadata extraction is
         # requested, and the extractor class is  a subclass of
