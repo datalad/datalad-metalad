@@ -284,6 +284,9 @@ def show_file_tree_metadata(mapper: str,
                 "file"
             )
 
+        # Remove metadata object after all instances are reported
+        metadata_connector.purge()
+
     # Remove file tree metadata when we are done with it
     metadata_root_record.file_tree.purge()
 
