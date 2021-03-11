@@ -49,8 +49,13 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
-from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
-from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, unlock_backend
+from dataladmetadatamodel.mapper.gitmapper.objectreference import (
+    flush_object_references
+)
+from dataladmetadatamodel.mapper.gitmapper.utils import (
+    lock_backend,
+    unlock_backend
+)
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -196,7 +201,8 @@ class Extract(Interface):
             root_primary_data_version = source_primary_data_version
 
         extractor_class = get_extractor_class(extractor_name)
-        dataset_tree_path, file_tree_path = get_path_info(source_dataset, path, into)
+        dataset_tree_path, file_tree_path = get_path_info(
+            source_dataset, path, into)
 
         extraction_parameters = ExtractionParameter(
             realm,
@@ -368,7 +374,8 @@ def get_extractor_class(extractor_name: str) -> Union[
     """ Get an extractor from its name """
     from pkg_resources import iter_entry_points  # delayed heavy import
 
-    entry_points = list(iter_entry_points('datalad.metadata.extractors', extractor_name))
+    entry_points = list(
+        iter_entry_points('datalad.metadata.extractors', extractor_name))
 
     if not entry_points:
         raise ValueError(
@@ -437,7 +444,8 @@ def get_path_info(dataset: Dataset,
         dataset_tree_path = ""
     else:
         full_into_dataset_path = Path(into_dataset).resolve()
-        dataset_tree_path = str(full_dataset_path.relative_to(full_into_dataset_path))
+        dataset_tree_path = str(
+            full_dataset_path.relative_to(full_into_dataset_path))
 
     if path is None:
         return (
@@ -480,9 +488,14 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
 
 
 def get_top_nodes_and_mrr(ep: ExtractionParameter):
-    tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, ep.realm.path)
+    tree_version_list, uuid_set = get_top_level_metadata_objects(
+        default_mapper_family,
+        ep.realm.path)
+
     if tree_version_list is None:
-        tree_version_list = TreeVersionList(default_mapper_family, ep.realm.path)
+        tree_version_list = TreeVersionList(
+            default_mapper_family,
+            ep.realm.path)
 
     if uuid_set is None:
         uuid_set = UUIDSet(default_mapper_family, ep.realm.path)
@@ -495,14 +508,17 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
 
     # Get the dataset tree
     if ep.root_primary_data_version in tree_version_list.versions():
-        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(ep.root_primary_data_version)
+        time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
+            ep.root_primary_data_version)
     else:
         time_stamp = str(time.time())
         dataset_tree = DatasetTree(default_mapper_family, ep.realm.path)
-        tree_version_list.set_dataset_tree(ep.root_primary_data_version, time_stamp, dataset_tree)
+        tree_version_list.set_dataset_tree(
+            ep.root_primary_data_version, time_stamp, dataset_tree)
 
     if ep.dataset_tree_path not in dataset_tree:
-        # Create a metadata root record-object and a dataset level metadata-object
+        # Create a metadata root record-object
+        # and a dataset level metadata-object
         dataset_level_metadata = Metadata(default_mapper_family, ep.realm.path)
         file_tree = FileTree(default_mapper_family, ep.realm.path)
         mrr = MetadataRootRecord(
@@ -618,7 +634,9 @@ def add_dataset_metadata(ep: ExtractionParameter,
 
 
 def copy_file_to_git(file_path: str, realm: Union[AnnexRepo, GitRepo]):
-    arguments = [f"--git-dir={realm.path + '/.git'}", "hash-object", "-w", "--", file_path]
+    arguments = [
+        f"--git-dir={realm.path + '/.git'}",
+        "hash-object", "-w", "--", file_path]
     return realm.call_git_oneline(arguments)
 
 
@@ -628,16 +646,24 @@ def ensure_legacy_content_availability(ep: ExtractionParameter,
                                        status: List[dict]):
 
     try:
-        for required_element in extractor.get_required_content(ep.source_dataset, operation, status):
-            for result in ep.source_dataset.get(path={required_element.path},
-                                                get_data=True,
-                                                return_type='generator',
-                                                result_renderer='disabled'):
+        for required_element in extractor.get_required_content(
+                    ep.source_dataset,
+                    operation,
+                    status):
+
+            for result in ep.source_dataset.get(
+                        path={required_element.path},
+                        get_data=True,
+                        return_type='generator',
+                        result_renderer='disabled'):
+
                 if result.get("status", "") == "error":
                     lgr.error(
-                        "cannot make content of {} available in dataset {}".format(
+                        "cannot make content of {} available "
+                        "in dataset {}".format(
                             required_element.path, ep.source_dataset))
                     return
+
             lgr.debug(
                 "requested content {}:{} available".format(
                     ep.source_dataset.path, required_element.path))
@@ -656,7 +682,12 @@ def legacy_extract_dataset(ep: ExtractionParameter):
 
     ensure_legacy_content_availability(ep, extractor, "dataset", status)
 
-    for result in extractor(ep.source_dataset, ep.source_dataset.repo.get_hexsha(), "dataset", status):
+    for result in extractor(
+                ep.source_dataset,
+                ep.source_dataset.repo.get_hexsha(),
+                "dataset",
+                status):
+
         if result["status"] == "ok":
             extractor_result = ExtractorResult(
                 "0.1",
@@ -677,13 +708,21 @@ def legacy_extract_file(ep: ExtractionParameter):
     extractor = ep.extractor_class()
     status = [{
         "type": "file",
-        "path": ep.realm.path + "/" + ep.dataset_tree_path + "/" + ep.file_tree_path,
+        "path": (
+            ep.realm.path
+            + "/" + ep.dataset_tree_path
+            + "/" + ep.file_tree_path),
         "state": "clean"
     }]
 
     ensure_legacy_content_availability(ep, extractor, "content", status)
 
-    for result in extractor(ep.source_dataset, ep.source_dataset.repo.get_hexsha(), "content", status):
+    for result in extractor(
+                ep.source_dataset,
+                ep.source_dataset.repo.get_hexsha(),
+                "content",
+                status):
+
         if result["status"] == "ok":
             extractor_result = ExtractorResult(
                 "0.1",
