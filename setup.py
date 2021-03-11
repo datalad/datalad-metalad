@@ -62,6 +62,7 @@ setup(
             'metalad_custom=datalad_metalad.extractors.custom:CustomMetadataExtractor',
             'metalad_runprov=datalad_metalad.extractors.runprov:RunProvenanceExtractor',
             'metalad_studyminimeta=datalad_metalad.extractors.studyminimeta.main:StudyMiniMetaExtractor',
+            '428ed4c4-ef35-4823-8e6c-3a4cef957dc2=datalad_metalad.extractors.core_file:DataladCoreFileExtractor',
         ],
         'datalad.metadata.indexers': [
             'metalad_studyminimeta=datalad_metalad.indexers.studyminimeta:StudyMiniMetaIndexer',

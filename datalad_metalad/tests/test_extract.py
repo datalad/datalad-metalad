@@ -139,8 +139,8 @@ def test_file_extraction(path):
     testpath = op.join(path, 'sub', 'one')
     with chpwd(path):
         res = meta_extract(
-            sources=['metalad_custom'],
-            path=[testpath])
+            extractorname='metalad_custom',
+            path=testpath)
         assert_result_count(
             res, 1, type='file', status='ok', action='meta_extract',
             path=testpath)

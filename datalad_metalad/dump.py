@@ -155,7 +155,10 @@ class ReportOn(enum.Enum):
     ALL = "all"
 
 
-def _create_result_record(mapper: str, realm: str, metadata_record: JSONObject, report_type: str):
+def _create_result_record(mapper: str,
+                          realm: str,
+                          metadata_record: JSONObject,
+                          report_type: str):
     return {
         "status": "ok",
         "action": "meta_dump",
@@ -190,7 +193,9 @@ def show_dataset_metadata(mapper: str,
         metadata_root_record.dataset_level_metadata.load_object()
 
     if dataset_level_metadata is None:
-        lgr.warning(f"no dataset level metadata for dataset uuid:{root_dataset_identifier}@{root_dataset_version}")
+        lgr.warning(
+            f"no dataset level metadata for dataset "
+            f"uuid:{root_dataset_identifier}@{root_dataset_version}")
         return
 
     result_json_object = {
@@ -218,8 +223,7 @@ def show_dataset_metadata(mapper: str,
             mapper,
             realm,
             result_json_object,
-            "dataset"
-        )
+            "dataset")
 
     # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
@@ -281,8 +285,7 @@ def show_file_tree_metadata(mapper: str,
                 mapper,
                 realm,
                 result_json_object,
-                "file"
-            )
+                "file")
 
         # Remove metadata object after all instances are reported
         metadata_connector.purge()
@@ -307,12 +310,14 @@ def dump_from_dataset_tree(mapper: str,
     requested_root_dataset_version = path.version
     if requested_root_dataset_version is None:
         requested_root_dataset_version = (
-            tuple(tree_version_list.versions())[0]   # TODO: add an item() method to VersionList
+            # TODO: add an item() method to VersionList
+            tuple(tree_version_list.versions())[0]
             if path.version is None
             else path.version)
 
     # Fetch dataset tree for the specified version
-    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(requested_root_dataset_version)
+    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
+        requested_root_dataset_version)
     root_mrr = dataset_tree.get_metadata_root_record("")
     root_dataset_version = root_mrr.dataset_version
     root_dataset_identifier = root_mrr.dataset_identifier
@@ -335,8 +340,7 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_identifier,
             root_dataset_version,
             match_record.path,
-            match_record.node.value
-        )
+            match_record.node.value)
 
         # TODO: check the different file paths
         yield from show_file_tree_metadata(
@@ -347,8 +351,7 @@ def dump_from_dataset_tree(mapper: str,
             match_record.path,
             match_record.node.value,
             path.local_path,
-            recursive
-        )
+            recursive)
 
     return
 
@@ -383,9 +386,9 @@ def dump_from_uuid_set(mapper: str,
             version_list.get_versioned_element(requested_dataset_version)
     except KeyError:
         lgr.error(
-            f"could not locate metadata for version {requested_dataset_version} "
-            f"for dataset with UUID {path.uuid} in "
-            f"realm {mapper}:{realm}")
+            f"could not locate metadata for version "
+            f"{requested_dataset_version} for dataset with "
+            f"UUID {path.uuid} in realm {mapper}:{realm}")
         return
 
     # Show dataset-level metadata
@@ -395,8 +398,7 @@ def dump_from_uuid_set(mapper: str,
         path.uuid,
         requested_dataset_version,
         dataset_path,
-        metadata_root_record
-    )
+        metadata_root_record)
 
     # Show file-level metadata
     yield from show_file_tree_metadata(
@@ -407,8 +409,7 @@ def dump_from_uuid_set(mapper: str,
         dataset_path,
         metadata_root_record,
         path.local_path,
-        recursive
-    )
+        recursive)
 
     return
 
@@ -424,8 +425,8 @@ class Dump(Interface):
     2. metadata for files in a dataset (content metadata).
 
     The DATASET_FILE_PATH_PATTERN argument specifies dataset and file patterns
-    that are matched against the dataset and file information in the metadata. There are two
-    format, UUID-based and dataset-tree based. The formats are:
+    that are matched against the dataset and file information in the metadata.
+    There are two format, UUID-based and dataset-tree based. The formats are:
 
         TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
         UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
@@ -482,8 +483,8 @@ class Dump(Interface):
         realm=Parameter(
             args=("--realm",),
             metavar="REALM",
-            doc="""realm where the metadata is stored. If not given, realm will be determined
-            to be the current working directory."""),
+            doc="""realm where the metadata is stored. If not given, realm will
+            be determined to be the current working directory."""),
         path=Parameter(
             args=("path",),
             metavar="DATASET_FILE_PATH_PATTERN",
@@ -509,12 +510,18 @@ class Dump(Interface):
             recursive=False):
 
         realm = realm or "."
-        tree_version_list, uuid_set = get_top_level_metadata_objects(default_mapper_family, realm)
+        tree_version_list, uuid_set = get_top_level_metadata_objects(
+            default_mapper_family,
+            realm)
 
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
-            message = f"No {backend}-mapped datalad metadata model found in: {realm}"
+
+            message = (
+                f"No {backend}-mapped datalad metadata "
+                f"model found in: {realm}")
             lgr.warning(message)
+
             yield dict(
                 backend=backend,
                 realm=realm,
@@ -531,8 +538,7 @@ class Dump(Interface):
                 realm,
                 tree_version_list,
                 metadata_path,
-                recursive
-            )
+                recursive)
 
         elif isinstance(metadata_path, UUIDMetadataPath):
             yield from dump_from_uuid_set(
@@ -540,7 +546,6 @@ class Dump(Interface):
                 realm,
                 uuid_set,
                 metadata_path,
-                recursive
-            )
+                recursive)
 
         return
