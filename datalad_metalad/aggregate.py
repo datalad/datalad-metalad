@@ -11,8 +11,8 @@ Interface for aggregating metadata from (sub)dataset into (super)datasets
 
 
 Aggregating a subdataset (sds) into the UUID set of the root dataset (rds)
-is relatively simple. (There is a possible error condition, where different UUIDS would
-be added to the same rds-pd-version at the same path).
+is relatively simple. (There is a possible error condition, where different
+UUIDs would be added to the same rds-pd-version at the same path).
 
 
 Assumption:
@@ -77,8 +77,11 @@ from datalad.support.constraints import EnsureChoice
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
-from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
-from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, unlock_backend
+from dataladmetadatamodel.mapper.gitmapper.objectreference import (
+    flush_object_references)
+from dataladmetadatamodel.mapper.gitmapper.utils import (
+    lock_backend,
+    unlock_backend)
 from .metadata import get_top_level_metadata_objects
 
 
@@ -148,8 +151,8 @@ class Aggregate(Interface):
             doc="""metadata storage backend to be used. Currently only
             "git" is supported.""",
             constraints=EnsureChoice("git")),
-        rootrealm=Parameter(
-            args=("rootrealm",),
+        root_realm=Parameter(
+            args=("--root-realm",),
             metavar="ROOT_REALM",
             doc="""Realm where metadata will be aggregated into, this
                    is also interpreted as root dataset."""),
@@ -189,7 +192,7 @@ class Aggregate(Interface):
     @eval_results
     def __call__(
             backend="git",
-            rootrealm=None,     # TODO: rename to root_realm
+            root_realm=None,
             path=None,
             recursive=False,
             recursion_limit=None):
@@ -200,7 +203,7 @@ class Aggregate(Interface):
         else:
             path_realm_associations = process_congruent_path_spec(path)
 
-        root_realm = rootrealm or "."
+        root_realm = root_realm or "."
 
         # TODO: we should read-lock all ag_realms
         # Collect aggregate information
@@ -212,8 +215,11 @@ class Aggregate(Interface):
                 ag_realm)
 
             if ag_tree_version_list is None or ag_uuid_set is None:
-                message = f"No {backend}-mapped datalad metadata model found in: {ag_realm}, " \
-                          f"ignoring metadata location {ag_realm} (and sub-dataset {ag_path})."
+                message = (
+                    f"No {backend}-mapped datalad metadata model "
+                    f"found in: {ag_realm}, ignoring metadata location"
+                    f" {ag_realm} (and sub-dataset {ag_path}).")
+
                 lgr.warning(message)
                 yield dict(
                     backend=backend,
@@ -228,9 +234,12 @@ class Aggregate(Interface):
                     ag_uuid_set,
                     ag_path))
 
-        lock_backend(rootrealm)
+        lock_backend(root_realm)
 
-        tree_version_list, uuid_set = get_top_level_metadata_objects(backend, root_realm)
+        tree_version_list, uuid_set = get_top_level_metadata_objects(
+            backend,
+            root_realm)
+
         if tree_version_list is None:
             lgr.warning(
                 f"no tree version list found in {root_realm}, "
@@ -310,11 +319,6 @@ def copy_uuid_set(destination_realm: str,
     For each uuid in the source uuid set, create a version
     list in the destination uuid set, if it does not yet exist
     and copy the metadata for all versions into the version list.
-
-    :param destination_realm: realm of the uuid set
-    :param destination_uuid_set: uuid set that should be updated
-    :param source_uuid_set: uuid set the should be copied into the new set
-    :param destination_path: the path under which the source uuid set should appear
     """
 
     # For every uuid in the source uuid set get the source version list
@@ -329,7 +333,10 @@ def copy_uuid_set(destination_realm: str,
         # a the specified path prefix
         if uuid not in destination_uuid_set.uuids():
 
-            lgr.debug(f"no version list for UUID: {uuid} in dest, creating it, by copying the source version list")
+            lgr.debug(
+                f"no version list for UUID: {uuid} in dest, creating it, "
+                f"by copying the source version list")
+
             destination_uuid_set.set_version_list(
                 uuid,
                 src_version_list.deepcopy(
@@ -345,31 +352,43 @@ def copy_uuid_set(destination_realm: str,
             # Copy the individual version elements from source to destination.
             for pd_version in src_version_list.versions():
 
-                lgr.debug(f"reading metadata element for pd version {pd_version} of UUID: {uuid}")
-                time_stamp, old_path, element = src_version_list.get_versioned_element(pd_version)
+                lgr.debug(
+                    f"reading metadata element for pd version {pd_version} "
+                    f"of UUID: {uuid}")
+
+                time_stamp, old_path, element = \
+                    src_version_list.get_versioned_element(pd_version)
 
                 new_path = destination_path + (
                     "/"
                     if (destination_path != "" and old_path != "")
                     else "") + old_path
 
-                lgr.debug(f"adding version {pd_version} with path {new_path} to UUID: {uuid}")
+                lgr.debug(
+                    f"adding version {pd_version} with path "
+                    f"{new_path} to UUID: {uuid}")
+
                 dest_version_list.set_versioned_element(
                     pd_version,
                     time_stamp,
                     new_path,
-                    element.deepcopy(new_realm=destination_realm)
-                )
+                    element.deepcopy(new_realm=destination_realm))
 
                 # Unget the versioned element
-                lgr.debug(f"persisting copied metadata element for pd version {pd_version} of UUID: {uuid}")
+                lgr.debug(
+                    f"persisting copied metadata element for pd version "
+                    f"{pd_version} of UUID: {uuid}")
+
                 dest_version_list.unget_versioned_element(pd_version)
 
                 # Remove the source versioned element from memory
-                lgr.debug(f"purging source metadata element for pd version {pd_version} of UUID: {uuid}")
+                lgr.debug(
+                    f"purging source metadata element for pd version "
+                    f"{pd_version} of UUID: {uuid}")
+
                 src_version_list.unget_versioned_element(pd_version)
 
-            # Unget the version list in the destination, that should persist it.
+            # Unget the version list in the destination, that should persist it
             lgr.debug(f"persisting copied version list for UUID: {uuid}")
             destination_uuid_set.unget_version_list(uuid)
 
