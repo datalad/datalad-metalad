@@ -57,6 +57,7 @@ from dataladmetadatamodel.mapper.gitmapper.utils import (
     unlock_backend
 )
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
+from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList, VersionList
@@ -79,8 +80,8 @@ class ExtractionParameter:
     source_dataset_id: UUID
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
     extractor_name: str
-    dataset_tree_path: Path
-    file_tree_path: Path
+    dataset_tree_path: MetadataPath
+    file_tree_path: MetadataPath
     root_primary_data_version: str
     source_primary_data_version: str
     agent_name: str
@@ -406,17 +407,21 @@ def get_extractor_class(extractor_name: str) -> Union[
     return entry_point.load()
 
 
-def get_file_info(dataset: Dataset, path: Path) -> Optional[FileInfo]:
+def get_file_info(dataset: Dataset,
+                  file_path: MetadataPath) -> Optional[FileInfo]:
     """
     Get information about the file in the dataset or
     None, if the file is not part of the dataset.
     """
+
+    # Convert the metadata file-path into a system file path
+    path = Path(file_path)
     try:
         relative_path = path.relative_to(dataset.pathobj)
     except ValueError:
         relative_path = path
 
-    path = dataset.pathobj / relative_path    # TODO: how are paths represented in datalad?
+    path = dataset.pathobj / relative_path
 
     path_status = (list(dataset.status(
         path,
@@ -430,14 +435,14 @@ def get_file_info(dataset: Dataset, path: Path) -> Optional[FileInfo]:
         git_sha_sum=path_status["gitshasum"],
         byte_size=path_status.get("bytesize", 0),
         state=path_status["state"],
-        path=path_status["path"],            # TODO: use the dataset-tree path here?
+        path=path_status["path"],  # TODO: use the dataset-tree path here?
         intra_dataset_path=path_status["path"][len(dataset.path) + 1:])
 
 
 def get_path_info(dataset: Dataset,
-                  path: Optional[Path],
+                  element_path: Optional[Path],
                   into_dataset_path: Optional[Path] = None
-                  ) -> Tuple[Path, Path]:
+                  ) -> Tuple[MetadataPath, MetadataPath]:
     """
     Determine the dataset tree path and the file tree path.
 
@@ -445,22 +450,22 @@ def get_path_info(dataset: Dataset,
     and the metadatasets around it. If the path is not an element of
     a locally known dataset, we signal an error.
 
-    If the pass is relative, we convert it to an absolute path
+    If the path is relative, we convert it to an absolute path
     by appending it to the dataset or current directory and perform
     the above check.
     """
     full_dataset_path = Path(dataset.path).resolve()
     if into_dataset_path is None:
-        dataset_tree_path = Path("")
+        dataset_tree_path = MetadataPath("")
     else:
         full_into_dataset_path = into_dataset_path.resolve()
-        dataset_tree_path = full_dataset_path.relative_to(
-            full_into_dataset_path)
+        dataset_tree_path = MetadataPath(
+            full_dataset_path.relative_to(full_into_dataset_path))
 
-    if path is None:
-        return dataset_tree_path, Path("")
+    if element_path is None:
+        return dataset_tree_path, MetadataPath("")
 
-    given_file_path = Path(path)
+    given_file_path = Path(element_path)
     if given_file_path.is_absolute():
         full_file_path = given_file_path
     else:
@@ -468,7 +473,7 @@ def get_path_info(dataset: Dataset,
 
     file_tree_path = full_file_path.relative_to(full_dataset_path)
 
-    return dataset_tree_path, file_tree_path
+    return dataset_tree_path, MetadataPath(file_tree_path)
 
 
 def ensure_content_availability(extractor: FileMetadataExtractor,
@@ -492,20 +497,24 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
 def get_top_nodes_and_mrr(ep: ExtractionParameter):
     tree_version_list, uuid_set = get_top_level_metadata_objects(
         default_mapper_family,
-        ep.realm.pathobj.as_posix())
+        str(ep.realm.pathobj))
 
     if tree_version_list is None:
         tree_version_list = TreeVersionList(
             default_mapper_family,
-            ep.realm.pathobj.as_posix())
+            str(ep.realm.pathobj))
 
     if uuid_set is None:
-        uuid_set = UUIDSet(default_mapper_family, ep.realm.pathobj.as_posix())
+        uuid_set = UUIDSet(
+            default_mapper_family,
+            str(ep.realm.pathobj))
 
     if ep.source_dataset_id in uuid_set.uuids():
         uuid_version_list = uuid_set.get_version_list(ep.source_dataset_id)
     else:
-        uuid_version_list = VersionList(default_mapper_family, ep.realm.pathobj.as_posix())
+        uuid_version_list = VersionList(
+            default_mapper_family,
+            str(ep.realm.pathobj))
         uuid_set.set_version_list(ep.source_dataset_id, uuid_version_list)
 
     # Get the dataset tree
@@ -514,15 +523,19 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
             ep.root_primary_data_version)
     else:
         time_stamp = str(time.time())
-        dataset_tree = DatasetTree(default_mapper_family, ep.realm.pathobj.as_posix())
+        dataset_tree = DatasetTree(
+            default_mapper_family,
+            str(ep.realm.pathobj))
         tree_version_list.set_dataset_tree(
             ep.root_primary_data_version, time_stamp, dataset_tree)
 
-    if ep.dataset_tree_path.as_posix() not in dataset_tree:
+    if str(ep.dataset_tree_path) not in dataset_tree:
         # Create a metadata root record-object
         # and a dataset level metadata-object
-        dataset_level_metadata = Metadata(default_mapper_family, ep.realm.path)
-        file_tree = FileTree(default_mapper_family, ep.realm.path)
+        dataset_level_metadata = Metadata(
+            default_mapper_family,
+            str(ep.realm.pathobj))
+        file_tree = FileTree(default_mapper_family, str(ep.realm.pathobj))
         mrr = MetadataRootRecord(
             default_mapper_family,
             ep.realm.path,
@@ -530,15 +543,14 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
             ep.source_primary_data_version,
             Connector.from_object(dataset_level_metadata),
             Connector.from_object(file_tree))
-        dataset_tree.add_dataset(ep.dataset_tree_path.as_posix(), mrr)
+        dataset_tree.add_dataset(str(ep.dataset_tree_path), mrr)
     else:
-        mrr = dataset_tree.get_metadata_root_record(
-            ep.dataset_tree_path.as_posix())
+        mrr = dataset_tree.get_metadata_root_record(str(ep.dataset_tree_path))
 
     uuid_version_list.set_versioned_element(
         ep.source_primary_data_version,
         str(time.time()),
-        ep.dataset_tree_path.as_posix(),
+        str(ep.dataset_tree_path),
         mrr)
 
     return tree_version_list, uuid_set, mrr
@@ -557,11 +569,11 @@ def add_file_metadata_source(ep: ExtractionParameter,
         file_tree = FileTree(default_mapper_family, ep.realm.path)
         mrr.set_file_tree(file_tree)
 
-    if ep.file_tree_path.as_posix() in file_tree:
-        metadata = file_tree.get_metadata(ep.file_tree_path.as_posix())
+    if str(ep.file_tree_path) in file_tree:
+        metadata = file_tree.get_metadata(str(ep.file_tree_path))
     else:
         metadata = Metadata(default_mapper_family, ep.realm.path)
-        file_tree.add_metadata(ep.file_tree_path.as_posix(), metadata)
+        file_tree.add_metadata(str(ep.file_tree_path), metadata)
 
     metadata.add_extractor_run(
         time.time(),
@@ -679,8 +691,9 @@ def legacy_extract_dataset(ep: ExtractionParameter):
     extractor = ep.extractor_class()
     status = [{
         "type": "dataset",
-        "path": ep.realm.path + "/" + ep.dataset_tree_path,
-        "state": "clean"
+        "path": str(ep.realm.pathobj / Path(ep.dataset_tree_path)),
+        "state": "clean",
+        "gitshasum": ep.source_primary_data_version
     }]
 
     ensure_legacy_content_availability(ep, extractor, "dataset", status)
@@ -711,10 +724,10 @@ def legacy_extract_file(ep: ExtractionParameter):
     extractor = ep.extractor_class()
     status = [{
         "type": "file",
-        "path": (
-            ep.realm.path
-            + "/" + ep.dataset_tree_path
-            + "/" + ep.file_tree_path),
+        "path": str(
+            ep.realm.pathobj
+            / Path(ep.dataset_tree_path)
+            / Path(ep.file_tree_path)),
         "state": "clean"
     }]
 
