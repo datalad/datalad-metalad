@@ -144,8 +144,8 @@ class Extract(Interface):
     result_renderer = 'tailored'
 
     _params_ = dict(
-        extractor_name=Parameter(
-            args=("--extractor-name",),
+        extractorname=Parameter(
+            args=("extractorname",),
             metavar="EXTRACTOR_NAME",
             doc="Name of a metadata extractor to be executed."),
         path=Parameter(
@@ -177,7 +177,7 @@ class Extract(Interface):
     @datasetmethod(name='meta_extract')
     @eval_results
     def __call__(
-            extractor_name: str,
+            extractorname: str,
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
             into: Optional[Union[Dataset, str]] = None):
@@ -200,7 +200,7 @@ class Extract(Interface):
             realm = source_dataset.repo
             root_primary_data_version = source_primary_data_version
 
-        extractor_class = get_extractor_class(extractor_name)
+        extractor_class = get_extractor_class(extractorname)
         dataset_tree_path, file_tree_path = get_path_info(
             source_dataset, path, into)
 
@@ -209,7 +209,7 @@ class Extract(Interface):
             source_dataset,
             UUID(source_dataset.id),
             extractor_class,
-            extractor_name,
+            extractorname,
             dataset_tree_path,
             file_tree_path,
             root_primary_data_version,
