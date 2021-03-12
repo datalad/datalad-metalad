@@ -684,7 +684,7 @@ def legacy_extract_dataset(ep: ExtractionParameter):
 
     for result in extractor(
                 ep.source_dataset,
-                ep.source_dataset.repo.get_hexsha(),
+                ep.source_primary_data_version,
                 "dataset",
                 status):
 
@@ -719,7 +719,7 @@ def legacy_extract_file(ep: ExtractionParameter):
 
     for result in extractor(
                 ep.source_dataset,
-                ep.source_dataset.repo.get_hexsha(),
+                ep.source_primary_data_version,
                 "content",
                 status):
 
