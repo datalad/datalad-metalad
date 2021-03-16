@@ -66,11 +66,11 @@ from .extractors.base import ExtractorResult
 from .metadata import get_top_level_metadata_objects
 
 
-__docformat__ = 'restructuredtext'
+__docformat__ = "restructuredtext"
 
 default_mapper_family = "git"
 
-lgr = logging.getLogger('datalad.metadata.extract')
+lgr = logging.getLogger("datalad.metadata.extract")
 
 
 @dataclass
@@ -142,7 +142,7 @@ class Extract(Interface):
       will execute them in either "content" or "dataset" mode, depending
       on the presence of the "path"-parameter.
     """
-    result_renderer = 'tailored'
+    result_renderer = "tailored"
 
     _params_ = dict(
         extractorname=Parameter(
@@ -175,7 +175,7 @@ class Extract(Interface):
             constraints=EnsureDataset() | EnsureNone()))
 
     @staticmethod
-    @datasetmethod(name='meta_extract')
+    @datasetmethod(name="meta_extract")
     @eval_results
     def __call__(
             extractorname: str,
@@ -380,10 +380,10 @@ def get_extractor_class(extractor_name: str) -> Union[
                                             Type[FileMetadataExtractor]]:
 
     """ Get an extractor from its name """
-    from pkg_resources import iter_entry_points  # delayed heavy import
+    from pkg_resources import iter_entry_points
 
     entry_points = list(
-        iter_entry_points('datalad.metadata.extractors', extractor_name))
+        iter_entry_points("datalad.metadata.extractors", extractor_name))
 
     if not entry_points:
         raise ValueError(
@@ -392,15 +392,15 @@ def get_extractor_class(extractor_name: str) -> Union[
 
     entry_point, ignored_entry_points = entry_points[-1], entry_points[:-1]
     lgr.debug(
-        'Using metadata extractor %s from distribution %s',
+        "Using metadata extractor %s from distribution %s",
         extractor_name,
         entry_point.dist.project_name)
 
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
         lgr.warning(
-            'Metadata extractor %s from distribution %s overrides '
-            'metadata extractor from distribution %s',
+            "Metadata extractor %s from distribution %s overrides "
+            "metadata extractor from distribution %s",
             extractor_name,
             entry_point.dist.project_name,
             ignored_entry_point.dist.project_name)
@@ -426,7 +426,7 @@ def get_file_info(dataset: Dataset,
 
     path_status = (list(dataset.status(
         path,
-        result_renderer='disabled')) or [None])[0]
+        result_renderer="disabled")) or [None])[0]
     if path_status is None:
         return None
 
@@ -482,8 +482,8 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
     if extractor.is_content_required():
         for result in extractor.dataset.get(path={file_info.path},
                                             get_data=True,
-                                            return_type='generator',
-                                            result_renderer='disabled'):
+                                            return_type="generator",
+                                            result_renderer="disabled"):
             if result.get("status", "") == "error":
                 lgr.error(
                     "cannot make content of {} available in dataset {}".format(
@@ -669,8 +669,8 @@ def ensure_legacy_content_availability(ep: ExtractionParameter,
             for result in ep.source_dataset.get(
                         path={required_element.path},
                         get_data=True,
-                        return_type='generator',
-                        result_renderer='disabled'):
+                        return_type="generator",
+                        result_renderer="disabled"):
 
                 if result.get("status", "") == "error":
                     lgr.error(
