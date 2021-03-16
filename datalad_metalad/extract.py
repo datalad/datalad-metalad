@@ -162,13 +162,13 @@ class Extract(Interface):
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
-            doc=""""Dataset to extract metadata from. If no dataset
+            doc="""Dataset to extract metadata from. If no dataset
             is given, the dataset is determined by the current work
             directory.""",
             constraints=EnsureDataset() | EnsureNone()),
         into=Parameter(
             args=("-i", "--into"),
-            doc=""""Dataset to extract metadata into. This must be
+            doc="""Dataset to extract metadata into. This must be
             the dataset from which we extract metadata itself (the
             default) or a parent dataset of the dataset from
             which we extract metadata.""",
@@ -188,6 +188,10 @@ class Extract(Interface):
             dataset or curdir,
             purpose="extract metadata",
             check_installed=path is not None)
+
+        if not source_dataset.repo:
+            raise ValueError(f"No dataset found in {dataset or curdir}.")
+
         source_primary_data_version = source_dataset.repo.get_hexsha()
 
         if into:
@@ -502,19 +506,19 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
     if tree_version_list is None:
         tree_version_list = TreeVersionList(
             default_mapper_family,
-            ep.realm.pathobj)
+            str(ep.realm.pathobj))
 
     if uuid_set is None:
         uuid_set = UUIDSet(
             default_mapper_family,
-            ep.realm.pathobj)
+            str(ep.realm.pathobj))
 
     if ep.source_dataset_id in uuid_set.uuids():
         uuid_version_list = uuid_set.get_version_list(ep.source_dataset_id)
     else:
         uuid_version_list = VersionList(
             default_mapper_family,
-            ep.realm.pathobj)
+            str(ep.realm.pathobj))
         uuid_set.set_version_list(ep.source_dataset_id, uuid_version_list)
 
     # Get the dataset tree
@@ -530,15 +534,17 @@ def get_top_nodes_and_mrr(ep: ExtractionParameter):
             ep.root_primary_data_version, time_stamp, dataset_tree)
 
     if ep.dataset_tree_path not in dataset_tree:
+
         # Create a metadata root record-object
         # and a dataset level metadata-object
         dataset_level_metadata = Metadata(
             default_mapper_family,
-            ep.realm.pathobj)
-        file_tree = FileTree(default_mapper_family, ep.realm.pathobj)
+            str(ep.realm.pathobj))
+
+        file_tree = FileTree(default_mapper_family, str(ep.realm.pathobj))
         mrr = MetadataRootRecord(
             default_mapper_family,
-            ep.realm.path,
+            str(ep.realm.pathobj),
             ep.source_dataset_id,
             ep.source_primary_data_version,
             Connector.from_object(dataset_level_metadata),
