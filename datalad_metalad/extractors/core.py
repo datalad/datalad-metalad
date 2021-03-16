@@ -68,6 +68,7 @@ class DataladCoreExtractor(MetadataExtractor):
                     increment=True)
                 yield dict(
                     res,
+                    action="meta_extract",
                     type='file',
                     status='ok',
                 )

@@ -191,21 +191,22 @@ class Extract(Interface):
         source_primary_data_version = source_dataset.repo.get_hexsha()
 
         if into:
-            into_ds = require_dataset(
+            into_dataset = require_dataset(
                 into,
                 purpose="extract metadata",
                 check_installed=True)
-            realm = into_ds.repo
-            root_primary_data_version = into_ds.repo.get_hexsha()       # TODO: check for adjusted/managed branch, use get_corresponding_branch
+            realm = into_dataset.repo
+            root_primary_data_version = into_dataset.repo.get_hexsha()       # TODO: check for adjusted/managed branch, use get_corresponding_branch
         else:
+            into_dataset = None
             realm = source_dataset.repo
             root_primary_data_version = source_primary_data_version
 
         extractor_class = get_extractor_class(extractorname)
         dataset_tree_path, file_tree_path = get_path_info(
             source_dataset,
-            Path(path) if path else path,
-            into.pathobj if into else into)
+            Path(path) if path else None,
+            into_dataset.pathobj if into_dataset else None)
 
         extraction_parameters = ExtractionParameter(
             realm,
@@ -569,20 +570,12 @@ def add_file_metadata_source(ep: ExtractionParameter,
         mrr.set_file_tree(file_tree)
 
     if ep.file_tree_path in file_tree:
-        metadata = file_tree.get_metadata(ep.file_tree_path)
+        file_level_metadata = file_tree.get_metadata(ep.file_tree_path)
     else:
-        metadata = Metadata(default_mapper_family, ep.realm.path)
-        file_tree.add_metadata(ep.file_tree_path, metadata)
+        file_level_metadata = Metadata(default_mapper_family, ep.realm.path)
+        file_tree.add_metadata(ep.file_tree_path, file_level_metadata)
 
-    metadata.add_extractor_run(
-        time.time(),
-        ep.extractor_name,
-        ep.agent_name,
-        ep.agent_email,
-        ExtractorConfiguration(
-            result.extractor_version,
-            result.extraction_parameter),
-        metadata_source)
+    add_metadata_source(file_level_metadata, ep, result, metadata_source)
 
     tree_version_list.save()
     uuid_set.save()
@@ -604,7 +597,21 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
         dataset_level_metadata = Metadata(default_mapper_family, ep.realm.path)
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-    dataset_level_metadata.add_extractor_run(
+    add_metadata_source(dataset_level_metadata, ep, result, metadata_source)
+
+    tree_version_list.save()
+    uuid_set.save()
+    flush_object_references(ep.realm.path)
+
+    unlock_backend(ep.realm.path)
+
+
+def add_metadata_source(metadata: Metadata,
+                        ep: ExtractionParameter,
+                        result: ExtractorResult,
+                        metadata_source: dict):
+
+    metadata.add_extractor_run(
         time.time(),
         ep.extractor_name,
         ep.agent_name,
@@ -613,12 +620,6 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
             result.extractor_version,
             result.extraction_parameter),
         metadata_source)
-
-    tree_version_list.save()
-    uuid_set.save()
-    flush_object_references(ep.realm.path)
-
-    unlock_backend(ep.realm.path)
 
 
 def add_file_metadata(ep: ExtractionParameter,
