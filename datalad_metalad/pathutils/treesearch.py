@@ -5,11 +5,12 @@ import dataclasses
 
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
+from dataladmetadatamodel.metadatapath import MetadataPath
 
 
 @dataclasses.dataclass
 class MatchRecord:
-    path: str
+    path: MetadataPath
     node: FileTree
 
     def __eq__(self, other) -> bool:
@@ -24,29 +25,30 @@ class TreeSearch:
     are always separated by "/". The root is
     identified by an empty string, i.e. "".
     """
-    def __init__(self, file_tree: Union[DatasetTree, FileTree]):
-        self.file_tree = file_tree
+    def __init__(self, tree: Union[DatasetTree, FileTree]):
+        self.tree = tree
 
     def get_matching_paths(self,
                            pattern_list: List[str],
                            recursive: bool,
                            auto_list_root: bool = True
-                           ) -> Tuple[List[MatchRecord], List[str]]:
+                           ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
         """
-        Get all paths that are matching the patterns in
+        Get all metadata paths that are matching the patterns in
         pattern_list.
 
-        - Leading "/" are removed from paths.
+        - Leading "/" are removed from patterns, since metadata
+          paths are not absolute.
 
-        - Empty paths specifications are interpreted as
-          root-dataset or root-file-tree nodes.
+        - Empty pattern-specifications, i.e. '', are interpreted
+          as root-dataset or root-file-tree nodes.
         """
-        path_elements_list = [
-            pattern.lstrip("/").split("/")
+        pattern_elements_list = [
+            MetadataPath(pattern)
             for pattern in set(pattern_list)
         ]
         matching, failed = self._get_matching_nodes(
-            path_elements_list,
+            pattern_elements_list,
             auto_list_root)
 
         if recursive:
@@ -54,23 +56,27 @@ class TreeSearch:
         return matching, failed
 
     def _get_matching_nodes(self,
-                            path_elements_list: List[List[str]],
+                            pattern_list: List[MetadataPath],
                             auto_list_root: bool
-                            ) -> Tuple[List[MatchRecord], List[str]]:
+                            ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
 
         match_records: List[MatchRecord] = []
-        failed_patterns: List[str] = []
+        failed_patterns: List[MetadataPath] = []
 
-        for path_elements in path_elements_list:
-            if path_elements == [""]:
+        for pattern in pattern_list:
+            if pattern.parts == ():
                 match_records.extend(self._get_root_nodes(auto_list_root))
 
             else:
-                path_matches = self._search_matches(path_elements, self.file_tree, "")
-                if path_matches:
-                    match_records.extend(path_matches)
+                matching_path_records = self._search_matches(
+                    pattern.parts,
+                    self.tree,
+                    MetadataPath(""))
+
+                if matching_path_records:
+                    match_records.extend(matching_path_records)
                 else:
-                    failed_patterns.append("/".join(path_elements))
+                    failed_patterns.append(pattern)
 
         return match_records, failed_patterns
 
@@ -79,29 +85,29 @@ class TreeSearch:
                         ) -> List[MatchRecord]:
         return (
             [
-                MatchRecord(name, child_node)
-                for name, child_node in self.file_tree.child_nodes.items()
+                MatchRecord(MetadataPath(name), child_node)
+                for name, child_node in self.tree.child_nodes.items()
             ]
             if auto_list_root is True
-            else [MatchRecord("", self.file_tree)])
+            else [MatchRecord(MetadataPath(""), self.tree)])
 
     def _search_matches(self,
-                        path_elements: List[str],
+                        pattern_parts: Tuple[str],
                         tree: FileTree,
-                        path_name: str
+                        accumulated_path: MetadataPath
                         ) -> List[MatchRecord]:
 
-        if not path_elements:
-            return [MatchRecord(path_name, tree)]
+        if not pattern_parts:
+            return [MatchRecord(MetadataPath(accumulated_path), tree)]
 
         match_records = []
         for name, sub_tree in tree.child_nodes.items():
-            if fnmatchcase(name, path_elements[0]):
+            if fnmatchcase(name, pattern_parts[0]):
                 match_records.extend(
                     self._search_matches(
-                        path_elements[1:],
+                        pattern_parts[1:],
                         sub_tree,
-                        self._join(path_name, name)))
+                        accumulated_path / name))
 
         return match_records
 
@@ -118,7 +124,7 @@ class TreeSearch:
 
     def _rec_list_recursive(self,
                             starting_point: FileTree,
-                            starting_point_path: str
+                            starting_point_path: MetadataPath
                             ) -> List[MatchRecord]:
 
         if starting_point.is_leaf_node():
@@ -126,18 +132,8 @@ class TreeSearch:
 
         result = []
         for node_name, sub_tree in starting_point.child_nodes.items():
-            sub_tree_path = starting_point_path + ("" if starting_point_path == "" else "/") + node_name
+            sub_tree_path = starting_point_path / node_name
             result.extend(
                 self._rec_list_recursive(sub_tree, sub_tree_path))
 
-        return result
-
-    @staticmethod
-    def _join(*paths):
-        result = ""
-        for path in paths:
-            if path.startswith("/"):
-                result = path
-            else:
-                result = result.rstrip("/") + ("/" if result else "") + path.rstrip("/")
         return result

@@ -127,15 +127,16 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.metadata import MetadataInstance
+from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
 from .metadata import get_top_level_metadata_objects
-from .pathutils.metadatapathparser import (
-    MetadataPathParser,
-    TreeMetadataPath,
-    UUIDMetadataPath
+from .pathutils.metadataurlparser import (
+    MetadataURLParser,
+    TreeMetadataURL,
+    UUIDMetadataURL
 )
 from .pathutils.treesearch import TreeSearch
 
@@ -185,7 +186,7 @@ def show_dataset_metadata(mapper: str,
                           realm: str,
                           root_dataset_identifier: UUID,
                           root_dataset_version: str,
-                          dataset_path: str,
+                          dataset_path: MetadataPath,
                           metadata_root_record: MetadataRootRecord
                           ) -> Generator[dict, None, None]:
 
@@ -204,7 +205,7 @@ def show_dataset_metadata(mapper: str,
             "root_dataset_version": root_dataset_version,
             "dataset_identifier": str(metadata_root_record.dataset_identifier),
             "dataset_version": metadata_root_record.dataset_version,
-            "dataset_path": dataset_path,
+            "dataset_path": str(dataset_path),
         }
     }
 
@@ -233,7 +234,7 @@ def show_file_tree_metadata(mapper: str,
                             realm: str,
                             root_dataset_identifier: UUID,
                             root_dataset_version: str,
-                            dataset_path: str,
+                            dataset_path: MetadataPath,
                             metadata_root_record: MetadataRootRecord,
                             file_pattern: str,
                             recursive: bool
@@ -297,40 +298,40 @@ def show_file_tree_metadata(mapper: str,
 def dump_from_dataset_tree(mapper: str,
                            realm: str,
                            tree_version_list: TreeVersionList,
-                           path: TreeMetadataPath,
+                           metadata_url: TreeMetadataURL,
                            recursive: bool) -> Generator[dict, None, None]:
     """ Dump dataset tree elements that are referenced in path """
 
     # Normalize path representation
-    if not path or path.dataset_path is None:
-        path = TreeMetadataPath("", "")
+    if not metadata_url or metadata_url.dataset_path is None:
+        metadata_url = TreeMetadataURL("", "")
 
     # Get specified version, if none is specified, take the first from the
     # tree version list.
-    requested_root_dataset_version = path.version
+    requested_root_dataset_version = metadata_url.version
     if requested_root_dataset_version is None:
         requested_root_dataset_version = (
             # TODO: add an item() method to VersionList
             tuple(tree_version_list.versions())[0]
-            if path.version is None
-            else path.version)
+            if metadata_url.version is None
+            else metadata_url.version)
 
     # Fetch dataset tree for the specified version
     time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
         requested_root_dataset_version)
-    root_mrr = dataset_tree.get_metadata_root_record("")
+    root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
     root_dataset_version = root_mrr.dataset_version
     root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [path.dataset_path], recursive, auto_list_root=False)
+        [metadata_url.dataset_path], recursive, auto_list_root=False)
 
     for missing_path in not_found_paths:
         lgr.error(
             f"could not locate metadata for dataset path {missing_path} "
-            f"in tree version {path.version} in "
+            f"in tree version {metadata_url.version} in "
             f"realm {mapper}:{realm}")
 
     for match_record in matches:
@@ -339,7 +340,7 @@ def dump_from_dataset_tree(mapper: str,
             realm,
             root_dataset_identifier,
             root_dataset_version,
-            match_record.path,
+            MetadataPath(match_record.path),
             match_record.node.value)
 
         # TODO: check the different file paths
@@ -348,9 +349,9 @@ def dump_from_dataset_tree(mapper: str,
             realm,
             root_dataset_identifier,
             root_dataset_version,
-            match_record.path,
+            MetadataPath(match_record.path),
             match_record.node.value,
-            path.local_path,
+            metadata_url.local_path,
             recursive)
 
     return
@@ -359,7 +360,7 @@ def dump_from_dataset_tree(mapper: str,
 def dump_from_uuid_set(mapper: str,
                        realm: str,
                        uuid_set: UUIDSet,
-                       path: UUIDMetadataPath,
+                       path: UUIDMetadataURL,
                        recursive: bool) -> Generator[dict, None, None]:
 
     """ Dump UUID-identified dataset elements that are referenced in path """
@@ -436,16 +437,16 @@ class Dump(Interface):
     The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
     find all JSON files in the root directory of all datasets by specifying:
 
-        \*:\*.json
+        \\*:\\*.json
 
     as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
     go through metadata for all datasets, e.g.:
 
-      % datalad -f json_pp meta-dump \*:\*.json -r --reporton files
+      % datalad -f json_pp meta-dump \\*:\\*.json -r --reporton files
 
     or simply do not specify a specific dataset at all:
 
-      % datalad -f json_pp meta-dump :\*.json -r --reporton files
+      % datalad -f json_pp meta-dump :\\*.json -r --reporton files
 
     Examples:
 
@@ -529,10 +530,10 @@ class Dump(Interface):
                 message=message)
             return
 
-        parser = MetadataPathParser(path)
+        parser = MetadataURLParser(path)
         metadata_path = parser.parse()
 
-        if isinstance(metadata_path, TreeMetadataPath):
+        if isinstance(metadata_path, TreeMetadataURL):
             yield from dump_from_dataset_tree(
                 backend,
                 realm,
@@ -540,7 +541,7 @@ class Dump(Interface):
                 metadata_path,
                 recursive)
 
-        elif isinstance(metadata_path, UUIDMetadataPath):
+        elif isinstance(metadata_path, UUIDMetadataURL):
             yield from dump_from_uuid_set(
                 backend,
                 realm,

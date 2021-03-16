@@ -3,32 +3,46 @@ from typing import Optional
 from uuid import UUID
 
 
-class MetadataPathScheme(enum.Enum):
+from dataladmetadatamodel.metadatapath import MetadataPath
+
+
+class MetadataURLScheme(enum.Enum):
     UUID = "uuid"
     TREE = "tree"
 
 
-class MetadataPath:
-    def __init__(self, local_path: Optional[str], version: Optional[str] = None):
+class MetadataURL:
+    def __init__(self,
+                 local_path: Optional[MetadataPath],
+                 version: Optional[str] = None):
+
         self.local_path = local_path
         self.version = version
 
 
-class TreeMetadataPath(MetadataPath):
-    def __init__(self, dataset_path: str, local_path: Optional[str], version: Optional[str] = None):
+class TreeMetadataURL(MetadataURL):
+    def __init__(self,
+                 dataset_path: MetadataPath,
+                 local_path: Optional[MetadataPath],
+                 version: Optional[str] = None):
+
         super().__init__(local_path, version)
         self.dataset_path = dataset_path
 
 
-class UUIDMetadataPath(MetadataPath):
-    def __init__(self, uuid: UUID, local_path: Optional[str], version: Optional[str] = None):
+class UUIDMetadataURL(MetadataURL):
+    def __init__(self,
+                 uuid: UUID,
+                 local_path: Optional[MetadataPath],
+                 version: Optional[str] = None):
+
         super().__init__(local_path, version)
         self.uuid = uuid
 
 
-class MetadataPathParser(object):
-    uuid_header = MetadataPathScheme.UUID.value + ":"
-    tree_header = MetadataPathScheme.TREE.value + ":"
+class MetadataURLParser(object):
+    uuid_header = MetadataURLScheme.UUID.value + ":"
+    tree_header = MetadataURLScheme.TREE.value + ":"
 
     uuid_string_length = 36
 
@@ -45,12 +59,16 @@ class MetadataPathParser(object):
     def fetch_upto(self, pattern: str):
         pattern_location = self.current_spec.find(pattern)
         if pattern_location >= 0:
-            result, self.current_spec = self.current_spec[:pattern_location], self.current_spec[pattern_location:]
+            result, self.current_spec = (
+                self.current_spec[:pattern_location],
+                self.current_spec[pattern_location:])
             return True, result
         return False, ""
 
     def fetch(self, length: int):
-        result, self.current_spec = self.current_spec[:length], self.current_spec[length:]
+        result, self.current_spec = (
+            self.current_spec[:length],
+            self.current_spec[length:])
         return result
 
     def get_remaining(self):
@@ -59,13 +77,14 @@ class MetadataPathParser(object):
 
     def get_path(self):
         if self.match(":"):
-            path = self.get_remaining()
+            path = MetadataPath(self.get_remaining())
             return True, path
-        return False, ""
+        return False, MetadataPath("")
 
     def parse_version(self):
         if self.match("@"):
-            # a version string ends either with a ":" or with the end of the token stream
+            # a version string ends either with a ":" or
+            # with the end of the token stream
             success, version = self.fetch_upto(":")
             if success:
                 return True, version
@@ -84,26 +103,28 @@ class MetadataPathParser(object):
         """
 
         # Try to parse a uuid-spec
-        if self.match(MetadataPathParser.uuid_header):
-            uuid = UUID(self.fetch(MetadataPathParser.uuid_string_length))
+        if self.match(MetadataURLParser.uuid_header):
+            uuid = UUID(self.fetch(MetadataURLParser.uuid_string_length))
             _, version = self.parse_version()
             _, local_path = self.get_path()
-            return UUIDMetadataPath(uuid, local_path, version)
+            return UUIDMetadataURL(uuid, local_path, version)
 
         # Expect a tree spec
         self.match(self.tree_header)
 
         success, dataset_path = self.fetch_upto("@")
         if success:
+            dataset_path = MetadataPath(dataset_path)
             _, version = self.parse_version()
             self.match(":")
-            local_path = self.get_remaining()
+            local_path = MetadataPath(self.get_remaining())
         else:
             version = None
             success, dataset_path = self.fetch_upto(":")
             if success:
+                dataset_path = MetadataPath(dataset_path)
                 _, local_path = self.get_path()
             else:
-                dataset_path = self.get_remaining()
-                local_path = ""
-        return TreeMetadataPath(dataset_path, local_path, version)
+                dataset_path = MetadataPath(self.get_remaining())
+                local_path = MetadataPath("")
+        return TreeMetadataURL(dataset_path, local_path, version)

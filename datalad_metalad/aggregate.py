@@ -75,6 +75,7 @@ from datalad.support.constraints import (
 )
 from datalad.support.constraints import EnsureChoice
 from dataladmetadatamodel.datasettree import DatasetTree
+from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
@@ -94,7 +95,7 @@ lgr = logging.getLogger('datalad.metadata.aggregate')
 class AggregateItem:
     source_tree_version_list: TreeVersionList
     source_uuid_set: UUIDSet
-    destination_path: str
+    destination_path: MetadataPath
 
 
 @build_doc
@@ -274,19 +275,19 @@ class Aggregate(Interface):
 
 
 def process_separated_path_spec(paths: List[str]
-                                ) -> Tuple[Tuple[str, str], ...]:
+                                ) -> Tuple[Tuple[MetadataPath, Path], ...]:
     if len(paths) % 2 != 0:
         raise ValueError(
             "You must provide the same number of "
             "intra-dataset-paths and realms")
     return tuple(
         zip(
-            islice(paths, 0, len(paths), 2),
-            islice(paths, 1, len(paths), 2)))
+            map(MetadataPath, islice(paths, 0, len(paths), 2)),
+            map(Path, islice(paths, 1, len(paths), 2))))
 
 
 def process_congruent_path_spec(paths: List[str]
-                                ) -> Tuple[Tuple[str, str], ...]:
+                                ) -> Tuple[Tuple[MetadataPath, Path], ...]:
     raise NotImplementedError
 
 
@@ -313,7 +314,7 @@ def perform_aggregation(destination_realm: str,
 def copy_uuid_set(destination_realm: str,
                   destination_uuid_set: UUIDSet,
                   source_uuid_set: UUIDSet,
-                  destination_path: str):
+                  destination_path: MetadataPath):
 
     """
     For each uuid in the source uuid set, create a version
@@ -359,10 +360,7 @@ def copy_uuid_set(destination_realm: str,
                 time_stamp, old_path, element = \
                     src_version_list.get_versioned_element(pd_version)
 
-                new_path = destination_path + (
-                    "/"
-                    if (destination_path != "" and old_path != "")
-                    else "") + old_path
+                new_path = destination_path / old_path
 
                 lgr.debug(
                     f"adding version {pd_version} with path "
@@ -400,7 +398,7 @@ def copy_uuid_set(destination_realm: str,
 def copy_tree_version_list(destination_realm: str,
                            destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
-                           destination_path: str):
+                           destination_path: MetadataPath):
     """
     Determine the root-dataset version, that is, the root
     version the contains the source version.
@@ -460,7 +458,7 @@ def copy_tree_version_list(destination_realm: str,
 #  the root repository might contain the given path.
 def get_root_version_for_subset_version(root_dataset_path: str,
                                         sub_dataset_version: str,
-                                        sub_dataset_path: str
+                                        sub_dataset_path: MetadataPath
                                         ) -> List[str]:
     """
     Get the versions of the root that contains the
