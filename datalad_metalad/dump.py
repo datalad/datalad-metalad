@@ -236,7 +236,7 @@ def show_file_tree_metadata(mapper: str,
                             root_dataset_version: str,
                             dataset_path: MetadataPath,
                             metadata_root_record: MetadataRootRecord,
-                            file_pattern: str,
+                            search_pattern: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
@@ -245,7 +245,7 @@ def show_file_tree_metadata(mapper: str,
     # Determine matching file paths
     tree_search = TreeSearch(file_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [file_pattern], recursive, auto_list_root=False)
+        [search_pattern], recursive, auto_list_root=False)
 
     for missing_path in not_found_paths:
         lgr.warning(
@@ -304,7 +304,7 @@ def dump_from_dataset_tree(mapper: str,
 
     # Normalize path representation
     if not metadata_url or metadata_url.dataset_path is None:
-        metadata_url = TreeMetadataURL("", "")
+        metadata_url = TreeMetadataURL(MetadataPath(""), MetadataPath(""))
 
     # Get specified version, if none is specified, take the first from the
     # tree version list.
@@ -326,7 +326,7 @@ def dump_from_dataset_tree(mapper: str,
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [metadata_url.dataset_path], recursive, auto_list_root=False)
+        [str(metadata_url.dataset_path)], recursive, auto_list_root=False)
 
     for missing_path in not_found_paths:
         lgr.error(
@@ -340,7 +340,7 @@ def dump_from_dataset_tree(mapper: str,
             realm,
             root_dataset_identifier,
             root_dataset_version,
-            MetadataPath(match_record.path),
+            match_record.path,
             match_record.node.value)
 
         # TODO: check the different file paths
@@ -351,7 +351,7 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_version,
             MetadataPath(match_record.path),
             match_record.node.value,
-            metadata_url.local_path,
+            str(metadata_url.local_path),
             recursive)
 
     return
@@ -409,7 +409,7 @@ def dump_from_uuid_set(mapper: str,
         requested_dataset_version,
         dataset_path,
         metadata_root_record,
-        path.local_path,
+        str(path.local_path),
         recursive)
 
     return

@@ -8,56 +8,29 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
-
-import os.path as op
-
-from simplejson import dumps as jsondumps
+from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
-from datalad.api import (
-    meta_extract,
-)
+from datalad.api import meta_extract
 from datalad.utils import chpwd
 
 from datalad.tests.utils import (
     with_tempfile,
     with_tree,
+    assert_is_not_none,
     assert_repo_status,
     assert_raises,
     assert_result_count,
     assert_in,
-    eq_,
-    known_failure,
+    assert_true,
+    eq_
 )
 
-sample_dsmeta = {
-    "@context": "https://schema.org/",
-    "@type": "Dataset",
-    "name": "NCDC Storm Events Database",
-    "description": "Storm Data is provided by the NWS",
-}
-sample_fmeta = {
-    '@id': 'datalad:SHA1-s1--356a192b7913b04c54574d18c28d46e6395428ab',
-    "something": "stupid",
-    "complextype": {
-        "entity": {
-            "some": "many",
-            "properties": "here",
-        },
-        "age": "young",
-        "numbers": [3, 2, 1, 0],
-    }
-}
+from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
+from dataladmetadatamodel.metadatapath import MetadataPath
+
+
 meta_tree = {
-    '.metadata': {
-        'dataset.json': jsondumps(sample_dsmeta),
-        'content': {
-            'sub': {
-                'one.json': jsondumps(sample_fmeta),
-                'nothing.json': '{}',
-            },
-        },
-    },
     'sub': {
         'one': '1',
         'nothing': '2',
@@ -65,84 +38,135 @@ meta_tree = {
 }
 
 
-@known_failure
 @with_tempfile(mkdir=True)
-def test_error(path):
+def test_empty_dataset_error(path):
     # go into virgin dir to avoid detection of any dataset
     with chpwd(path):
         assert_raises(
             ValueError,
-            meta_extract, sources=['bogus__'], path=[path])
-    # fails also on unavailable metadata extractor
+            meta_extract, extractorname="metalad_core")
+
+
+@with_tempfile(mkdir=True)
+def test_unknown_extractor_error(path):
+    # ensure failure on unavailable metadata extractor
     ds = Dataset(path).create()
-    assert_raises(
-        ValueError,
-        meta_extract, dataset=ds, sources=['bogus__'])
+    with chpwd(path):
+        assert_raises(
+            ValueError,
+            meta_extract, extractorname="bogus__")
 
 
-@known_failure
 @with_tree(meta_tree)
-def test_ds_extraction(path):
+def test_dataset_extraction_end_to_end(path):
     ds = Dataset(path).create(force=True)
-    ds.config.add('datalad.metadata.exclude-path', '.metadata',
-                  where='dataset')
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
     ds.save()
     assert_repo_status(ds.path)
 
     # by default we get core and annex reports
-    res = meta_extract(dataset=ds)
-    # dataset, plus two files (payload)
-    assert_result_count(res, 3)
-    assert_result_count(res, 1, type='dataset')
-    assert_result_count(res, 2, type='file')
-    # core has stuff on everythin
-    assert(all('metalad_core' in r['metadata'] for r in res))
-
-    # now for specific extractor request
     res = meta_extract(
-        sources=['metalad_custom'],
-        dataset=ds,
-        # artificially disable extraction from any file in the dataset
-        path=[])
-    assert_result_count(
-        res, 1,
-        type='dataset', status='ok', action='meta_extract', path=path,
-        refds=ds.path)
-    assert_in('metalad_custom', res[0]['metadata'])
-
-    # now the more useful case: getting everthing for 'metalad_custom' from a dataset
-    res = meta_extract(
-        sources=['metalad_custom'],
+        extractorname="metalad_core_dataset",
         dataset=ds)
-    assert_result_count(res, 2)
-    assert_result_count(
-        res, 1,
-        type='dataset', status='ok', action='meta_extract', path=path,
-        refds=ds.path)
-    assert_result_count(
-        res, 1,
-        type='file', status='ok', action='meta_extract',
-        path=op.join(path, 'sub', 'one'),
-        parentds=ds.path)
-    for r in res:
-        assert_in('metalad_custom', r['metadata'])
-    # and lastly, if we disable extraction via config, we get nothing
-    ds.config.add('datalad.metadata.extract-from-metalad-custom', 'dataset',
-                  where='dataset')
-    assert_result_count(meta_extract(sources=['metalad_custom'], dataset=ds), 1)
+
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='dataset')
+    assert_result_count(res, 0, type='file')
+
+    # Ensure that metadata was created
+    tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
+        "git",
+        path,
+        UUID(ds.id),
+        ds.repo.get_hexsha(),
+        MetadataPath(""))
+
+    assert_is_not_none(tree_version_list)
+    assert_is_not_none(uuid_set)
+    assert_is_not_none(mrr)
+
+    # Check metadata
+    metadata = mrr.get_dataset_level_metadata()
+    assert_is_not_none(metadata)
+
+    metadata_instances = tuple(metadata.extractor_runs())
+    assert_true(len(metadata_instances) == 1)
+
+    extractor_name, extractor_runs = metadata_instances[0]
+    eq_(extractor_name, "metalad_core_dataset")
+
+    instances = tuple(extractor_runs.get_instances())
+    assert_true(len(instances), 1)
+    metadata_location = instances[0].metadata_location
+    
+    assert_in("id", metadata_location)
+    assert_in("refcommit", metadata_location)
+    assert_in("path", metadata_location)
+    assert_in("comment", metadata_location)
+
+    eq_(metadata_location["id"], ds.id)
+    eq_(metadata_location["refcommit"], ds.repo.get_hexsha())
+    eq_(metadata_location["path"], ds.path)
+    eq_(metadata_location["comment"], "test-implementation")
 
 
-@known_failure
 @with_tree(meta_tree)
-def test_file_extraction(path):
-    # go into virgin dir to avoid detection of any dataset
-    testpath = op.join(path, 'sub', 'one')
-    with chpwd(path):
-        res = meta_extract(
-            extractorname='metalad_custom',
-            path=testpath)
-        assert_result_count(
-            res, 1, type='file', status='ok', action='meta_extract',
-            path=testpath)
-        assert_in('metalad_custom', res[0]['metadata'])
-        eq_(res[0]['metadata']['metalad_custom'], sample_fmeta)
+def test_file_extraction_end_to_end(path):
+    ds = Dataset(path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    # by default we get core and annex reports
+    res = meta_extract(
+        extractorname="metalad_core_file",
+        path="sub/one",
+        dataset=ds)
+
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='file')
+    assert_result_count(res, 0, type='dataset')
+
+    # Ensure that metadata was created
+    tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
+        "git",
+        path,
+        UUID(ds.id),
+        ds.repo.get_hexsha(),
+        MetadataPath(""))
+
+    assert_is_not_none(tree_version_list)
+    assert_is_not_none(uuid_set)
+    assert_is_not_none(mrr)
+
+    # Check file level metadata
+    file_tree = mrr.get_file_tree()
+    assert_is_not_none(file_tree)
+
+    assert_true("sub/one" in file_tree)
+    metadata = file_tree.get_metadata(MetadataPath("sub/one"))
+    metadata_instances = tuple(metadata.extractor_runs())
+    assert_true(len(metadata_instances) == 1)
+
+    extractor_name, extractor_runs = metadata_instances[0]
+    eq_(extractor_name, "metalad_core_file")
+
+    instances = tuple(extractor_runs.get_instances())
+    assert_true(len(instances), 1)
+    metadata_location = instances[0].metadata_location
+
+    assert_in("@id", metadata_location)
+    assert_in("path", metadata_location)
+    assert_in("intra_dataset_path", metadata_location)
+    assert_in("content_byte_size", metadata_location)
+    assert_in("comment", metadata_location)
+
+    eq_(metadata_location["path"], str(ds.pathobj / "sub" / "one"))
+    eq_(metadata_location["intra_dataset_path"], str(MetadataPath("sub/one")))
+    eq_(metadata_location["comment"], "test-implementation")
