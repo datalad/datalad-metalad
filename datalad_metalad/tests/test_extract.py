@@ -50,7 +50,6 @@ def test_empty_dataset_error(path):
 @with_tempfile(mkdir=True)
 def test_unknown_extractor_error(path):
     # ensure failure on unavailable metadata extractor
-    ds = Dataset(path).create()
     with chpwd(path):
         assert_raises(
             ValueError,
@@ -100,17 +99,17 @@ def test_dataset_extraction_end_to_end(path):
 
     instances = tuple(extractor_runs.get_instances())
     assert_true(len(instances), 1)
-    metadata_location = instances[0].metadata_location
+    immediate_metadata = instances[0].metadata_source.content
     
-    assert_in("id", metadata_location)
-    assert_in("refcommit", metadata_location)
-    assert_in("path", metadata_location)
-    assert_in("comment", metadata_location)
+    assert_in("id", immediate_metadata)
+    assert_in("refcommit", immediate_metadata)
+    assert_in("path", immediate_metadata)
+    assert_in("comment", immediate_metadata)
 
-    eq_(metadata_location["id"], ds.id)
-    eq_(metadata_location["refcommit"], ds.repo.get_hexsha())
-    eq_(metadata_location["path"], ds.path)
-    eq_(metadata_location["comment"], "test-implementation")
+    eq_(immediate_metadata["id"], ds.id)
+    eq_(immediate_metadata["refcommit"], ds.repo.get_hexsha())
+    eq_(immediate_metadata["path"], ds.path)
+    eq_(immediate_metadata["comment"], "test-implementation")
 
 
 @with_tree(meta_tree)
@@ -159,14 +158,14 @@ def test_file_extraction_end_to_end(path):
 
     instances = tuple(extractor_runs.get_instances())
     assert_true(len(instances), 1)
-    metadata_location = instances[0].metadata_location
+    immediate_metadata = instances[0].metadata_source.content
 
-    assert_in("@id", metadata_location)
-    assert_in("path", metadata_location)
-    assert_in("intra_dataset_path", metadata_location)
-    assert_in("content_byte_size", metadata_location)
-    assert_in("comment", metadata_location)
+    assert_in("@id", immediate_metadata)
+    assert_in("path", immediate_metadata)
+    assert_in("intra_dataset_path", immediate_metadata)
+    assert_in("content_byte_size", immediate_metadata)
+    assert_in("comment", immediate_metadata)
 
-    eq_(metadata_location["path"], str(ds.pathobj / "sub" / "one"))
-    eq_(metadata_location["intra_dataset_path"], str(MetadataPath("sub/one")))
-    eq_(metadata_location["comment"], "test-implementation")
+    eq_(immediate_metadata["path"], str(ds.pathobj / "sub" / "one"))
+    eq_(immediate_metadata["intra_dataset_path"], str(MetadataPath("sub/one")))
+    eq_(immediate_metadata["comment"], "test-implementation")

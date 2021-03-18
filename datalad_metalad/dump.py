@@ -178,7 +178,7 @@ def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
         "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
         "extractor_version": instance.configuration.version,
         "extractor_parameter": instance.configuration.parameter,
-        "extractor_result": instance.metadata_location
+        "extractor_result": instance.metadata_source.to_json_obj()
     }
 
 

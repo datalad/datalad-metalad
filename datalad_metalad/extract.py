@@ -54,6 +54,8 @@ from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, \
     unlock_backend
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 from dataladmetadatamodel.metadatapath import MetadataPath
+from dataladmetadatamodel.metadatasource import ImmediateMetadataSource, \
+    LocalGitMetadataSource, MetadataSource
 
 from .extractors.base import ExtractorResult
 
@@ -303,7 +305,8 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
             add_file_metadata_source(
                 ep,
                 result,
-                result.immediate_data)
+                ImmediateMetadataSource(result.immediate_data))
+
         result.datalad_result_dict["action"] = "meta_extract"
         yield result.datalad_result_dict
 
@@ -344,7 +347,8 @@ def perform_dataset_metadata_extraction(ep: ExtractionParameter,
             add_dataset_metadata_source(
                 ep,
                 result,
-                result.immediate_data)
+                ImmediateMetadataSource(result.immediate_data))
+
         result.datalad_result_dict["action"] = "meta_extract"
         yield result.datalad_result_dict
 
@@ -492,7 +496,7 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
 
 def add_file_metadata_source(ep: ExtractionParameter,
                              result: ExtractorResult,
-                             metadata_source: dict):
+                             metadata_source: MetadataSource):
 
     realm = str(ep.realm.pathobj)
 
@@ -528,7 +532,7 @@ def add_file_metadata_source(ep: ExtractionParameter,
 
 def add_dataset_metadata_source(ep: ExtractionParameter,
                                 result: ExtractorResult,
-                                metadata_source: dict):
+                                metadata_source: MetadataSource):
 
     realm = str(ep.realm.pathobj)
 
@@ -559,7 +563,7 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
 def add_metadata_source(metadata: Metadata,
                         ep: ExtractionParameter,
                         result: ExtractorResult,
-                        metadata_source: dict):
+                        metadata_source: MetadataSource):
 
     metadata.add_extractor_run(
         time.time(),
@@ -579,10 +583,9 @@ def add_file_metadata(ep: ExtractionParameter,
     # copy the temporary file content into the git repo
     git_object_hash = copy_file_to_git(metadata_content_file, ep.realm)
 
-    add_file_metadata_source(ep, result, {
-            "type": "git-object",
-            "location": git_object_hash
-        })
+    add_file_metadata_source(ep, result, LocalGitMetadataSource(
+        ep.realm.pathobj,
+        git_object_hash))
 
 
 def add_dataset_metadata(ep: ExtractionParameter,
@@ -592,10 +595,9 @@ def add_dataset_metadata(ep: ExtractionParameter,
     # copy the temporary file content into the git repo
     git_object_hash = copy_file_to_git(metadata_content_file, ep.realm)
 
-    add_dataset_metadata_source(ep, result, {
-            "type": "git-object",
-            "location": git_object_hash
-        })
+    add_dataset_metadata_source(ep, result, LocalGitMetadataSource(
+        ep.realm.pathobj,
+        git_object_hash))
 
 
 def copy_file_to_git(file_path: Path, realm: Union[AnnexRepo, GitRepo]):
@@ -665,7 +667,8 @@ def legacy_extract_dataset(ep: ExtractionParameter):
             add_dataset_metadata_source(
                 ep,
                 extractor_result,
-                extractor_result.immediate_data)
+                ImmediateMetadataSource(extractor_result.immediate_data))
+
         yield result
 
 
@@ -701,5 +704,6 @@ def legacy_extract_file(ep: ExtractionParameter):
             add_file_metadata_source(
                 ep,
                 extractor_result,
-                extractor_result.immediate_data)
+                ImmediateMetadataSource(extractor_result.immediate_data))
+
         yield result
