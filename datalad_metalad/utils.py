@@ -1,6 +1,8 @@
 import os.path as op
 from collections import OrderedDict
+from itertools import islice
 from six import text_type
+from typing import Dict, List
 
 from datalad.utils import Path
 
@@ -193,3 +195,19 @@ def get_ds_aggregate_db(dspath, version='default', warn_absent=True):
          for k, v in props.items()}
         for p, props in agginfos.items()
     }
+
+
+def args_to_dict(args: List[str]) -> Dict[str, str]:
+    """ Convert an argument list to a dictionary """
+
+    if args is None:
+        return {}
+
+    if len(args) % 2 != 0:
+        raise ValueError(
+            f"argument list is missing value for key '{args[-1]}'")
+
+    return dict(
+        zip(
+            islice(args, 0, len(args), 2),
+            islice(args, 1, len(args), 2)))

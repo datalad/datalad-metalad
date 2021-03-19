@@ -144,7 +144,7 @@ class DatasetMetadataExtractor(MetadataExtractorBase):
         """
         self.dataset = dataset
         self.ref_commit = ref_commit
-        self.parameter = parameter
+        self.parameter = parameter or {}
 
     def get_required_content(self) -> bool:
         """

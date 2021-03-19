@@ -15,7 +15,7 @@ import tempfile
 import time
 from os import curdir
 from pathlib import Path
-from typing import Iterable,  List, Optional, Tuple, Type, Union
+from typing import Dict, Iterable,  List, Optional, Tuple, Type, Union
 from uuid import UUID
 
 from dataclasses import dataclass
@@ -60,6 +60,7 @@ from dataladmetadatamodel.metadatasource import ImmediateMetadataSource, \
     LocalGitMetadataSource, MetadataSource
 
 from .extractors.base import ExtractorResult
+from .utils import args_to_dict
 
 
 __docformat__ = "restructuredtext"
@@ -76,6 +77,7 @@ class ExtractionParameter:
     source_dataset_id: UUID
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
     extractor_name: str
+    extractor_arguments: Dict[str, str]
     dataset_tree_path: MetadataPath
     file_tree_path: MetadataPath
     root_primary_data_version: str
@@ -168,7 +170,13 @@ class Extract(Interface):
             the dataset from which we extract metadata itself (the
             default) or a parent dataset of the dataset from
             which we extract metadata.""",
-            constraints=EnsureDataset() | EnsureNone()))
+            constraints=EnsureDataset() | EnsureNone()),
+        extractorargs=Parameter(
+            args=("extractorargs",),
+            metavar="EXTRACTOR_ARGUMENTS",
+            doc="""Extractor arguments""",
+            nargs="*",
+            constraints=EnsureStr() | EnsureNone()))
 
     @staticmethod
     @datasetmethod(name="meta_extract")
@@ -177,7 +185,8 @@ class Extract(Interface):
             extractorname: str,
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
-            into: Optional[Union[Dataset, str]] = None):
+            into: Optional[Union[Dataset, str]] = None,
+            extractorargs: Optional[List[str]] = None):
 
         # Get basic arguments
         source_dataset = require_dataset(
@@ -214,6 +223,7 @@ class Extract(Interface):
             UUID(source_dataset.id),
             extractor_class,
             extractorname,
+            args_to_dict(extractorargs),
             dataset_tree_path,
             file_tree_path,
             root_primary_data_version,
@@ -226,7 +236,7 @@ class Extract(Interface):
         # FileMetadataExtractor. If oath is not given, we assume that
         # dataset-level extraction is requested and the extractor
         # class is a subclass of DatasetMetadataExtractor
-        if path:
+        if path and path != "--":
             yield from do_file_extraction(extraction_parameters)
         else:
             yield from do_dataset_extraction(extraction_parameters)
@@ -254,7 +264,8 @@ def do_dataset_extraction(ep: ExtractionParameter):
 
     extractor = ep.extractor_class(
         ep.source_dataset,
-        ep.source_primary_data_version)
+        ep.source_primary_data_version,
+        ep.extractor_arguments)
 
     yield from perform_dataset_metadata_extraction(ep, extractor)
 
@@ -282,7 +293,8 @@ def do_file_extraction(ep: ExtractionParameter):
     extractor = ep.extractor_class(
         ep.source_dataset,
         ep.source_primary_data_version,
-        file_info)
+        file_info,
+        ep.extractor_arguments)
 
     ensure_content_availability(extractor, file_info)
 
