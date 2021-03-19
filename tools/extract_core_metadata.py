@@ -91,7 +91,7 @@ def extract_dataset_level_metadata(realm: str,
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", realm
+        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", dataset_path
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
@@ -105,7 +105,7 @@ def extract_file_level_metadata(realm: str,
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
         f"{arguments.file_extractor}", file_path, "-d",
-        dataset_path, "-i", realm
+        dataset_path, "-i", dataset_path
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 

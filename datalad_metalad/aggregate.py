@@ -160,7 +160,7 @@ class Aggregate(Interface):
         path=Parameter(
             args=("path",),
             metavar="PATH",
-            doc="""
+            doc=r"""
             If -s, --separatepaths is defined (currently it IS
             defined by default and cannot be change), the realm
             that store metadata and the intra-dataset path for the
@@ -180,8 +180,9 @@ class Aggregate(Interface):
             give the following command to aggregate the metadata of
             sub_ds2 into the root dataset::
             
-               datalad meta-extract /metadata/root_ds sub_ds1/sub_ds2 /metadata/sub_ds2
-                        
+               datalad meta-extract --root_realm /metadata/root_ds \
+                sub_ds1/sub_ds2 /metadata/sub_ds2
+
             """,
             nargs="*",
             constraints=EnsureStr() | EnsureNone()),
