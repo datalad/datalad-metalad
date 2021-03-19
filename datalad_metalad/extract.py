@@ -15,7 +15,7 @@ import tempfile
 import time
 from os import curdir
 from pathlib import Path
-from typing import List, Optional, Tuple, Type, Union
+from typing import Iterable,  List, Optional, Tuple, Type, Union
 from uuid import UUID
 
 from dataclasses import dataclass
@@ -29,6 +29,8 @@ from datalad.distribution.dataset import (
     EnsureDataset,
     require_dataset,
 )
+from datalad.metadata.extractors.base import BaseMetadataExtractor
+
 from .extractors.base import (
     DataOutputCategory,
     DatasetMetadataExtractor,
@@ -607,6 +609,24 @@ def copy_file_to_git(file_path: Path, realm: Union[AnnexRepo, GitRepo]):
     return realm.call_git_oneline(arguments)
 
 
+def ensure_legacy_path_availability(ep: ExtractionParameter, path: str):
+    for result in ep.source_dataset.get(path=path,
+                                        get_data=True,
+                                        return_type="generator",
+                                        result_renderer="disabled"):
+
+        if result.get("status", "") == "error":
+            lgr.error(
+                "cannot make content of {} available "
+                "in dataset {}".format(
+                    path, ep.source_dataset))
+            return
+
+    lgr.debug(
+        "requested content {}:{} available".format(
+            ep.source_dataset.path, path))
+
+
 def ensure_legacy_content_availability(ep: ExtractionParameter,
                                        extractor: MetadataExtractor,
                                        operation: str,
@@ -618,92 +638,120 @@ def ensure_legacy_content_availability(ep: ExtractionParameter,
                     operation,
                     status):
 
-            for result in ep.source_dataset.get(
-                        path={required_element.path},
-                        get_data=True,
-                        return_type="generator",
-                        result_renderer="disabled"):
-
-                if result.get("status", "") == "error":
-                    lgr.error(
-                        "cannot make content of {} available "
-                        "in dataset {}".format(
-                            required_element.path, ep.source_dataset))
-                    return
-
-            lgr.debug(
-                "requested content {}:{} available".format(
-                    ep.source_dataset.path, required_element.path))
+            ensure_legacy_path_availability(ep, required_element.path)
     except AttributeError:
         pass
 
 
-def legacy_extract_dataset(ep: ExtractionParameter):
+def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
 
-    extractor = ep.extractor_class()
-    status = [{
-        "type": "dataset",
-        "path": str(ep.realm.pathobj / Path(ep.dataset_tree_path)),
-        "state": "clean",
-        "gitshasum": ep.source_primary_data_version
-    }]
+    if issubclass(ep.extractor_class, MetadataExtractor):
 
-    ensure_legacy_content_availability(ep, extractor, "dataset", status)
+        # Metalad legacy extractor
+        status = [{
+            "type": "dataset",
+            "path": str(ep.realm.pathobj / Path(ep.dataset_tree_path)),
+            "state": "clean",
+            "gitshasum": ep.source_primary_data_version
+        }]
+        extractor = ep.extractor_class()
+        ensure_legacy_content_availability(ep, extractor, "dataset", status)
 
-    for result in extractor(
-                ep.source_dataset,
-                ep.source_primary_data_version,
-                "dataset",
-                status):
+        for result in extractor(ep.source_dataset,
+                                ep.source_primary_data_version,
+                                "dataset",
+                                status):
 
-        if result["status"] == "ok":
-            extractor_result = ExtractorResult(
-                "0.1",
-                extractor.get_state(ep.source_dataset),
-                True,
-                result,
-                result["metadata"])
+            if result["status"] == "ok":
+                extractor_result = ExtractorResult(
+                    "0.1",
+                    extractor.get_state(ep.source_dataset),
+                    True,
+                    result,
+                    result["metadata"])
 
-            add_dataset_metadata_source(
-                ep,
-                extractor_result,
-                ImmediateMetadataSource(extractor_result.immediate_data))
+                add_dataset_metadata_source(
+                    ep,
+                    extractor_result,
+                    ImmediateMetadataSource(extractor_result.immediate_data))
 
-        yield result
+            yield result
+
+    elif issubclass(ep.extractor_class, BaseMetadataExtractor):
+
+        # Datalad legacy extractor
+        path = str(ep.realm.pathobj / Path(ep.dataset_tree_path))
+        if ep.extractor_class.NEEDS_CONTENT:
+            ensure_legacy_path_availability(ep, path)
+
+        extractor = ep.extractor_class(ep.source_dataset, [path])
+        dataset_result, _ = extractor.get_metadata(True, False)
+
+        extractor_result = ExtractorResult("0.1", {}, True, {}, dataset_result)
+        add_dataset_metadata_source(
+            ep,
+            extractor_result,
+            ImmediateMetadataSource(extractor_result.immediate_data))
+
+    else:
+        raise ValueError(
+            f"unknown extractor class: {type(ep.extractor_class).__name__}")
 
 
-def legacy_extract_file(ep: ExtractionParameter):
+def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
 
-    extractor = ep.extractor_class()
-    status = [{
-        "type": "file",
-        "path": str(
-            ep.realm.pathobj
-            / Path(ep.dataset_tree_path)
-            / Path(ep.file_tree_path)),
-        "state": "clean",
-        "gitshasum": ep.source_primary_data_version
-    }]
+    if issubclass(ep.extractor_class, MetadataExtractor):
 
-    ensure_legacy_content_availability(ep, extractor, "content", status)
+        # Metalad legacy extractor
+        status = [{
+            "type": "file",
+            "path": str(
+                ep.realm.pathobj
+                / Path(ep.dataset_tree_path)
+                / Path(ep.file_tree_path)),
+            "state": "clean",
+            "gitshasum": ep.source_primary_data_version
+        }]
+        extractor = ep.extractor_class()
+        ensure_legacy_content_availability(ep, extractor, "content", status)
 
-    for result in extractor(
-                ep.source_dataset,
-                ep.source_primary_data_version,
-                "content",
-                status):
+        for result in extractor(ep.source_dataset,
+                                ep.source_primary_data_version,
+                                "content",
+                                status):
 
-        if result["status"] == "ok":
-            extractor_result = ExtractorResult(
-                "0.1",
-                extractor.get_state(ep.source_dataset),
-                True,
-                result,
-                result["metadata"])
+            if result["status"] == "ok":
+                extractor_result = ExtractorResult(
+                    "0.1",
+                    extractor.get_state(ep.source_dataset),
+                    True,
+                    result,
+                    result["metadata"])
 
+                add_file_metadata_source(
+                    ep,
+                    extractor_result,
+                    ImmediateMetadataSource(extractor_result.immediate_data))
+
+            yield result
+
+    elif issubclass(ep.extractor_class, BaseMetadataExtractor):
+
+        # Datalad legacy extractor
+        path = str(ep.realm.pathobj / Path(ep.dataset_tree_path) / Path(ep.file_tree_path))
+        if ep.extractor_class.NEEDS_CONTENT:
+            ensure_legacy_path_availability(ep, path)
+
+        extractor = ep.extractor_class(ep.source_dataset, [path])
+        _, file_result = extractor.get_metadata(False, True)
+
+        for path, metadata in file_result:
+            extractor_result = ExtractorResult("0.1", {}, True, {}, metadata)
             add_file_metadata_source(
                 ep,
                 extractor_result,
                 ImmediateMetadataSource(extractor_result.immediate_data))
 
-        yield result
+    else:
+        raise ValueError(
+            f"unknown extractor class: {type(ep.extractor_class).__name__}")
