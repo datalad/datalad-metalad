@@ -277,12 +277,6 @@ def do_file_extraction(ep: ExtractionParameter):
 
     assert issubclass(ep.extractor_class, FileMetadataExtractor)
     file_info = get_file_info(ep.source_dataset, ep.file_tree_path)
-    if file_info is None:
-        raise FileNotFoundError(
-            "file not found {}/{}".format(
-                ep.source_dataset.path,
-                ep.file_tree_path))
-
     extractor = ep.extractor_class(
         ep.source_dataset,
         ep.source_primary_data_version,
@@ -409,7 +403,7 @@ def get_extractor_class(extractor_name: str) -> Union[
 
 
 def get_file_info(dataset: Dataset,
-                  file_path: MetadataPath) -> Optional[FileInfo]:
+                  file_path: MetadataPath) -> FileInfo:
     """
     Get information about the file in the dataset or
     None, if the file is not part of the dataset.
@@ -427,8 +421,14 @@ def get_file_info(dataset: Dataset,
     path_status = (list(dataset.status(
         path,
         result_renderer="disabled")) or [None])[0]
+
     if path_status is None:
-        return None
+        raise FileNotFoundError(
+            "file not found: {}".format(path))
+
+    if path_status["state"] == "untracked":
+        raise ValueError(
+            "file not tracked: {}".format(path))
 
     # noinspection PyUnresolvedReferences
     return FileInfo(
