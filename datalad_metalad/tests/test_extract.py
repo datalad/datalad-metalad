@@ -167,5 +167,8 @@ def test_file_extraction_end_to_end(path):
     assert_in("comment", immediate_metadata)
 
     eq_(immediate_metadata["path"], str(ds.pathobj / "sub" / "one"))
-    eq_(immediate_metadata["intra_dataset_path"], str(MetadataPath("sub/one")))
+    eq_(
+        MetadataPath(immediate_metadata["intra_dataset_path"]),
+        MetadataPath("sub/one"))
+
     eq_(immediate_metadata["comment"], "test-implementation")

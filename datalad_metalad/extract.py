@@ -14,7 +14,7 @@ import logging
 import tempfile
 import time
 from os import curdir
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Dict, Iterable,  List, Optional, Tuple, Type, Union
 from uuid import UUID
 
@@ -451,7 +451,10 @@ def get_file_info(dataset: Dataset,
         byte_size=path_status.get("bytesize", 0),
         state=path_status["state"],
         path=path_status["path"],  # TODO: use the dataset-tree path here?
-        intra_dataset_path=path_status["path"][len(dataset.path) + 1:])
+        intra_dataset_path=str(
+            MetadataPath(
+                *PurePath(
+                    path_status["path"]).relative_to(dataset.pathobj).parts)))
 
 
 def get_path_info(dataset: Dataset,
