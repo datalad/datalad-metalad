@@ -12,10 +12,11 @@ import logging
 import subprocess
 from uuid import UUID
 from typing import Any, Dict, IO, List, Optional, Union
-from datalad.distribution.dataset import Dataset
-from datalad_metalad.extractors.base import FileInfo
 
-from .base import DataOutputCategory, ExtractorResult, FileMetadataExtractor
+from datalad.distribution.dataset import Dataset
+
+from .base import DataOutputCategory, ExtractorResult, FileInfo, \
+    FileMetadataExtractor
 
 
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core_file')
@@ -32,7 +33,7 @@ class ExternalFileExtractor(FileMetadataExtractor):
         FileMetadataExtractor.__init__(self, dataset, ref_commit, file_info, parameter)
 
         self.external_command = self.parameter["command"]
-        self.extractor_id = self.parameter.get("extractor-id", None)
+        provided_extractor_id = self.parameter.get("extractor-id", None)
         self.data_output_category = self.parameter.get("data-output-category", None)
         self.content_required = self.parameter.get("content-required", None)
         self.version = self.parameter.get("version", None)
@@ -44,7 +45,7 @@ class ExternalFileExtractor(FileMetadataExtractor):
                 del self.parameter[entry]
 
         self.extractor_id = (
-            UUID(self.extractor_id)
+            UUID(provided_extractor_id)
             if self.extractor_id is not None
             else None)
 

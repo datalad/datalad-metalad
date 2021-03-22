@@ -34,7 +34,7 @@ class ExternalDatasetExtractor(DatasetMetadataExtractor):
         self.required_content_acquired = False
 
         self.external_command = self.parameter["command"]
-        self.extractor_id = self.parameter.get("extractor-id", None)
+        provided_extractor_id = self.parameter.get("extractor-id", None)
         self.data_output_category = self.parameter.get("data-output-category", None)
         self.version = self.parameter.get("version", None)
 
@@ -43,7 +43,7 @@ class ExternalDatasetExtractor(DatasetMetadataExtractor):
                 del self.parameter[entry]
 
         self.extractor_id = (
-            UUID(self.extractor_id)
+            UUID(provided_extractor_id)
             if self.extractor_id is not None
             else None)
 
