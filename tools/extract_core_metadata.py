@@ -44,7 +44,13 @@ argument_parser.add_argument(
 argument_parser.add_argument(
     "-r", "--recursive",
     action="store_true", default=False,
-    help="collect metadata recursively in the top-level dataset")
+    help="collect metadata recursively in all datasets")
+
+argument_parser.add_argument(
+    "-a", "--aggregate",
+    action="store_true", default=False,
+    help="aggregate all extracted metadata in the top level dataset, this"
+         "is only useful if recursive was specified (i.e. -r/--recursive)")
 
 argument_parser.add_argument(
     "-f", "--file-extractor",
@@ -91,7 +97,7 @@ def extract_dataset_level_metadata(realm: str,
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", dataset_path
+        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
@@ -105,7 +111,7 @@ def extract_file_level_metadata(realm: str,
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
         f"{arguments.file_extractor}", file_path, "-d",
-        dataset_path, "-i", dataset_path
+        dataset_path, "-i", realm
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
@@ -146,7 +152,8 @@ def extract_file_recursive(realm: str,
                 realm, dataset_entry, entry, metalad_arguments)
     else:
         extract_file_level_metadata(
-            realm, dataset_entry.path,
+            realm,
+            dataset_entry.path,
             entry.path[len(dataset_entry.path) + 1:],
             metalad_arguments)
 
@@ -213,17 +220,33 @@ def main() -> int:
             file=sys.stderr)
         return 1
 
+    if arguments.aggregate is True:
+        if arguments.recursive is False:
+            print(
+                "Warning: 'aggregate' ignored, since 'recursive' is not set",
+                file=sys.stderr)
+            arguments.into = None
+        else:
+            arguments.into = arguments.dataset_path
+    else:
+        arguments.into = None
+
     top_dir_entry = get_top_level_entry(arguments.dataset_path)
     if arguments.recursive is True:
-        extract_recursive(
-            top_dir_entry.path,
-            top_dir_entry,
-            top_dir_entry,
-            arguments.metalad_arguments)
+        if arguments.into:
+            extract_recursive(
+                top_dir_entry.path,
+                top_dir_entry,
+                top_dir_entry,
+                arguments.metalad_arguments)
+        else:
+            extract_individual_recursive(
+                top_dir_entry.path,
+                top_dir_entry,
+                top_dir_entry,
+                arguments.metalad_arguments)
     else:
-        extract_individual_recursive(
-            top_dir_entry.path,
-            top_dir_entry,
+        extract_individual(
             top_dir_entry,
             arguments.metalad_arguments)
 
