@@ -1,6 +1,7 @@
 import unittest
 from typing import List
 
+from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 
@@ -9,10 +10,21 @@ from ..treesearch import MatchRecord, TreeSearch
 
 class TestTreeSearchBase(unittest.TestCase):
     @staticmethod
-    def create_tree_search_from_paths(path_list: List[MetadataPath]) -> TreeSearch:
+    def create_tree_search_from_paths(path_list: List[MetadataPath]
+                                      ) -> TreeSearch:
+
         tree = FileTree("", "")
         for path in path_list:
             tree.add_file(path)
+        return TreeSearch(tree)
+
+    @staticmethod
+    def create_dataset_tree_search_from_paths(path_list: List[MetadataPath]
+                                              ) -> TreeSearch:
+
+        tree = DatasetTree("", "")
+        for path in path_list:
+            tree.add_dataset(path, f"test:{path}")
         return TreeSearch(tree)
 
     def setUp(self) -> None:
@@ -24,6 +36,20 @@ class TestTreeSearchBase(unittest.TestCase):
             MetadataPath("d3/.datalad_metadata"),
             MetadataPath("d3/some_file")]
         self.tree_search = self.create_tree_search_from_paths(self.path_list)
+
+        self.dataset_path_list = [
+            MetadataPath(""),
+            MetadataPath("dataset_0.0"),
+            MetadataPath("dataset_0.0/dataset_0.0.0"),
+            MetadataPath("dataset_0.0/dataset_0.0.1"),
+            MetadataPath("dataset_0.0/dataset_0.0.2"),
+            MetadataPath("dataset_0.1"),
+            MetadataPath("dataset_0.1/dataset_0.1.0"),
+            MetadataPath("dataset_0.1/dataset_0.1.1"),
+            MetadataPath("dataset_0.1/dataset_0.1.2"),
+        ]
+        self.dataset_tree_search = self.create_dataset_tree_search_from_paths(
+            self.dataset_path_list)
 
     def assertSameElements(self, list_a: List, list_b: List):
         l_a = list_a[:]
@@ -52,9 +78,16 @@ class TestTreeSearchMatching(TestTreeSearchBase):
 
     def _test_pattern(self,
                       pattern_list: List[str],
-                      expected_matches: List[str]):
+                      expected_matches: List[str],
+                      use_dataset_tree: bool = False):
 
-        found, failed = self.tree_search.get_matching_paths(pattern_list, False)
+        tree_search = (
+            self.dataset_tree_search
+            if use_dataset_tree is True
+            else self.tree_search
+        )
+
+        found, failed = tree_search.get_matching_paths(pattern_list, False)
         self.assertPathsInResult(found, expected_matches)
         self.assertListEqual(failed, [])
 
@@ -90,6 +123,16 @@ class TestTreeSearchMatching(TestTreeSearchBase):
             found,
             [MatchRecord(MetadataPath(""), self.tree_search.tree)])
         self.assertListEqual(failed, [])
+
+    def test_root_dataset(self):
+        self._test_pattern(
+            ["*"],
+            [
+                MetadataPath(""),
+                MetadataPath("dataset_0.0"),
+                MetadataPath("dataset_0.1")
+            ],
+            use_dataset_tree=True)
 
     def test_pattern_1(self):
         self._test_pattern(

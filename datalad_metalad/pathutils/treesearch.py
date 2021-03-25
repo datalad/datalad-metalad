@@ -64,7 +64,13 @@ class TreeSearch:
         failed_patterns: List[MetadataPath] = []
 
         for pattern in pattern_list:
-            if pattern.parts == ():
+            if pattern.parts in (("*",), ("",)):
+
+                # TODO: fix this case and combine with the next
+                # Special cases in which the root node is added
+                match_records.extend(self._get_root_nodes(auto_list_root))
+
+            elif pattern.parts == ():
                 match_records.extend(self._get_root_nodes(auto_list_root))
 
             else:
