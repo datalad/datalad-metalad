@@ -159,6 +159,7 @@ class ReportOn(enum.Enum):
 def _create_result_record(mapper: str,
                           realm: str,
                           metadata_record: JSONObject,
+                          element_path: str,
                           report_type: str):
     return {
         "status": "ok",
@@ -168,7 +169,8 @@ def _create_result_record(mapper: str,
             "realm": realm
         },
         "type": report_type,
-        "metadata": metadata_record
+        "metadata": metadata_record,
+        "path": element_path
     }
 
 
@@ -201,6 +203,7 @@ def show_dataset_metadata(mapper: str,
 
     result_json_object = {
         "dataset_level_metadata": {
+            "root_dataset_realm": realm,
             "root_dataset_identifier": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
             "dataset_identifier": str(metadata_root_record.dataset_identifier),
@@ -224,6 +227,7 @@ def show_dataset_metadata(mapper: str,
             mapper,
             realm,
             result_json_object,
+            str(dataset_path),
             "dataset")
 
     # Remove dataset-level metadata when we are done with it
@@ -286,6 +290,7 @@ def show_file_tree_metadata(mapper: str,
                 mapper,
                 realm,
                 result_json_object,
+                str(dataset_path / path),
                 "file")
 
         # Remove metadata object after all instances are reported
@@ -343,7 +348,6 @@ def dump_from_dataset_tree(mapper: str,
             match_record.path,
             match_record.node.value)
 
-        # TODO: check the different file paths
         yield from show_file_tree_metadata(
             mapper,
             realm,
@@ -531,22 +535,78 @@ class Dump(Interface):
             return
 
         parser = MetadataURLParser(path)
-        metadata_path = parser.parse()
+        metadata_url = parser.parse()
 
-        if isinstance(metadata_path, TreeMetadataURL):
+        if isinstance(metadata_url, TreeMetadataURL):
             yield from dump_from_dataset_tree(
                 backend,
                 realm,
                 tree_version_list,
-                metadata_path,
+                metadata_url,
                 recursive)
 
-        elif isinstance(metadata_path, UUIDMetadataURL):
+        elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
                 backend,
                 realm,
                 uuid_set,
-                metadata_path,
+                metadata_url,
                 recursive)
 
         return
+
+    @staticmethod
+    def custom_result_renderer(res, **kwargs):
+        import datalad.support.ansi_colors as ansi_colors
+        from datalad.ui import ui
+
+        if res["status"] != "ok" or res.get("action", "") != 'meta_dump':
+            # logging complained about this already
+            return
+
+        x = """
+        if kwargs.get("reporton", None) == "jsonld":
+            # special case of a JSON-LD report request
+            # all reports are consolidated into a single
+            # graph, dumps just that (no pretty printing, can
+            # be done outside)
+            ui.message(jsondumps(
+                res['metadata'],
+                # support utf-8 output
+                ensure_ascii=False,
+                # this cannot happen, spare the checks
+                check_circular=False,
+                # this will cause the output to not necessarily be
+                # JSON compliant, but at least contain all info that went
+                # in, and be usable for javascript consumers
+                allow_nan=True,
+            ))
+            return
+        """
+
+        # list the path, available metadata keys, and tags
+        file_level_metadata = res["metadata"].get("file_level_metadata", None)
+        if file_level_metadata:
+            path = (
+                str(file_level_metadata["dataset_path"] or ".")
+                + ":"
+                + str(file_level_metadata["file_path"]))
+        else:
+            path = res["metadata"]["dataset_level_metadata"]["dataset_path"] or "."
+
+        meta = (
+            res["metadata"]["file_level_metadata"]
+            if res["type"] == "file"
+            else res["metadata"]["dataset_level_metadata"])
+
+        ui.message('{type}{space} {path} [{extractors}]'.format(
+            path=ansi_colors.color_word(path, ansi_colors.BOLD),
+            type=(
+                '({})'.format(
+                    ansi_colors.color_word(
+                        res['type'],
+                        ansi_colors.MAGENTA))
+                if 'type' in res
+                else ''),
+            space=" " * (12 - len(res['type'])),
+            extractors=','.join(meta["metadata"].keys())))
