@@ -21,6 +21,7 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_true,
     eq_,
+    skip_if_on_windows,
     with_tempfile
 )
 
@@ -186,6 +187,7 @@ def _get_metadata_content(metadata):
     return instances[0].metadata_source.content
 
 
+@skip_if_on_windows
 @with_tempfile
 def test_add_dataset_end_to_end(file_name):
     json.dump(metadata_template, open(file_name, "tw"))
@@ -210,6 +212,7 @@ def test_add_dataset_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
+@skip_if_on_windows
 @with_tempfile
 def test_add_file_end_to_end(file_name):
 
@@ -243,6 +246,7 @@ def test_add_file_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
+@skip_if_on_windows
 @with_tempfile
 def test_subdataset_add_dataset_end_to_end(file_name):
 
@@ -281,6 +285,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
+@skip_if_on_windows
 @with_tempfile
 def test_subdataset_add_file_end_to_end(file_name):
 
