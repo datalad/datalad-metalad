@@ -12,7 +12,6 @@ from uuid import UUID
 
 from .. import get_file_id
 from .base import DataOutputCategory, ExtractorResult, FileMetadataExtractor
-from datalad.log import log_progress
 
 
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core_file')
@@ -33,15 +32,6 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
         return "0.0.1"
 
     def extract(self, _=None) -> ExtractorResult:
-        log_progress(
-            lgr.info,
-            "datalad_core_file_extractor",
-            "Running core file extraction for %s in %s",
-            self.file_info.intra_dataset_path,
-            self.dataset.path,
-            label="Core file metadata extraction",
-            unit="File")
-
         return ExtractorResult(
             extractor_version=self.get_version(),
             extraction_parameter=self.parameter or {},

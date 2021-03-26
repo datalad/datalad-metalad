@@ -11,7 +11,6 @@ import logging
 from uuid import UUID
 
 from .base import DataOutputCategory, ExtractorResult, DatasetMetadataExtractor
-from datalad.log import log_progress
 
 
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core_dataset')
@@ -32,14 +31,6 @@ class DataladCoreDatasetExtractor(DatasetMetadataExtractor):
         return True
 
     def extract(self, _=None) -> ExtractorResult:
-        log_progress(
-            lgr.info,
-            "datalad_core_dataset_extractor",
-            "Running core dataset extraction for uuid:%s, tree:%s",
-            self.dataset.id,
-            self.dataset.path,
-            label="Core dataset metadata extraction")
-
         return ExtractorResult(
             extractor_version=self.get_version(),
             extraction_parameter=self.parameter or {},

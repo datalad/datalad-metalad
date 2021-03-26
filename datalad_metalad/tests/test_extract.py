@@ -9,25 +9,26 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
 from uuid import UUID
+from typing import Optional
 
 from datalad.distribution.dataset import Dataset
 from datalad.api import meta_extract
 from datalad.utils import chpwd
 
 from datalad.tests.utils import (
-    with_tempfile,
-    with_tree,
-    assert_is_not_none,
     assert_repo_status,
     assert_raises,
     assert_result_count,
     assert_in,
-    assert_true,
-    eq_
+    eq_,
+    known_failure,
+    with_tempfile,
+    with_tree
 )
 
-from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.metadatapath import MetadataPath
+
+from ..extract import get_extractor_class
 
 
 meta_tree = {
@@ -56,8 +57,28 @@ def test_unknown_extractor_error(path):
             meta_extract, extractorname="bogus__")
 
 
+def _check_metadata_record(metadata_record: dict,
+                           dataset: Dataset,
+                           extractor_name: str,
+                           extractor_version: str,
+                           extraction_parameter: dict,
+                           path: Optional[str] = None):
+
+    assert_in("extraction_time", metadata_record)
+    eq_(metadata_record["dataset_id"], UUID(dataset.id))
+    eq_(metadata_record["dataset_version"], dataset.repo.get_hexsha())
+    eq_(metadata_record["extractor_version"], extractor_version)
+    eq_(metadata_record["extractor_name"], extractor_name)
+    eq_(metadata_record["extraction_parameter"], extraction_parameter)
+    eq_(metadata_record["agent_name"], "DataLad Tester")
+    eq_(metadata_record["agent_email"], "test@example.com")
+    if path is not None:
+        eq_(metadata_record["intra_dataset_path"], MetadataPath(path))
+
+
 @with_tree(meta_tree)
-def test_dataset_extraction_end_to_end(path):
+def test_dataset_extraction_result(path):
+
     ds = Dataset(path).create(force=True)
     ds.config.add(
         'datalad.metadata.exclude-path',
@@ -66,55 +87,37 @@ def test_dataset_extraction_end_to_end(path):
     ds.save()
     assert_repo_status(ds.path)
 
-    # by default we get core and annex reports
+    extractor_name = "metalad_core_dataset"
+    extractor_class = get_extractor_class(extractor_name)
+    extractor_version = extractor_class(None, None, None).get_version()
+
     res = meta_extract(
-        extractorname="metalad_core_dataset",
+        extractorname=extractor_name,
         dataset=ds)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
     assert_result_count(res, 0, type='file')
 
-    # Ensure that metadata was created
-    tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
-        "git",
-        path,
-        UUID(ds.id),
-        ds.repo.get_hexsha(),
-        MetadataPath(""))
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={})
 
-    assert_is_not_none(tree_version_list)
-    assert_is_not_none(uuid_set)
-    assert_is_not_none(mrr)
-
-    # Check metadata
-    metadata = mrr.get_dataset_level_metadata()
-    assert_is_not_none(metadata)
-
-    metadata_instances = tuple(metadata.extractor_runs())
-    assert_true(len(metadata_instances) == 1)
-
-    extractor_name, extractor_runs = metadata_instances[0]
-    eq_(extractor_name, "metalad_core_dataset")
-
-    instances = tuple(extractor_runs.get_instances())
-    assert_true(len(instances), 1)
-    metadata_content = instances[0].metadata_content
-    
-    assert_in("id", metadata_content)
-    assert_in("refcommit", metadata_content)
-    assert_in("path", metadata_content)
-    assert_in("comment", metadata_content)
-
-    eq_(metadata_content["id"], ds.id)
-    eq_(metadata_content["refcommit"], ds.repo.get_hexsha())
-    eq_(metadata_content["path"], ds.path)
-    eq_(metadata_content["comment"], "test-implementation of core_dataset")
+    extracted_metadata = metadata_record["extracted_metadata"]
+    eq_(extracted_metadata["id"], ds.id)
+    eq_(extracted_metadata["refcommit"], ds.repo.get_hexsha())
+    eq_(extracted_metadata["path"], ds.path)
+    eq_(extracted_metadata["comment"], "test-implementation")
 
 
 @with_tree(meta_tree)
-def test_file_extraction_end_to_end(path):
-    ds = Dataset(path).create(force=True)
+def test_file_extraction_result(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
     ds.config.add(
         'datalad.metadata.exclude-path',
         '.metadata',
@@ -122,50 +125,178 @@ def test_file_extraction_end_to_end(path):
     ds.save()
     assert_repo_status(ds.path)
 
-    # by default we get core and annex reports
+    file_path = "sub/one"
+    extractor_name = "metalad_core_file"
+    extractor_class = get_extractor_class(extractor_name)
+    extractor_version = extractor_class(None, None, None).get_version()
+
     res = meta_extract(
-        extractorname="metalad_core_file",
-        path="sub/one",
+        extractorname=extractor_name,
+        path=file_path,
         dataset=ds)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
     assert_result_count(res, 0, type='dataset')
 
-    # Ensure that metadata was created
-    tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
-        "git",
-        path,
-        UUID(ds.id),
-        ds.repo.get_hexsha(),
-        MetadataPath(""))
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={},
+        path=file_path)
 
-    assert_is_not_none(tree_version_list)
-    assert_is_not_none(uuid_set)
-    assert_is_not_none(mrr)
+    extracted_metadata = metadata_record["extracted_metadata"]
+    assert_in("@id", extracted_metadata)
+    eq_(extracted_metadata["type"], "file")
+    eq_(extracted_metadata["path"], str(ds.pathobj / file_path))
+    eq_(extracted_metadata["intra_dataset_path"], file_path)
+    eq_(extracted_metadata["content_byte_size"], 111)
+    eq_(extracted_metadata["comment"], "test-implementation")
 
-    # Check file level metadata
-    file_tree = mrr.get_file_tree()
-    assert_is_not_none(file_tree)
 
-    assert_true("sub/one" in file_tree)
-    metadata = file_tree.get_metadata(MetadataPath("sub/one"))
-    metadata_instances = tuple(metadata.extractor_runs())
-    assert_true(len(metadata_instances) == 1)
+@known_failure
+@with_tree(meta_tree)
+def test_legacy1_dataset_extraction_result(ds_path):
 
-    extractor_name, extractor_runs = metadata_instances[0]
-    eq_(extractor_name, "metalad_core_file")
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
 
-    instances = tuple(extractor_runs.get_instances())
-    assert_true(len(instances), 1)
-    metadata_content = instances[0].metadata_content
+    extractor_name = "metalad_core"
+    extractor_version = "1"
 
-    assert_in("@id", metadata_content)
-    assert_in("type", metadata_content)
-    assert_in("path", metadata_content)
-    assert_in("content_byte_size", metadata_content)
-    assert_in("comment", metadata_content)
+    res = meta_extract(
+        extractorname=extractor_name,
+        dataset=ds)
 
-    eq_(metadata_content["type"], "file")
-    eq_(metadata_content["path"], str("sub/one"))
-    eq_(metadata_content["comment"], "test-implementation of core_file")
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='dataset')
+    assert_result_count(res, 0, type='file')
+
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={})
+
+    extracted_metadata = metadata_record["extracted_metadata"]
+    assert_in("@id", extracted_metadata)
+    eq_(extracted_metadata["contentbytesize"], 1)
+
+
+@with_tree(meta_tree)
+def test_legacy2_dataset_extraction_result(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    extractor_name = "datalad_core"
+    extractor_version = "un-versioned"
+
+    res = meta_extract(
+        extractorname=extractor_name,
+        dataset=ds)
+
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='dataset')
+    assert_result_count(res, 0, type='file')
+
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={})
+
+    extracted_metadata = metadata_record["extracted_metadata"]
+    assert_in("@id", extracted_metadata)
+
+
+@with_tree(meta_tree)
+def test_legacy1_file_extraction_result(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    file_path = "sub/one"
+    extractor_name = "metalad_core"
+    extractor_version = "1"
+
+    res = meta_extract(
+        extractorname=extractor_name,
+        path=file_path,
+        dataset=ds)
+
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='file')
+    assert_result_count(res, 0, type='dataset')
+
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={},
+        path=file_path)
+
+    extracted_metadata = metadata_record["extracted_metadata"]
+    assert_in("@id", extracted_metadata)
+    eq_(extracted_metadata["contentbytesize"], 1)
+
+
+@with_tree(meta_tree)
+def test_legacy2_file_extraction_result(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    file_path = "sub/one"
+    extractor_name = "datalad_core"
+    extractor_version = "un-versioned"
+
+    res = meta_extract(
+        extractorname=extractor_name,
+        path=file_path,
+        dataset=ds)
+
+    assert_result_count(res, 1)
+    assert_result_count(res, 1, type='file')
+    assert_result_count(res, 0, type='dataset')
+
+    metadata_record = res[0]["metadata_record"]
+    _check_metadata_record(
+        metadata_record=metadata_record,
+        dataset=ds,
+        extractor_name=extractor_name,
+        extractor_version=extractor_version,
+        extraction_parameter={},
+        path=file_path)
+
+    extracted_metadata = metadata_record["extracted_metadata"]
+    eq_(extracted_metadata, {})
