@@ -184,7 +184,7 @@ def _get_metadata_content(metadata):
     instances = tuple(extractor_runs.get_instances())
     assert_true(len(instances), 1)
 
-    return instances[0].metadata_source.content
+    return instances[0].metadata_content
 
 
 @skip_if_on_windows

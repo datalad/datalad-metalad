@@ -44,7 +44,6 @@ from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, \
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
-from dataladmetadatamodel.metadatasource import ImmediateMetadataSource
 
 from .exceptions import MetadataKeyException
 
@@ -447,4 +446,4 @@ def add_metadata_content(metadata: Metadata, ap: AddParameter):
         ExtractorConfiguration(
             ap.extractor_version,
             ap.extraction_parameter),
-        ImmediateMetadataSource(ap.extracted_metadata))
+        ap.extracted_metadata)
