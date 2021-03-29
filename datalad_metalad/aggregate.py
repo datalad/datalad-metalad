@@ -161,17 +161,15 @@ class Aggregate(Interface):
             args=("path",),
             metavar="PATH",
             doc=r"""
-            If -s, --separatepaths is defined (currently it IS
-            defined by default and cannot be change), the realm
-            that store metadata and the intra-dataset path for the
-            sub-dataset, whose metadata is stored in realm, are given
-            separately. Consequently path is interpreted a list of
-            pairs of:
-            
+            PATH is interpreted a list of pairs, where the first entry
+            a path and the second entry is a METADATA_REALM, i.e. a git
+            repository where metadata is stored. More precisely the
+            elements are:
+               
             1. Intra dataset path of sub-dataset whose metadata is stored
-               in the METADATA_REALM.
-            2. Location of METADATA_REALM, i.e. metadata repository-path
-
+               in the METADATA_REALM.  
+            2. Location of METADATA_REALM, i.e. metadata repository-path  
+  
             For example, if the root dataset  path is "root_ds", and the
             metadata of the root is located in "/metadata/root_ds", and
             the sub-dataset we want to aggregate into the root dataset
@@ -199,13 +197,8 @@ class Aggregate(Interface):
             recursive=False,
             recursion_limit=None):
 
-        separate_paths = True
-        if separate_paths is True:
-            path_realm_associations = process_separated_path_spec(path)
-        else:
-            path_realm_associations = process_congruent_path_spec(path)
-
         root_realm = root_realm or "."
+        path_realm_associations = process_separated_path_spec(path)
 
         # TODO: we should read-lock all ag_realms
         # Collect aggregate information
@@ -281,15 +274,18 @@ def process_separated_path_spec(paths: List[str]
         raise ValueError(
             "You must provide the same number of "
             "intra-dataset-paths and realms")
-    return tuple(
-        zip(
-            map(MetadataPath, islice(paths, 0, len(paths), 2)),
-            map(Path, islice(paths, 1, len(paths), 2))))
 
+    intra_dataset_paths, system_paths = (
+        map(MetadataPath, islice(paths, 0, len(paths), 2)),
+        map(Path, islice(paths, 1, len(paths), 2)))
 
-def process_congruent_path_spec(paths: List[str]
-                                ) -> Tuple[Tuple[MetadataPath, Path], ...]:
-    raise NotImplementedError
+    for path in system_paths:
+        if not path.exists():
+            raise FileNotFoundError(str(path))
+        if not path.is_dir():
+            raise NotADirectoryError(str(path))
+
+    return tuple(zip(intra_dataset_paths, system_paths))
 
 
 def perform_aggregation(destination_realm: str,
