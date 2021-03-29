@@ -111,6 +111,7 @@ We use the small object approach below
 __docformat__ = 'restructuredtext'
 
 import enum
+import json
 import logging
 from typing import Generator
 from uuid import UUID
@@ -125,6 +126,7 @@ from datalad.support.constraints import (
     EnsureChoice,
 )
 from datalad.support.param import Parameter
+from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatapath import MetadataPath
@@ -177,10 +179,11 @@ def _create_result_record(mapper: str,
 def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
     return {
         "extraction_time": instance.time_stamp,
-        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+        "extraction_agent_name": f"{instance.author_name}",
+        "extraction_agent_email": f"<{instance.author_email}>",
         "extractor_version": instance.configuration.version,
-        "extractor_parameter": instance.configuration.parameter,
-        "extractor_result": instance.metadata_source.to_json_obj()
+        "extraction_parameter": instance.configuration.parameter,
+        "extraction_result": instance.metadata_content
     }
 
 
@@ -271,8 +274,11 @@ def show_file_tree_metadata(mapper: str,
             "file_level_metadata": {
                 "root_dataset_identifier": str(root_dataset_identifier),
                 "root_dataset_version": root_dataset_version,
-                "dataset_path": dataset_path,
-                "file_path": path
+                "dataset_identifier": str(
+                    metadata_root_record.dataset_identifier),
+                "dataset_version": metadata_root_record.dataset_version,
+                "dataset_path": str(dataset_path),
+                "file_path": str(path)
             }
         }
 
@@ -557,56 +563,64 @@ class Dump(Interface):
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
-        import datalad.support.ansi_colors as ansi_colors
-        from datalad.ui import ui
 
         if res["status"] != "ok" or res.get("action", "") != 'meta_dump':
             # logging complained about this already
             return
 
-        x = """
-        if kwargs.get("reporton", None) == "jsonld":
-            # special case of a JSON-LD report request
-            # all reports are consolidated into a single
-            # graph, dumps just that (no pretty printing, can
-            # be done outside)
-            ui.message(jsondumps(
-                res['metadata'],
-                # support utf-8 output
-                ensure_ascii=False,
-                # this cannot happen, spare the checks
-                check_circular=False,
-                # this will cause the output to not necessarily be
-                # JSON compliant, but at least contain all info that went
-                # in, and be usable for javascript consumers
-                allow_nan=True,
-            ))
-            return
-        """
+        render_dataset_level_metadata(
+            res["metadata"].get("dataset_level_metadata", dict()))
 
-        # list the path, available metadata keys, and tags
-        file_level_metadata = res["metadata"].get("file_level_metadata", None)
-        if file_level_metadata:
-            path = (
-                str(file_level_metadata["dataset_path"] or ".")
-                + ":"
-                + str(file_level_metadata["file_path"]))
-        else:
-            path = res["metadata"]["dataset_level_metadata"]["dataset_path"] or "."
+        render_file_level_metadata(
+            res["metadata"].get("file_level_metadata", dict()))
 
-        meta = (
-            res["metadata"]["file_level_metadata"]
-            if res["type"] == "file"
-            else res["metadata"]["dataset_level_metadata"])
 
-        ui.message('{type}{space} {path} [{extractors}]'.format(
-            path=ansi_colors.color_word(path, ansi_colors.BOLD),
-            type=(
-                '({})'.format(
-                    ansi_colors.color_word(
-                        res['type'],
-                        ansi_colors.MAGENTA))
-                if 'type' in res
-                else ''),
-            space=" " * (12 - len(res['type'])),
-            extractors=','.join(meta["metadata"].keys())))
+def render_dataset_level_metadata(dl_metadata: dict):
+    if not dl_metadata:
+        return
+
+    result_base = dict(
+        type="dataset",
+        dataset_id=dl_metadata["dataset_identifier"],
+        dataset_version=dl_metadata["dataset_version"])
+
+    render_common_metadata(dl_metadata, result_base)
+
+
+def render_file_level_metadata(fl_metadata: dict):
+    if not fl_metadata:
+        return
+
+    result_base = dict(
+        type="file",
+        dataset_id=fl_metadata["dataset_identifier"],
+        dataset_version=fl_metadata["dataset_version"],
+        path=fl_metadata["file_path"])
+
+    render_common_metadata(fl_metadata, result_base)
+
+
+def render_common_metadata(metadata: dict, result_base: dict):
+
+    if result_base["dataset_version"] != metadata["root_dataset_version"]:
+        assert metadata["dataset_path"] != ""
+        result_base["root_dataset_id"] = metadata["root_dataset_identifier"]
+        result_base["root_dataset_version"] = metadata[
+            "root_dataset_version"]
+        result_base["dataset_path"] = metadata["dataset_path"]
+
+    for extractor_name, extractions in metadata["metadata"].items():
+        for extraction in extractions:
+            extraction_result = dict(
+                extractor_name=extractor_name,
+                extractor_version=extraction["extractor_version"],
+                extraction_parameter=extraction["extraction_parameter"],
+                extraction_time=extraction["extraction_time"],
+                agent_name=extraction["extraction_agent_name"],
+                agent_email=extraction["extraction_agent_email"],
+                extracted_metadata=extraction["extraction_result"])
+
+            ui.message(json.dumps({
+                **result_base,
+                **extraction_result
+            }))
