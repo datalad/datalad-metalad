@@ -74,12 +74,6 @@ http://neurostars.org/tags/datalad/
 
 ## Acknowledgements
 
-DataLad development is supported by a US-German collaboration in computational
-neuroscience (CRCNS) project "DataGit: converging catalogues, warehouses, and
-deployment logistics into a federated 'data distribution'" (Halchenko/Hanke),
-co-funded by the US National Science Foundation (NSF 1429999) and the German
-Federal Ministry of Education and Research (BMBF 01GQ1411). Additional support
-is provided by the German federal state of Saxony-Anhalt and the European
-Regional Development Fund (ERDF), Project: Center for Behavioral Brain
-Sciences, Imaging Platform.  This work is further facilitated by the ReproNim
-project (NIH 1P41EB019936-01A1).
+This DataLad extension was developed with support from the German Federal
+Ministry of Education and Research (BMBF 01GQ1905), and the US National Science
+Foundation (NSF 1912266).
