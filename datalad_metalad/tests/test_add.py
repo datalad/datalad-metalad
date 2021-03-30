@@ -137,6 +137,36 @@ def test_override_key_reporting(file_name):
             {"dataset_id": "a2010203-1011-2021-3031-404142434445"}))
 
 
+def test_object_parameter():
+    with \
+            patch("datalad_metalad.add.add_file_metadata") as fp, \
+            patch("datalad_metalad.add.add_dataset_metadata") as dp:
+
+        meta_add(
+            metadata={
+                **metadata_template,
+                "intra_dataset_path": "d1/d1.1./f1.1.1"
+            })
+
+        assert_true(fp.call_count == 1)
+        assert_true(dp.call_count == 0)
+
+
+def test_additional_values_object_parameter():
+    with \
+            patch("datalad_metalad.add.add_file_metadata") as fp, \
+            patch("datalad_metalad.add.add_dataset_metadata") as dp:
+
+        meta_add(
+            metadata=metadata_template,
+            additionalvalues={
+                "intra_dataset_path": "d1/d1.1./f1.1.1"
+            })
+
+        assert_true(fp.call_count == 1)
+        assert_true(dp.call_count == 0)
+
+
 @with_tempfile
 def test_override_key_allowed(file_name):
     json.dump(metadata_template, open(file_name, "tw"))

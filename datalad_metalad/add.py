@@ -17,7 +17,7 @@ import sys
 from itertools import chain
 from os import curdir
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from uuid import UUID
 
 from dataclasses import dataclass
@@ -46,6 +46,10 @@ from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 
 from .exceptions import MetadataKeyException
+
+
+JSONObject = Union[Dict, List]
+
 
 __docformat__ = "restructuredtext"
 
@@ -149,7 +153,7 @@ class Add(Interface):
         map(repr, required_additional_keys))
 
     _params_ = dict(
-            metadata=Parameter(
+        metadata=Parameter(
             args=("metadata",),
             metavar="METADATA",
             doc=f"""Path of a file that contains the metadata that
@@ -210,21 +214,18 @@ class Add(Interface):
     @datasetmethod(name="meta_add")
     @eval_results
     def __call__(
-            metadata: str,
+            metadata: Union[str, JSONObject],
             metadata_store: Optional[str] = None,
-            additionalvalues: Optional[List[str]] = None,
+            additionalvalues: Optional[Union[str, JSONObject]] = None,
             allow_override: bool = False,
             allow_unknown: bool = False):
 
-        if metadata == "-":
-            metadata_file = sys.stdin
-        else:
-            metadata_file = open(metadata, "tr")
-
+        additionalvalues = additionalvalues or dict()
         metadata_store = Path(metadata_store or curdir)
+
         metadata = process_parameters(
-            json.load(metadata_file),
-            json.loads(additionalvalues or "{}"),
+            metadata=read_json_object(metadata),
+            additional_values=get_json_object(additionalvalues),
             allow_override=allow_override,
             allow_unknown=allow_unknown)
 
@@ -262,6 +263,22 @@ class Add(Interface):
         else:
             yield from add_dataset_metadata(metadata_store, add_parameter)
         return
+
+
+def get_json_object(string_or_object: Union[str, JSONObject]):
+    if isinstance(string_or_object, str):
+        return json.loads(string_or_object)
+    return string_or_object
+
+
+def read_json_object(path_or_object: Union[str, JSONObject]):
+    if isinstance(path_or_object, str):
+        if path_or_object == "-":
+            metadata_file = sys.stdin
+        else:
+            metadata_file = open(path_or_object, "tr")
+        return json.load(metadata_file)
+    return path_or_object
 
 
 def process_parameters(metadata: dict,
