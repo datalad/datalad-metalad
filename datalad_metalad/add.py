@@ -101,15 +101,15 @@ class Add(Interface):
 
 
       Add metadata stored in the file "metadata-123.json" to the
-      metadata stored in the git-repository "/metadata/dataset_0".
+      metadata stored in the git-repository "/home/user/dataset_0".
 
-      $ datalad meta-add --metadata-store /metadata/dataset_0 metadata-123.json
+      $ datalad meta-add --metadata-store /home/user/dataset_0 metadata-123.json
 
       Add metadata stored in the file "metadata-123.json" to the
       metadata model instance in the current directory and overwrite
       the "dataset_id" value stored in "metadata-123.json".
 
-      $ datalad meta-add --metadata-store /metadata/dataset_0 metadata-123.json \
+      $ datalad meta-add --metadata-store /home/user/dataset_0 metadata-123.json \
        '{"dataset_id": "00010203-1011-2021-3031-404142434445}'
 
       Add metadata read from standard input to the metadata model
@@ -124,7 +124,7 @@ class Add(Interface):
       directory and overwrite metadata values with the values stored in
       stored in "extra-info.json".
 
-      $ datalad meta-add --metadata-store /metadata/dataset_0 \
+      $ datalad meta-add --metadata-store /home/user/dataset_0 \
        metadata-123.json @extra-info.json
 
     """
