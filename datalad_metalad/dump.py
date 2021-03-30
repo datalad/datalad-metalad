@@ -179,8 +179,8 @@ def _create_result_record(mapper: str,
 def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
     return {
         "extraction_time": instance.time_stamp,
-        "extraction_agent_name": f"{instance.author_name}",
-        "extraction_agent_email": f"<{instance.author_email}>",
+        "extraction_agent_name": instance.author_name,
+        "extraction_agent_email": instance.author_email,
         "extractor_version": instance.configuration.version,
         "extraction_parameter": instance.configuration.parameter,
         "extraction_result": instance.metadata_content
@@ -443,47 +443,44 @@ class Dump(Interface):
         UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
 
     (the tree-format is the default format and does not require a prefix).
-
-    The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
-    find all JSON files in the root directory of all datasets by specifying:
-
-        \\*:\\*.json
-
-    as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
-    go through metadata for all datasets, e.g.:
-
-      % datalad -f json_pp meta-dump \\*:\\*.json -r --reporton files
-
-    or simply do not specify a specific dataset at all:
-
-      % datalad -f json_pp meta-dump :\\*.json -r --reporton files
-
-    Examples:
-
-      Dump the metadata of the file "dataset_description.json" in the
-      dataset "simon". (The queried dataset git-repository is determined
-      based on the current working directory)::
-
-        % datalad meta-dump --reporton files simon:dataset_description.json
-
-      Sometimes it is helpful to get metadata records formatted in a more
-      accessible form, here as pretty-printed JSON::
-
-        % datalad -f json_pp meta-dump simon:dataset_description.json
-
-      Same query as above, but specify that all datasets should be queried
-      for the given path::
-
-        % datalad meta-dump -d . :somedir/subdir/thisfile.dat
-
-      Dump any metadata record of any dataset known to the queried dataset::
-
-        % datalad meta-dump -r --reporton datasets
-
     """
-    # make the custom renderer the default, path reporting isn't the top
-    # priority here
+
+    # Use a custom renderer to emit a self-contained metadata record. The
+    # emitted record can be fed into meta-add for example.
     result_renderer = 'tailored'
+
+    _examples_ = [
+        dict(
+            text='Dump the metadata of the file "dataset_description.json" in '
+                 'the dataset "simon". (The queried dataset git-repository is '
+                 'determined based on the current working directory)',
+            code_cmd="datalad meta-dump simon:dataset_description.json"),
+        dict(
+            text="Sometimes it is helpful to get metadata records formatted "
+                 "in a more accessible form, here as pretty-printed JSON",
+            code_cmd="datalad -f json_pp meta-dump "
+                     "simon:dataset_description.json"),
+        dict(
+            text="Same query as above, but specify that all datasets should "
+                 "be queried for the given path",
+            code_cmd="datalad meta-dump -d . :somedir/subdir/thisfile.dat"),
+        dict(
+            text="Dump any metadata record of any dataset known to the "
+                 "queried dataset",
+            code_cmd="datalad meta-dump -r"),
+        dict(
+            text="Show metadata for all datasets",
+            code_cmd="datalad -f json_pp meta-dump -r"),
+        dict(
+            text="Show metadata for all files ending in `.json´ in the root "
+                 "directories of all datasets",
+            code_cmd="datalad -f json_pp meta-dump *:*.json -r"),
+        dict(
+            text="Show metadata for all files ending in `.json´ in all "
+                 "datasets by not specifying a dataset at all. This will "
+                 "start dumping at the top-level dataset.",
+            code_cmd="datalad -f json_pp meta-dump :*.json -r")
+    ]
 
     _params_ = dict(
         backend=Parameter(
