@@ -109,7 +109,7 @@ def test_dataset_extraction_end_to_end(path):
     eq_(metadata_content["id"], ds.id)
     eq_(metadata_content["refcommit"], ds.repo.get_hexsha())
     eq_(metadata_content["path"], ds.path)
-    eq_(metadata_content["comment"], "test-implementation")
+    eq_(metadata_content["comment"], "test-implementation of core_dataset")
 
 
 @with_tree(meta_tree)
@@ -161,14 +161,11 @@ def test_file_extraction_end_to_end(path):
     metadata_content = instances[0].metadata_content
 
     assert_in("@id", metadata_content)
+    assert_in("type", metadata_content)
     assert_in("path", metadata_content)
-    assert_in("intra_dataset_path", metadata_content)
     assert_in("content_byte_size", metadata_content)
     assert_in("comment", metadata_content)
 
-    eq_(metadata_content["path"], str(ds.pathobj / "sub" / "one"))
-    eq_(
-        MetadataPath(metadata_content["intra_dataset_path"]),
-        MetadataPath("sub/one"))
-
-    eq_(metadata_content["comment"], "test-implementation")
+    eq_(metadata_content["type"], "file")
+    eq_(metadata_content["path"], str("sub/one"))
+    eq_(metadata_content["comment"], "test-implementation of core_file")
