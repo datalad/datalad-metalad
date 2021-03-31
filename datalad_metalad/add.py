@@ -130,6 +130,7 @@ class Add(Interface):
     """
 
     required_keys = (
+        "type",
         "extractor_name",
         "extractor_version",
         "extraction_parameter",
@@ -141,7 +142,7 @@ class Add(Interface):
         "extracted_metadata")
 
     optional_keys = (
-        "intra_dataset_path",)
+        "path",)
 
     required_additional_keys = (
         "root_dataset_id",
@@ -233,8 +234,8 @@ class Add(Interface):
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
             file_path=(
-                MetadataPath(metadata["intra_dataset_path"])
-                if "intra_dataset_path" in metadata
+                MetadataPath(metadata["path"])
+                if "path" in metadata
                 else None),
 
             root_dataset_id=(
@@ -254,7 +255,7 @@ class Add(Interface):
 
             extracted_metadata=metadata["extracted_metadata"])
 
-        # If the key "intra_dataset_path" is present in the metadata
+        # If the key "path" is present in the metadata
         # dictionary, we assume that the metadata-dictionary describes
         # file-level metadata. Otherwise, we assume that the
         # metadata-dictionary contains dataset-level metadata.
@@ -348,6 +349,18 @@ def process_parameters(metadata: dict,
             raise MetadataKeyException("Unknown keys", unknown_keys)
         lgr.warning("Unknown keys in metadata: " + ", ".join(unknown_keys))
 
+    # Check dataset/file consistence
+    if metadata["type"] == "file":
+        if "path" not in metadata:
+            raise MetadataKeyException(
+                "Missing path-property in file-type metadata")
+    elif metadata["type"] == "dataset":
+        if "path" in metadata:
+            raise MetadataKeyException(
+                "Extraneous path-property in dataset-type metadata")
+    else:
+        raise MetadataKeyException(f"Unknown type {metadata['type']}")
+
     return metadata
 
 
@@ -373,7 +386,7 @@ def _get_top_nodes(realm: str, ap: AddParameter):
     _, dataset_tree = tree_version_list.get_dataset_tree(
         ap.root_dataset_version)
 
-    if ap.dataset_tree_path in dataset_tree:
+    if ap.dataset_tree_path != MetadataPath("") and ap.dataset_tree_path in dataset_tree:
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_tree_path)
         assert mrr.dataset_identifier == ap.dataset_id
     else:

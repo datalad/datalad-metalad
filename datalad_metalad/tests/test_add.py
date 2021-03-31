@@ -67,6 +67,7 @@ def test_unknown_key_reporting(file_name):
 
     json.dump({
             **metadata_template,
+            "type": "dataset",
             "strange_key_name": "some value"
         },
         open(file_name, "tw"))
@@ -81,6 +82,7 @@ def test_unknown_key_allowed(file_name):
 
     json.dump({
             **metadata_template,
+            "type": "dataset",
             "strange_key_name": "some value"
         },
         open(file_name, "tw"))
@@ -102,7 +104,8 @@ def test_optional_keys(file_name):
 
     json.dump({
             **metadata_template,
-            "intra_dataset_path": "d1/d1.1./f1.1.1"
+            "type": "file",
+            "path": "d1/d1.1./f1.1.1"
         },
         open(file_name, "tw"))
 
@@ -120,7 +123,12 @@ def test_optional_keys(file_name):
 
 @with_tempfile
 def test_incomplete_non_mandatory_key_handling(file_name):
-    json.dump(metadata_template, open(file_name, "tw"))
+    json.dump({
+            **metadata_template,
+            "type": "dataset"
+        },
+        open(file_name, "tw"))
+
     _assert_raise_mke_with_keys(
         ["root_dataset_version", "inter_dataset_path"],
         metadata=file_name,
@@ -129,7 +137,12 @@ def test_incomplete_non_mandatory_key_handling(file_name):
 
 @with_tempfile
 def test_override_key_reporting(file_name):
-    json.dump(metadata_template, open(file_name, "tw"))
+    json.dump({
+            **metadata_template,
+            "type": "dataset"
+        },
+        open(file_name, "tw"))
+
     _assert_raise_mke_with_keys(
         ["dataset_id"],
         metadata=file_name,
@@ -145,7 +158,8 @@ def test_object_parameter():
         meta_add(
             metadata={
                 **metadata_template,
-                "intra_dataset_path": "d1/d1.1./f1.1.1"
+                "type": "file",
+                "path": "d1/d1.1./f1.1.1"
             })
 
         assert_true(fp.call_count == 1)
@@ -158,9 +172,12 @@ def test_additional_values_object_parameter():
             patch("datalad_metalad.add.add_dataset_metadata") as dp:
 
         meta_add(
-            metadata=metadata_template,
+            metadata={
+                **metadata_template,
+                "type": "file"
+            },
             additionalvalues={
-                "intra_dataset_path": "d1/d1.1./f1.1.1"
+                "path": "d1/d1.1./f1.1.1"
             })
 
         assert_true(fp.call_count == 1)
@@ -169,7 +186,11 @@ def test_additional_values_object_parameter():
 
 @with_tempfile
 def test_override_key_allowed(file_name):
-    json.dump(metadata_template, open(file_name, "tw"))
+    json.dump({
+            **metadata_template,
+            "type": "dataset"
+        },
+        open(file_name, "tw"))
 
     with \
             patch("datalad_metalad.add.add_file_metadata") as fp, \
@@ -220,7 +241,11 @@ def _get_metadata_content(metadata):
 @skip_if_on_windows
 @with_tempfile
 def test_add_dataset_end_to_end(file_name):
-    json.dump(metadata_template, open(file_name, "tw"))
+    json.dump({
+            **metadata_template,
+            "type": "dataset"
+        },
+        open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
 
@@ -250,7 +275,8 @@ def test_add_file_end_to_end(file_name):
 
     json.dump({
         **metadata_template,
-        "intra_dataset_path": test_path
+        "type": "file",
+        "path": test_path
     }, open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -281,9 +307,11 @@ def test_add_file_end_to_end(file_name):
 def test_subdataset_add_dataset_end_to_end(file_name):
 
     json.dump({
-        **metadata_template,
-        **additional_keys_template
-    }, open(file_name, "tw"))
+            **metadata_template,
+            "type": "dataset",
+            **additional_keys_template
+        },
+        open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = GitRepo(temp_dir)
@@ -324,7 +352,8 @@ def test_subdataset_add_file_end_to_end(file_name):
     json.dump({
         **metadata_template,
         **additional_keys_template,
-        "intra_dataset_path": test_path
+        "type": "file",
+        "path": test_path
     }, open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
