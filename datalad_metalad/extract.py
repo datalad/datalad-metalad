@@ -221,9 +221,25 @@ class Extract(Interface):
         if res["status"] != "ok" or res.get("action", "") != 'meta_extract':
             # logging complained about this already
             return
+
+        metadata_record = res["metadata_record"]
+        path = (
+            {"path": str(metadata_record["path"])}
+            if "path" in metadata_record
+            else {}
+        )
+
+        inter_dataset_path = (
+            {"inter_dataset_path": str(metadata_record["inter_dataset_path"])}
+            if "inter_dataset_path" in metadata_record
+            else {}
+        )
+
         ui.message(json.dumps({
-            **res["metadata_record"],
-            "dataset_id": str(res["metadata_record"]["dataset_id"])
+            **metadata_record,
+            **path,
+            **inter_dataset_path,
+            "dataset_id": str(metadata_record["dataset_id"])
         }))
 
 
@@ -299,7 +315,7 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
             type="file",
             dataset_id=ep.source_dataset_id,
             dataset_version=ep.source_dataset_version,
-            intra_dataset_path=ep.file_tree_path,
+            path=ep.file_tree_path,
             extractor_name=ep.extractor_name,
             extractor_version=extractor.get_version(),
             extraction_parameter=ep.extractor_arguments,
@@ -595,7 +611,7 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
                     type="file",
                     dataset_id=ep.source_dataset_id,
                     dataset_version=ep.source_dataset_version,
-                    intra_dataset_path=ep.file_tree_path,
+                    path=ep.file_tree_path,
                     extractor_name=ep.extractor_name,
                     extractor_version=str(
                         extractor.get_state(ep.source_dataset)["version"]),
@@ -626,7 +642,7 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
                     type="file",
                     dataset_id=ep.source_dataset_id,
                     dataset_version=ep.source_dataset_version,
-                    intra_dataset_path=MetadataPath(path),
+                    path=MetadataPath(path),
                     extractor_name=ep.extractor_name,
                     extractor_version="un-versioned",
                     extraction_parameter=ep.extractor_arguments,
