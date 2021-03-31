@@ -42,6 +42,12 @@ command_suite = (
             'meta-aggregate',
             'meta_aggregate'
         ),
+        (
+            'datalad_metalad.add',
+            'Add',
+            'meta-add',
+            'meta_add'
+        ),
     ]
 )
 

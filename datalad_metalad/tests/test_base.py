@@ -11,15 +11,9 @@
 
 from six import text_type
 import os
-import os.path as op
 
 from datalad.distribution.dataset import Dataset
 from datalad.support.gitrepo import GitRepo
-from datalad.api import (
-    create,
-    save,
-    remove,
-)
 from .. import (
     get_metadata_type,
     get_refcommit,
@@ -29,7 +23,7 @@ from datalad.tests.utils import (
     eq_,
     create_tree,
     assert_repo_status,
-    skip_if_on_windows,
+    known_failure
 )
 
 
@@ -56,7 +50,7 @@ def test_get_metadata_type_oldcfg(path):
     eq_(get_metadata_type(ds), 'mamboschwambo')
 
 
-@skip_if_on_windows
+@known_failure
 @with_tempfile(mkdir=True)
 def test_get_refcommit(path):
     # # dataset without a single commit

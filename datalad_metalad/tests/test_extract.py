@@ -99,17 +99,17 @@ def test_dataset_extraction_end_to_end(path):
 
     instances = tuple(extractor_runs.get_instances())
     assert_true(len(instances), 1)
-    immediate_metadata = instances[0].metadata_source.content
+    metadata_content = instances[0].metadata_content
     
-    assert_in("id", immediate_metadata)
-    assert_in("refcommit", immediate_metadata)
-    assert_in("path", immediate_metadata)
-    assert_in("comment", immediate_metadata)
+    assert_in("id", metadata_content)
+    assert_in("refcommit", metadata_content)
+    assert_in("path", metadata_content)
+    assert_in("comment", metadata_content)
 
-    eq_(immediate_metadata["id"], ds.id)
-    eq_(immediate_metadata["refcommit"], ds.repo.get_hexsha())
-    eq_(immediate_metadata["path"], ds.path)
-    eq_(immediate_metadata["comment"], "test-implementation")
+    eq_(metadata_content["id"], ds.id)
+    eq_(metadata_content["refcommit"], ds.repo.get_hexsha())
+    eq_(metadata_content["path"], ds.path)
+    eq_(metadata_content["comment"], "test-implementation")
 
 
 @with_tree(meta_tree)
@@ -158,17 +158,17 @@ def test_file_extraction_end_to_end(path):
 
     instances = tuple(extractor_runs.get_instances())
     assert_true(len(instances), 1)
-    immediate_metadata = instances[0].metadata_source.content
+    metadata_content = instances[0].metadata_content
 
-    assert_in("@id", immediate_metadata)
-    assert_in("path", immediate_metadata)
-    assert_in("intra_dataset_path", immediate_metadata)
-    assert_in("content_byte_size", immediate_metadata)
-    assert_in("comment", immediate_metadata)
+    assert_in("@id", metadata_content)
+    assert_in("path", metadata_content)
+    assert_in("intra_dataset_path", metadata_content)
+    assert_in("content_byte_size", metadata_content)
+    assert_in("comment", metadata_content)
 
-    eq_(immediate_metadata["path"], str(ds.pathobj / "sub" / "one"))
+    eq_(metadata_content["path"], str(ds.pathobj / "sub" / "one"))
     eq_(
-        MetadataPath(immediate_metadata["intra_dataset_path"]),
+        MetadataPath(metadata_content["intra_dataset_path"]),
         MetadataPath("sub/one"))
 
-    eq_(immediate_metadata["comment"], "test-implementation")
+    eq_(metadata_content["comment"], "test-implementation")

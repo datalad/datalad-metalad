@@ -48,6 +48,7 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
+from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.mapper.gitmapper.objectreference import \
@@ -56,8 +57,6 @@ from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, \
     unlock_backend
 from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
 from dataladmetadatamodel.metadatapath import MetadataPath
-from dataladmetadatamodel.metadatasource import ImmediateMetadataSource, \
-    LocalGitMetadataSource, MetadataSource
 
 from .extractors.base import ExtractorResult
 from .utils import args_to_dict
@@ -305,41 +304,21 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
                                      extractor: FileMetadataExtractor):
 
     output_category = extractor.get_data_output_category()
-    if output_category == DataOutputCategory.IMMEDIATE:
+    if output_category != DataOutputCategory.IMMEDIATE:
+        raise NotImplementedError(
+            "Only immediate data category is supported")
 
-        # Process immediate results
-        result = extractor.extract(None)
-        if result.extraction_success:
-            add_file_metadata_source(
-                ep,
-                result,
-                ImmediateMetadataSource(result.immediate_data))
+    result = extractor.extract(None)
+    result.datalad_result_dict["action"] = "meta_extract"
+    if result.extraction_success:
+        add_file_metadata(ep, result, result.immediate_data)
 
-        result.datalad_result_dict["action"] = "meta_extract"
-        yield result.datalad_result_dict
-
-    elif output_category == DataOutputCategory.FILE:
-
-        # Process file-based results
-        with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
-            result = extractor.extract(temporary_file_info)
-            if result.extraction_success:
-                add_file_metadata(
-                    ep,
-                    result,
-                    Path(temporary_file_info.name))
-            result.datalad_result_dict["action"] = "meta_extract"
-            yield result.datalad_result_dict
-
-    elif output_category == DataOutputCategory.DIRECTORY:
-
-        # Process directory results
-        raise NotImplementedError
-
-    lgr.info(
+    lgr.debug(
         f"added file metadata result to realm {repr(ep.realm)}, "
         f"dataset tree path {repr(ep.dataset_tree_path)}, "
         f"file tree path {repr(ep.file_tree_path)}")
+
+    yield result.datalad_result_dict
 
     return
 
@@ -348,39 +327,20 @@ def perform_dataset_metadata_extraction(ep: ExtractionParameter,
                                         extractor: DatasetMetadataExtractor):
 
     output_category = extractor.get_data_output_category()
-    if output_category == DataOutputCategory.IMMEDIATE:
-        # Process inline results
-        result = extractor.extract(None)
-        if result.extraction_success:
-            add_dataset_metadata_source(
-                ep,
-                result,
-                ImmediateMetadataSource(result.immediate_data))
+    if output_category != DataOutputCategory.IMMEDIATE:
+        raise NotImplementedError(
+            "Only immediate data category is supported")
 
-        result.datalad_result_dict["action"] = "meta_extract"
-        yield result.datalad_result_dict
+    result = extractor.extract(None)
+    result.datalad_result_dict["action"] = "meta_extract"
+    if result.extraction_success:
+        add_dataset_metadata(ep, result, result.immediate_data)
 
-    elif output_category == DataOutputCategory.FILE:
-        # Process file-based results
-        with tempfile.NamedTemporaryFile(mode="bw+") as temporary_file_info:
-            result = extractor.extract(temporary_file_info)
-            if result.extraction_success:
-                add_dataset_metadata(
-                    ep,
-                    result,
-                    Path(temporary_file_info.name))
-            result.datalad_result_dict["action"] = "meta_extract"
-            yield result.datalad_result_dict
-
-    elif output_category == DataOutputCategory.DIRECTORY:
-        # Process directory results
-        raise NotImplementedError
-
-    lgr.info(
+    lgr.debug(
         f"added dataset metadata result to realm {repr(ep.realm)}, "
         f"dataset tree path {repr(ep.dataset_tree_path)})")
 
-    return
+    yield result.datalad_result_dict
 
 
 def get_extractor_class(extractor_name: str) -> Union[
@@ -511,9 +471,9 @@ def ensure_content_availability(extractor: FileMetadataExtractor,
                 extractor.dataset.path, file_info.intra_dataset_path))
 
 
-def add_file_metadata_source(ep: ExtractionParameter,
-                             result: ExtractorResult,
-                             metadata_source: MetadataSource):
+def add_file_metadata(ep: ExtractionParameter,
+                      result: ExtractorResult,
+                      metadata_content: JSONObject):
 
     realm = str(ep.realm.pathobj)
 
@@ -538,7 +498,7 @@ def add_file_metadata_source(ep: ExtractionParameter,
         file_level_metadata = Metadata(default_mapper_family, realm)
         file_tree.add_metadata(ep.file_tree_path, file_level_metadata)
 
-    add_metadata_source(file_level_metadata, ep, result, metadata_source)
+    add_metadata_content(file_level_metadata, ep, result, metadata_content)
 
     tree_version_list.save()
     uuid_set.save()
@@ -547,9 +507,9 @@ def add_file_metadata_source(ep: ExtractionParameter,
     unlock_backend(realm)
 
 
-def add_dataset_metadata_source(ep: ExtractionParameter,
-                                result: ExtractorResult,
-                                metadata_source: MetadataSource):
+def add_dataset_metadata(ep: ExtractionParameter,
+                         result: ExtractorResult,
+                         metadata_content: JSONObject):
 
     realm = str(ep.realm.pathobj)
 
@@ -568,7 +528,7 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
         dataset_level_metadata = Metadata(default_mapper_family, realm)
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-    add_metadata_source(dataset_level_metadata, ep, result, metadata_source)
+    add_metadata_content(dataset_level_metadata, ep, result, metadata_content)
 
     tree_version_list.save()
     uuid_set.save()
@@ -577,10 +537,10 @@ def add_dataset_metadata_source(ep: ExtractionParameter,
     unlock_backend(realm)
 
 
-def add_metadata_source(metadata: Metadata,
-                        ep: ExtractionParameter,
-                        result: ExtractorResult,
-                        metadata_source: MetadataSource):
+def add_metadata_content(metadata: Metadata,
+                         ep: ExtractionParameter,
+                         result: ExtractorResult,
+                         metadata_content: JSONObject):
 
     metadata.add_extractor_run(
         time.time(),
@@ -590,38 +550,7 @@ def add_metadata_source(metadata: Metadata,
         ExtractorConfiguration(
             result.extractor_version,
             result.extraction_parameter),
-        metadata_source)
-
-
-def add_file_metadata(ep: ExtractionParameter,
-                      result: ExtractorResult,
-                      metadata_content_file: Path):
-
-    # copy the temporary file content into the git repo
-    git_object_hash = copy_file_to_git(metadata_content_file, ep.realm)
-
-    add_file_metadata_source(ep, result, LocalGitMetadataSource(
-        ep.realm.pathobj,
-        git_object_hash))
-
-
-def add_dataset_metadata(ep: ExtractionParameter,
-                         result: ExtractorResult,
-                         metadata_content_file: Path):
-
-    # copy the temporary file content into the git repo
-    git_object_hash = copy_file_to_git(metadata_content_file, ep.realm)
-
-    add_dataset_metadata_source(ep, result, LocalGitMetadataSource(
-        ep.realm.pathobj,
-        git_object_hash))
-
-
-def copy_file_to_git(file_path: Path, realm: Union[AnnexRepo, GitRepo]):
-    arguments = [
-        f"--git-dir={realm.pathobj / '.git'}",
-        "hash-object", "-w", "--", str(file_path)]
-    return realm.call_git_oneline(arguments)
+        metadata_content)
 
 
 def ensure_legacy_path_availability(ep: ExtractionParameter, path: str):
@@ -685,10 +614,10 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
                     result,
                     result["metadata"])
 
-                add_dataset_metadata_source(
+                add_dataset_metadata(
                     ep,
                     extractor_result,
-                    ImmediateMetadataSource(extractor_result.immediate_data))
+                    extractor_result.immediate_data)
 
             yield result
 
@@ -703,10 +632,10 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
         dataset_result, _ = extractor.get_metadata(True, False)
 
         extractor_result = ExtractorResult("0.1", {}, True, {}, dataset_result)
-        add_dataset_metadata_source(
+        add_dataset_metadata(
             ep,
             extractor_result,
-            ImmediateMetadataSource(extractor_result.immediate_data))
+            extractor_result.immediate_data)
 
     else:
         raise ValueError(
@@ -743,17 +672,21 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
                     result,
                     result["metadata"])
 
-                add_file_metadata_source(
+                add_file_metadata(
                     ep,
                     extractor_result,
-                    ImmediateMetadataSource(extractor_result.immediate_data))
+                    extractor_result.immediate_data)
 
             yield result
 
     elif issubclass(ep.extractor_class, BaseMetadataExtractor):
 
         # Datalad legacy extractor
-        path = str(ep.realm.pathobj / Path(ep.dataset_tree_path) / Path(ep.file_tree_path))
+        path = str(
+            ep.realm.pathobj
+            / Path(ep.dataset_tree_path)
+            / Path(ep.file_tree_path))
+
         if ep.extractor_class.NEEDS_CONTENT:
             ensure_legacy_path_availability(ep, path)
 
@@ -762,10 +695,10 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
 
         for path, metadata in file_result:
             extractor_result = ExtractorResult("0.1", {}, True, {}, metadata)
-            add_file_metadata_source(
+            add_file_metadata(
                 ep,
                 extractor_result,
-                ImmediateMetadataSource(extractor_result.immediate_data))
+                extractor_result.immediate_data)
 
     else:
         raise ValueError(
