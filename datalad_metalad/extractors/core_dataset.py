@@ -52,5 +52,5 @@ class DataladCoreDatasetExtractor(DatasetMetadataExtractor):
                 "id": self.dataset.id,
                 "refcommit": self.dataset.repo.get_hexsha(),
                 "path": self.dataset.path,
-                "comment": "test-implementation"
+                "comment": "test-implementation of core_dataset"
             })

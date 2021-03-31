@@ -111,6 +111,7 @@ We use the small object approach below
 __docformat__ = 'restructuredtext'
 
 import enum
+import json
 import logging
 from typing import Generator
 from uuid import UUID
@@ -125,6 +126,7 @@ from datalad.support.constraints import (
     EnsureChoice,
 )
 from datalad.support.param import Parameter
+from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatapath import MetadataPath
@@ -159,6 +161,7 @@ class ReportOn(enum.Enum):
 def _create_result_record(mapper: str,
                           realm: str,
                           metadata_record: JSONObject,
+                          element_path: str,
                           report_type: str):
     return {
         "status": "ok",
@@ -168,17 +171,19 @@ def _create_result_record(mapper: str,
             "realm": realm
         },
         "type": report_type,
-        "metadata": metadata_record
+        "metadata": metadata_record,
+        "path": element_path
     }
 
 
 def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
     return {
         "extraction_time": instance.time_stamp,
-        "extraction_agent": f"{instance.author_name} <{instance.author_email}>",
+        "extraction_agent_name": instance.author_name,
+        "extraction_agent_email": instance.author_email,
         "extractor_version": instance.configuration.version,
-        "extractor_parameter": instance.configuration.parameter,
-        "extractor_result": instance.metadata_source.to_json_obj()
+        "extraction_parameter": instance.configuration.parameter,
+        "extraction_result": instance.metadata_content
     }
 
 
@@ -201,6 +206,7 @@ def show_dataset_metadata(mapper: str,
 
     result_json_object = {
         "dataset_level_metadata": {
+            "root_dataset_realm": realm,
             "root_dataset_identifier": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
             "dataset_identifier": str(metadata_root_record.dataset_identifier),
@@ -224,6 +230,7 @@ def show_dataset_metadata(mapper: str,
             mapper,
             realm,
             result_json_object,
+            str(dataset_path),
             "dataset")
 
     # Remove dataset-level metadata when we are done with it
@@ -267,8 +274,11 @@ def show_file_tree_metadata(mapper: str,
             "file_level_metadata": {
                 "root_dataset_identifier": str(root_dataset_identifier),
                 "root_dataset_version": root_dataset_version,
-                "dataset_path": dataset_path,
-                "file_path": path
+                "dataset_identifier": str(
+                    metadata_root_record.dataset_identifier),
+                "dataset_version": metadata_root_record.dataset_version,
+                "dataset_path": str(dataset_path),
+                "file_path": str(path)
             }
         }
 
@@ -286,6 +296,7 @@ def show_file_tree_metadata(mapper: str,
                 mapper,
                 realm,
                 result_json_object,
+                str(dataset_path / path),
                 "file")
 
         # Remove metadata object after all instances are reported
@@ -343,7 +354,6 @@ def dump_from_dataset_tree(mapper: str,
             match_record.path,
             match_record.node.value)
 
-        # TODO: check the different file paths
         yield from show_file_tree_metadata(
             mapper,
             realm,
@@ -433,47 +443,44 @@ class Dump(Interface):
         UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
 
     (the tree-format is the default format and does not require a prefix).
-
-    The elements DATASET_PATH and LOCAL_PATH take wild-card patterns. So you can
-    find all JSON files in the root directory of all datasets by specifying:
-
-        \\*:\\*.json
-
-    as DATASET_FILE_PATH_PATTERN and specifying recursive in order to
-    go through metadata for all datasets, e.g.:
-
-      % datalad -f json_pp meta-dump \\*:\\*.json -r --reporton files
-
-    or simply do not specify a specific dataset at all:
-
-      % datalad -f json_pp meta-dump :\\*.json -r --reporton files
-
-    Examples:
-
-      Dump the metadata of the file "dataset_description.json" in the
-      dataset "simon". (The queried dataset git-repository is determined
-      based on the current working directory)::
-
-        % datalad meta-dump --reporton files simon:dataset_description.json
-
-      Sometimes it is helpful to get metadata records formatted in a more
-      accessible form, here as pretty-printed JSON::
-
-        % datalad -f json_pp meta-dump simon:dataset_description.json
-
-      Same query as above, but specify that all datasets should be queried
-      for the given path::
-
-        % datalad meta-dump -d . :somedir/subdir/thisfile.dat
-
-      Dump any metadata record of any dataset known to the queried dataset::
-
-        % datalad meta-dump -r --reporton datasets
-
     """
-    # make the custom renderer the default, path reporting isn't the top
-    # priority here
+
+    # Use a custom renderer to emit a self-contained metadata record. The
+    # emitted record can be fed into meta-add for example.
     result_renderer = 'tailored'
+
+    _examples_ = [
+        dict(
+            text='Dump the metadata of the file "dataset_description.json" in '
+                 'the dataset "simon". (The queried dataset git-repository is '
+                 'determined based on the current working directory)',
+            code_cmd="datalad meta-dump simon:dataset_description.json"),
+        dict(
+            text="Sometimes it is helpful to get metadata records formatted "
+                 "in a more accessible form, here as pretty-printed JSON",
+            code_cmd="datalad -f json_pp meta-dump "
+                     "simon:dataset_description.json"),
+        dict(
+            text="Same query as above, but specify that all datasets should "
+                 "be queried for the given path",
+            code_cmd="datalad meta-dump -d . :somedir/subdir/thisfile.dat"),
+        dict(
+            text="Dump any metadata record of any dataset known to the "
+                 "queried dataset",
+            code_cmd="datalad meta-dump -r"),
+        dict(
+            text="Show metadata for all datasets",
+            code_cmd="datalad -f json_pp meta-dump -r"),
+        dict(
+            text="Show metadata for all files ending in `.json´ in the root "
+                 "directories of all datasets",
+            code_cmd="datalad -f json_pp meta-dump *:*.json -r"),
+        dict(
+            text="Show metadata for all files ending in `.json´ in all "
+                 "datasets by not specifying a dataset at all. This will "
+                 "start dumping at the top-level dataset.",
+            code_cmd="datalad -f json_pp meta-dump :*.json -r")
+    ]
 
     _params_ = dict(
         backend=Parameter(
@@ -531,22 +538,86 @@ class Dump(Interface):
             return
 
         parser = MetadataURLParser(path)
-        metadata_path = parser.parse()
+        metadata_url = parser.parse()
 
-        if isinstance(metadata_path, TreeMetadataURL):
+        if isinstance(metadata_url, TreeMetadataURL):
             yield from dump_from_dataset_tree(
                 backend,
                 realm,
                 tree_version_list,
-                metadata_path,
+                metadata_url,
                 recursive)
 
-        elif isinstance(metadata_path, UUIDMetadataURL):
+        elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
                 backend,
                 realm,
                 uuid_set,
-                metadata_path,
+                metadata_url,
                 recursive)
 
         return
+
+    @staticmethod
+    def custom_result_renderer(res, **kwargs):
+
+        if res["status"] != "ok" or res.get("action", "") != 'meta_dump':
+            # logging complained about this already
+            return
+
+        render_dataset_level_metadata(
+            res["metadata"].get("dataset_level_metadata", dict()))
+
+        render_file_level_metadata(
+            res["metadata"].get("file_level_metadata", dict()))
+
+
+def render_dataset_level_metadata(dl_metadata: dict):
+    if not dl_metadata:
+        return
+
+    result_base = dict(
+        type="dataset",
+        dataset_id=dl_metadata["dataset_identifier"],
+        dataset_version=dl_metadata["dataset_version"])
+
+    render_common_metadata(dl_metadata, result_base)
+
+
+def render_file_level_metadata(fl_metadata: dict):
+    if not fl_metadata:
+        return
+
+    result_base = dict(
+        type="file",
+        dataset_id=fl_metadata["dataset_identifier"],
+        dataset_version=fl_metadata["dataset_version"],
+        path=fl_metadata["file_path"])
+
+    render_common_metadata(fl_metadata, result_base)
+
+
+def render_common_metadata(metadata: dict, result_base: dict):
+
+    if result_base["dataset_version"] != metadata["root_dataset_version"]:
+        assert metadata["dataset_path"] != ""
+        result_base["root_dataset_id"] = metadata["root_dataset_identifier"]
+        result_base["root_dataset_version"] = metadata[
+            "root_dataset_version"]
+        result_base["dataset_path"] = metadata["dataset_path"]
+
+    for extractor_name, extractions in metadata["metadata"].items():
+        for extraction in extractions:
+            extraction_result = dict(
+                extractor_name=extractor_name,
+                extractor_version=extraction["extractor_version"],
+                extraction_parameter=extraction["extraction_parameter"],
+                extraction_time=extraction["extraction_time"],
+                agent_name=extraction["extraction_agent_name"],
+                agent_email=extraction["extraction_agent_email"],
+                extracted_metadata=extraction["extraction_result"])
+
+            ui.message(json.dumps({
+                **result_base,
+                **extraction_result
+            }))
