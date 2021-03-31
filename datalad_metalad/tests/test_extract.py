@@ -149,10 +149,10 @@ def test_file_extraction_result(ds_path):
         path=file_path)
 
     extracted_metadata = metadata_record["extracted_metadata"]
+    assert_in("content_byte_size", extracted_metadata)
     assert_in("@id", extracted_metadata)
     eq_(extracted_metadata["type"], "file")
     eq_(extracted_metadata["path"], file_path)
-    eq_(extracted_metadata["content_byte_size"], 111)
     eq_(extracted_metadata["comment"], "test-implementation of core_file")
 
 
