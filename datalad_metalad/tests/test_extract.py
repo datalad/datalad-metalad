@@ -73,7 +73,7 @@ def _check_metadata_record(metadata_record: dict,
     eq_(metadata_record["agent_name"], "DataLad Tester")
     eq_(metadata_record["agent_email"], "test@example.com")
     if path is not None:
-        eq_(metadata_record["intra_dataset_path"], MetadataPath(path))
+        eq_(metadata_record["path"], MetadataPath(path))
 
 
 @with_tree(meta_tree)
@@ -110,8 +110,8 @@ def test_dataset_extraction_result(path):
     extracted_metadata = metadata_record["extracted_metadata"]
     eq_(extracted_metadata["id"], ds.id)
     eq_(extracted_metadata["refcommit"], ds.repo.get_hexsha())
-    eq_(extracted_metadata["path"], ds.path)
-    eq_(extracted_metadata["comment"], "test-implementation")
+    eq_(extracted_metadata["inter_dataset_path"], "")
+    eq_(extracted_metadata["comment"], "test-implementation of core_dataset")
 
 
 @with_tree(meta_tree)
@@ -151,10 +151,9 @@ def test_file_extraction_result(ds_path):
     extracted_metadata = metadata_record["extracted_metadata"]
     assert_in("@id", extracted_metadata)
     eq_(extracted_metadata["type"], "file")
-    eq_(extracted_metadata["path"], str(ds.pathobj / file_path))
-    eq_(extracted_metadata["intra_dataset_path"], file_path)
+    eq_(extracted_metadata["path"], file_path)
     eq_(extracted_metadata["content_byte_size"], 111)
-    eq_(extracted_metadata["comment"], "test-implementation")
+    eq_(extracted_metadata["comment"], "test-implementation of core_file")
 
 
 @known_failure
