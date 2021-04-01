@@ -99,19 +99,21 @@ class Aggregate(Interface):
     """Aggregate metadata of one or more sub-datasets for later reporting.
 
     .. note::
-    Metadata storage is not forced to reside inside the dataset repository.
-    Metadata might be stored within the repository that is used by a
-    dataset, but it might as well be stored in another repository (or
-    a non-git backend, once those exist). To distinguish the metadata storage
-    from the dataset storage, we refer to the metadata storage as
-    metadata-store. For now, the metadata-store is usually the git-repository
-    that holds the dataset.
+
+        Metadata storage is not forced to reside inside the dataset repository.
+        Metadata might be stored within the repository that is used by a
+        dataset, but it might as well be stored in another repository (or
+        a non-git backend, once those exist). To distinguish the metadata storage
+        from the dataset storage, we refer to the metadata storage as
+        metadata-store. For now, the metadata-store is usually the git-repository
+        that holds the dataset.
 
     .. note::
-    The distinction is the reason for the "double"-path arguments below.
-    for each source metadata-store that should be integrated into the root
-    metadata-store, we have to give the source metadata-store itself and the
-    intra-dataset-path with regard to the root-dataset.
+
+        The distinction is the reason for the "double"-path arguments below.
+        for each source metadata-store that should be integrated into the root
+        metadata-store, we have to give the source metadata-store itself and the
+        intra-dataset-path with regard to the root-dataset.
 
     Metadata aggregation refers to a procedure that combines metadata from
     different sub-datasets into a root dataset, i.e. a dataset that contains
