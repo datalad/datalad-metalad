@@ -92,42 +92,46 @@ class Add(Interface):
     If metadata is read from a source, parameter can overwrite or
     amend information that is stored in the source.
 
-    Examples:
-
-      Add metadata stored in the file "metadata-123.json" to the
-      metadata model instance in the current directory.
-
-      $ datalad meta-add metadata-123.json
-
-
-      Add metadata stored in the file "metadata-123.json" to the
-      metadata stored in the git-repository "/home/user/dataset_0".
-
-      $ datalad meta-add --metadata-store /home/user/dataset_0 metadata-123.json
-
-      Add metadata stored in the file "metadata-123.json" to the
-      metadata model instance in the current directory and overwrite
-      the "dataset_id" value stored in "metadata-123.json".
-
-      $ datalad meta-add --metadata-store /home/user/dataset_0 metadata-123.json \
-       '{"dataset_id": "00010203-1011-2021-3031-404142434445}'
-
-      Add metadata read from standard input to the metadata model
-      instance in the current directory.
-
-      $ datalad meta-add -
-
-      All arguments can be pre-fixed by '@', in which case the pre-fixed
-      argument is interpreted as a file-name and the argument value is read
-      from the file. For example, add metadata stored in the file
-      "metadata-123.json" to the metadata model instance in the current
-      directory and overwrite metadata values with the values stored in
-      stored in "extra-info.json".
-
-      $ datalad meta-add --metadata-store /home/user/dataset_0 \
-       metadata-123.json @extra-info.json
+    The METADATA and the ADDITIONAL_VALUES arguments can be pre-fixed by '@',
+    in which case the pre-fixed argument is interpreted as a file-name and
+    the argument value is read from the file.
 
     """
+
+    _examples_ = [
+        dict(
+            text='Add metadata stored in the file "metadata-123.json" to the '
+                 'metadata model instance in the current directory.',
+            code_cmd="datalad meta-add metadata-123.json"),
+        dict(
+            text='Add metadata stored in the file "metadata-123.json" to the '
+                 'metadata stored in the git-repository "/home/user/dataset_0"',
+            code_cmd="datalad meta-add --metadata-store /home/user/dataset_0 "
+                     "metadata-123.json"),
+        dict(
+            text='Add metadata stored in the file "metadata-123.json" to the '
+                 'metadata model instance in the current directory and '
+                 'overwrite the "dataset_id" value stored in '
+                 '"metadata-123.json"',
+            code_cmd='datalad meta-add --metadata-store /home/user/dataset_0 '
+                     'metadata-123.json \'{"dataset_id": '
+                     '"00010203-1011-2021-3031-404142434445"}\''
+        ),
+        dict(
+            text='Add metadata read from standard input to the metadata model '
+                 'instance in the current directory',
+            code_cmd='datalad meta-add --metadata-store /home/user/dataset_0 '
+                     'metadata-123.json @extra-info.json'
+        ),
+        dict(
+            text='Add metadata stored in the file "metadata-123.json" to the '
+                 'metadata model instance in the current directory and '
+                 'overwrite metadata values with the values stored in '
+                 '"extra-info.json"',
+            code_cmd='atalad meta-add --metadata-store /home/user/dataset_0 '
+                     'metadata-123.json @extra-info.json'
+        )
+    ]
 
     required_keys = (
         "type",
