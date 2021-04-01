@@ -156,7 +156,6 @@ def test_file_extraction_result(ds_path):
     eq_(extracted_metadata["comment"], "test-implementation of core_file")
 
 
-@known_failure
 @with_tree(meta_tree)
 def test_legacy1_dataset_extraction_result(ds_path):
 
@@ -188,7 +187,8 @@ def test_legacy1_dataset_extraction_result(ds_path):
         extraction_parameter={})
 
     extracted_metadata = metadata_record["extracted_metadata"]
-    assert_in("@id", extracted_metadata)
+    assert_in("@context", extracted_metadata)
+    assert_in("@graph", extracted_metadata)
     eq_(extracted_metadata["contentbytesize"], 1)
 
 

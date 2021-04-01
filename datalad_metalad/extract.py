@@ -210,6 +210,7 @@ class Extract(Interface):
         # If path is not given, we assume that a dataset-level extraction is
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
+        # TODO: check whether paths are datasets.
         if path and path != "++":
             yield from do_file_extraction(extraction_parameters)
         else:
@@ -521,12 +522,17 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
     if issubclass(ep.extractor_class, MetadataExtractor):
 
         # Metalad legacy extractor
-        status = [{
-            "type": "dataset",
-            "path": str(ep.source_dataset.pathobj),
-            "state": "clean",
-            "gitshasum": ep.source_dataset_version
-        }]
+        if False:
+            # TODO: fix this. Detect whether a path is a dataset
+            # and act appropriately.
+            status = [{
+                "type": "dataset",
+                "path": str(ep.source_dataset.pathobj),
+                "state": "clean",
+                "gitshasum": ep.source_dataset_version
+            }]
+        else:
+            status = []
         extractor = ep.extractor_class()
         ensure_legacy_content_availability(ep, extractor, "dataset", status)
 
