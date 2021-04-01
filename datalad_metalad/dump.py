@@ -159,7 +159,7 @@ class ReportOn(enum.Enum):
 
 
 def _create_result_record(mapper: str,
-                          realm: str,
+                          metadata_store: str,
                           metadata_record: JSONObject,
                           element_path: str,
                           report_type: str):
@@ -168,7 +168,7 @@ def _create_result_record(mapper: str,
         "action": "meta_dump",
         "source": {
             "mapper": mapper,
-            "realm": realm
+            "metadata_store": metadata_store
         },
         "type": report_type,
         "metadata": metadata_record,
@@ -188,7 +188,7 @@ def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
 
 
 def show_dataset_metadata(mapper: str,
-                          realm: str,
+                          metadata_store: str,
                           root_dataset_identifier: UUID,
                           root_dataset_version: str,
                           dataset_path: MetadataPath,
@@ -206,7 +206,7 @@ def show_dataset_metadata(mapper: str,
 
     result_json_object = {
         "dataset_level_metadata": {
-            "root_dataset_realm": realm,
+            "root_dataset_metadata_store": metadata_store,
             "root_dataset_identifier": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
             "dataset_identifier": str(metadata_root_record.dataset_identifier),
@@ -228,7 +228,7 @@ def show_dataset_metadata(mapper: str,
 
         yield _create_result_record(
             mapper,
-            realm,
+            metadata_store,
             result_json_object,
             str(dataset_path),
             "dataset")
@@ -238,7 +238,7 @@ def show_dataset_metadata(mapper: str,
 
 
 def show_file_tree_metadata(mapper: str,
-                            realm: str,
+                            metadata_store: str,
                             root_dataset_identifier: UUID,
                             root_dataset_version: str,
                             dataset_path: MetadataPath,
@@ -259,7 +259,7 @@ def show_file_tree_metadata(mapper: str,
             f"could not locate file path {missing_path} "
             f"in dataset {metadata_root_record.dataset_identifier}"
             f"@{metadata_root_record.dataset_version} in "
-            f"realm {mapper}:{realm}")
+            f"metadata_store {mapper}:{metadata_store}")
 
     for match_record in matches:
         path = match_record.path
@@ -294,7 +294,7 @@ def show_file_tree_metadata(mapper: str,
 
             yield _create_result_record(
                 mapper,
-                realm,
+                metadata_store,
                 result_json_object,
                 str(dataset_path / path),
                 "file")
@@ -307,7 +307,7 @@ def show_file_tree_metadata(mapper: str,
 
 
 def dump_from_dataset_tree(mapper: str,
-                           realm: str,
+                           metadata_store: str,
                            tree_version_list: TreeVersionList,
                            metadata_url: TreeMetadataURL,
                            recursive: bool) -> Generator[dict, None, None]:
@@ -343,12 +343,12 @@ def dump_from_dataset_tree(mapper: str,
         lgr.error(
             f"could not locate metadata for dataset path {missing_path} "
             f"in tree version {metadata_url.version} in "
-            f"realm {mapper}:{realm}")
+            f"metadata_store {mapper}:{metadata_store}")
 
     for match_record in matches:
         yield from show_dataset_metadata(
             mapper,
-            realm,
+            metadata_store,
             root_dataset_identifier,
             root_dataset_version,
             match_record.path,
@@ -356,7 +356,7 @@ def dump_from_dataset_tree(mapper: str,
 
         yield from show_file_tree_metadata(
             mapper,
-            realm,
+            metadata_store,
             root_dataset_identifier,
             root_dataset_version,
             MetadataPath(match_record.path),
@@ -368,7 +368,7 @@ def dump_from_dataset_tree(mapper: str,
 
 
 def dump_from_uuid_set(mapper: str,
-                       realm: str,
+                       metadata_store: str,
                        uuid_set: UUIDSet,
                        path: UUIDMetadataURL,
                        recursive: bool) -> Generator[dict, None, None]:
@@ -382,7 +382,7 @@ def dump_from_uuid_set(mapper: str,
     except KeyError:
         lgr.error(
             f"could not locate metadata for dataset with UUID {path.uuid} in "
-            f"realm {mapper}:{realm}")
+            f"metadata_store {mapper}:{metadata_store}")
         return
 
     requested_dataset_version = path.version
@@ -399,13 +399,13 @@ def dump_from_uuid_set(mapper: str,
         lgr.error(
             f"could not locate metadata for version "
             f"{requested_dataset_version} for dataset with "
-            f"UUID {path.uuid} in realm {mapper}:{realm}")
+            f"UUID {path.uuid} in metadata_store {mapper}:{metadata_store}")
         return
 
     # Show dataset-level metadata
     yield from show_dataset_metadata(
         mapper,
-        realm,
+        metadata_store,
         path.uuid,
         requested_dataset_version,
         dataset_path,
@@ -414,7 +414,7 @@ def dump_from_uuid_set(mapper: str,
     # Show file-level metadata
     yield from show_file_tree_metadata(
         mapper,
-        realm,
+        metadata_store,
         path.uuid,
         requested_dataset_version,
         dataset_path,
@@ -488,11 +488,13 @@ class Dump(Interface):
             metavar="BACKEND",
             doc="""metadata storage backend to be used.""",
             constraints=EnsureChoice("git")),
-        realm=Parameter(
-            args=("--realm",),
-            metavar="REALM",
-            doc="""realm where the metadata is stored. If not given, realm will
-            be determined to be the current working directory."""),
+        metadata_store=Parameter(
+            args=("-s", "--metadata-store"),
+            metavar="METADATA_STORE",
+            doc="""Directory in which the metadata model instance is
+            stored (often this is the same directory as the dataset
+            directory). If no directory name is provided, the current working
+            directory is used."""),
         path=Parameter(
             args=("path",),
             metavar="DATASET_FILE_PATH_PATTERN",
@@ -513,27 +515,28 @@ class Dump(Interface):
     @eval_results
     def __call__(
             backend="git",
-            realm=None,
+            metadata_store=None,
             path="",
             recursive=False):
 
-        realm = realm or "."
+        metadata_store = metadata_store or "."
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             default_mapper_family,
-            realm)
+            metadata_store)
 
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
 
             message = (
                 f"No {backend}-mapped datalad metadata "
-                f"model found in: {realm}")
+                f"model found in: {metadata_store}")
             lgr.warning(message)
 
             yield dict(
-                backend=backend,
-                realm=realm,
+                action="meta_dump",
                 status='impossible',
+                backend=backend,
+                metadata_store=metadata_store,
                 message=message)
             return
 
@@ -543,7 +546,7 @@ class Dump(Interface):
         if isinstance(metadata_url, TreeMetadataURL):
             yield from dump_from_dataset_tree(
                 backend,
-                realm,
+                metadata_store,
                 tree_version_list,
                 metadata_url,
                 recursive)
@@ -551,7 +554,7 @@ class Dump(Interface):
         elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
                 backend,
-                realm,
+                metadata_store,
                 uuid_set,
                 metadata_url,
                 recursive)
