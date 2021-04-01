@@ -61,10 +61,6 @@ from datalad.interface.utils import (
     eval_results
 )
 from datalad.interface.base import build_doc
-from datalad.interface.common_opts import (
-    recursion_limit as default_recursion_limit,
-    recursion_flag
-)
 from datalad.distribution.dataset import (
     datasetmethod
 )
@@ -102,20 +98,20 @@ class AggregateItem:
 class Aggregate(Interface):
     """Aggregate metadata of one or more sub-datasets for later reporting.
 
-    <REMARK>
+    .. note::
     Metadata storage is not forced to reside inside the dataset repository.
     Metadata might be stored within the repository that is used by a
     dataset, but it might as well be stored in another repository (or
     a non-git backend, once those exist). To distinguish the metadata storage
-    from the dataset storage, we refer to the metadata storage as realm
-    (which for now is only a git-repository). For now, the realm for metadata
-    is usually the git-repository that holds the dataset.
+    from the dataset storage, we refer to the metadata storage as
+    metadata-store. For now, the metadata-store is usually the git-repository
+    that holds the dataset.
 
+    .. note::
     The distinction is the reason for the "double"-path arguments below.
-    for each metadata realm that should be integrated into the root realm,
-    we have to give the metadata realm itself and the intra-dataset-path
-    with regard to the root-repository.
-    </REMARK>
+    for each source metadata-store that should be integrated into the root
+    metadata-store, we have to give the source metadata-store itself and the
+    intra-dataset-path with regard to the root-dataset.
 
     Metadata aggregation refers to a procedure that combines metadata from
     different sub-datasets into a root dataset, i.e. a dataset that contains
@@ -129,21 +125,9 @@ class Aggregate(Interface):
     meta-extract command.
 
     As a result of the aggregation, the metadata of all specified sub-datasets
-    will be available in the root metadata realm. A datalad meta-dump command
-    on the root-realm will therefore be able to consider all metadata from
-    the root dataset and all aggregated sub-datasets.
-
-
-    NB! recursive aggregation is not implemented yet! Therefore the following
-    text might NOT be true.
-
-    Metadata aggregation can be performed recursively, in order to aggregate
-    all metadata from all subdatasets. By default, re-aggregation of metadata
-    inspects modifications of datasets and metadata extractor parameterization
-    with respect to the last aggregated state. For performance reasons,
-    re-aggregation will be automatically skipped, if no relevant change is
-    detected. This default behavior can be altered via the ``--force``
-    argument.
+    will be available in the root metadata-store. A datalad meta-dump command
+    on the root metadata-store will therefore be able to process metadata
+    from the root dataset, as well as all aggregated sub-datasets.
     """
     _params_ = dict(
         backend=Parameter(
@@ -152,11 +136,11 @@ class Aggregate(Interface):
             doc="""metadata storage backend to be used. Currently only
             "git" is supported.""",
             constraints=EnsureChoice("git")),
-        root_realm=Parameter(
-            args=("--root-realm",),
-            metavar="ROOT_REALM",
-            doc="""Realm where metadata will be aggregated into, this
-                   is also interpreted as root dataset."""),
+        root_metadata_store=Parameter(
+            args=("--root-metadata-store",),
+            metavar="ROOT_METADATA_STORE",
+            doc="""Metadata store in which aggregated metadata will be stored.
+                   This is also interpreted as root dataset."""),
         path=Parameter(
             args=("path",),
             metavar="PATH",
@@ -178,47 +162,44 @@ class Aggregate(Interface):
             give the following command to aggregate the metadata of
             sub_ds2 into the root dataset::
             
-               datalad meta-extract --root_realm /metadata/root_ds \
+               datalad meta-extract --root-metadata-store /metadata/root_ds \
                 sub_ds1/sub_ds2 /metadata/sub_ds2
 
             """,
             nargs="*",
-            constraints=EnsureStr() | EnsureNone()),
-        recursive=recursion_flag,
-        recursion_limit=default_recursion_limit)
+            constraints=EnsureStr() | EnsureNone()))
 
     @staticmethod
     @datasetmethod(name='meta_aggregate')
     @eval_results
     def __call__(
             backend="git",
-            root_realm=None,
-            path=None,
-            recursive=False,
-            recursion_limit=None):
+            root_metadata_store=None,
+            path=None):
 
-        root_realm = root_realm or "."
+        root_metadata_store = root_metadata_store or "."
         path_realm_associations = process_separated_path_spec(path)
 
         # TODO: we should read-lock all ag_realms
         # Collect aggregate information
         aggregate_items = []
-        for ag_path, ag_realm in path_realm_associations:
+        for ag_path, ag_metadata_store in path_realm_associations:
 
             ag_tree_version_list, ag_uuid_set = get_top_level_metadata_objects(
                 backend,
-                ag_realm)
+                ag_metadata_store)
 
             if ag_tree_version_list is None or ag_uuid_set is None:
                 message = (
                     f"No {backend}-mapped datalad metadata model "
-                    f"found in: {ag_realm}, ignoring metadata location"
-                    f" {ag_realm} (and sub-dataset {ag_path}).")
+                    f"found in: {ag_metadata_store}, ignoring metadata"
+                    f"location {ag_metadata_store} (and sub-dataset "
+                    f"{ag_path}).")
 
                 lgr.warning(message)
                 yield dict(
                     backend=backend,
-                    realm=root_realm,
+                    realm=root_metadata_store,
                     status='error',
                     message=message)
                 continue
@@ -229,40 +210,40 @@ class Aggregate(Interface):
                     ag_uuid_set,
                     ag_path))
 
-        lock_backend(root_realm)
+        lock_backend(root_metadata_store)
 
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             backend,
-            root_realm)
+            root_metadata_store)
 
         if tree_version_list is None:
             lgr.warning(
-                f"no tree version list found in {root_realm}, "
+                f"no tree version list found in {root_metadata_store}, "
                 f"creating an empty tree version list")
-            tree_version_list = TreeVersionList(backend, root_realm)
+            tree_version_list = TreeVersionList(backend, root_metadata_store)
         if uuid_set is None:
             lgr.warning(
-                f"no uuid set found in {root_realm}, "
+                f"no uuid set found in {root_metadata_store}, "
                 f"creating an empty set")
-            uuid_set = UUIDSet(backend, root_realm)
+            uuid_set = UUIDSet(backend, root_metadata_store)
 
         perform_aggregation(
-            root_realm,
+            root_metadata_store,
             tree_version_list,
             uuid_set,
             aggregate_items)
 
         tree_version_list.save()
         uuid_set.save()
-        flush_object_references(root_realm)
+        flush_object_references(root_metadata_store)
 
-        unlock_backend(root_realm)
+        unlock_backend(root_metadata_store)
 
         yield dict(
             action="meta_aggregate",
-            backend=backend,
-            realm=root_realm,
             status='ok',
+            backend=backend,
+            metadata_store=root_metadata_store,
             message="aggregation performed")
 
         return
@@ -273,7 +254,7 @@ def process_separated_path_spec(paths: List[str]
     if len(paths) % 2 != 0:
         raise ValueError(
             "You must provide the same number of "
-            "intra-dataset-paths and realms")
+            "intra-dataset-paths and metadata-stores")
 
     intra_dataset_paths, system_paths = (
         map(MetadataPath, islice(paths, 0, len(paths), 2)),
@@ -288,7 +269,7 @@ def process_separated_path_spec(paths: List[str]
     return tuple(zip(intra_dataset_paths, system_paths))
 
 
-def perform_aggregation(destination_realm: str,
+def perform_aggregation(destination_metadata_store: str,
                         tree_version_list: TreeVersionList,
                         destination_uuid_set: UUIDSet,
                         aggregate_items: List[AggregateItem]
@@ -296,19 +277,19 @@ def perform_aggregation(destination_realm: str,
 
     for aggregate_item in aggregate_items:
         copy_uuid_set(
-            destination_realm,
+            destination_metadata_store,
             destination_uuid_set,
             aggregate_item.source_uuid_set,
             aggregate_item.destination_path)
 
         copy_tree_version_list(
-            destination_realm,
+            destination_metadata_store,
             tree_version_list,
             aggregate_item.source_tree_version_list,
             aggregate_item.destination_path)
 
 
-def copy_uuid_set(destination_realm: str,
+def copy_uuid_set(destination_metadata_store: str,
                   destination_uuid_set: UUIDSet,
                   source_uuid_set: UUIDSet,
                   destination_path: MetadataPath):
@@ -338,7 +319,7 @@ def copy_uuid_set(destination_realm: str,
             destination_uuid_set.set_version_list(
                 uuid,
                 src_version_list.deepcopy(
-                    new_realm=destination_realm,
+                    new_realm=destination_metadata_store,
                     path_prefix=destination_path))
 
         else:
@@ -367,7 +348,7 @@ def copy_uuid_set(destination_realm: str,
                     pd_version,
                     time_stamp,
                     new_path,
-                    element.deepcopy(new_realm=destination_realm))
+                    element.deepcopy(new_realm=destination_metadata_store))
 
                 # Unget the versioned element
                 lgr.debug(
@@ -392,7 +373,7 @@ def copy_uuid_set(destination_realm: str,
         source_uuid_set.unget_version_list(uuid)
 
 
-def copy_tree_version_list(destination_realm: str,
+def copy_tree_version_list(destination_metadata_store: str,
                            destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
                            destination_path: MetadataPath):
@@ -405,7 +386,7 @@ def copy_tree_version_list(destination_realm: str,
     for source_pd_version in source_tree_version_list.versions():
 
         for root_pd_version in get_root_version_for_subset_version(
-                destination_realm,
+                destination_metadata_store,
                 source_pd_version,
                 destination_path):
 
@@ -421,7 +402,7 @@ def copy_tree_version_list(destination_realm: str,
                 lgr.debug(
                     f"creating new root dataset tree for version "
                     f"{root_pd_version}")
-                root_dataset_tree = DatasetTree("git", destination_realm)
+                root_dataset_tree = DatasetTree("git", destination_metadata_store)
 
             time_stamp, source_dataset_tree = \
                 source_tree_version_list.get_dataset_tree(source_pd_version)
@@ -433,7 +414,7 @@ def copy_tree_version_list(destination_realm: str,
                 root_dataset_tree.delete_subtree(destination_path)
 
             root_dataset_tree.add_subtree(
-                source_dataset_tree.deepcopy("git", destination_realm),
+                source_dataset_tree.deepcopy("git", destination_metadata_store),
                 destination_path)
 
             destination_tree_version_list.set_dataset_tree(
