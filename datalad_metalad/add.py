@@ -186,6 +186,7 @@ class Add(Interface):
             constraints=EnsureStr() | EnsureNone()),
         metadata_store=Parameter(
             args=("-s", "--metadata-store"),
+            metavar="METADATA_STORE",
             doc="""Directory in which the metadata model instance is
             stored. If no directory name is provided, the current working
             directory is used.""",
