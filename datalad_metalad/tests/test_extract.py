@@ -10,6 +10,7 @@
 """Test metadata extraction"""
 from uuid import UUID
 from typing import Optional
+from unittest.mock import patch
 
 from datalad.distribution.dataset import Dataset
 from datalad.api import meta_extract
@@ -21,7 +22,6 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_in,
     eq_,
-    known_failure,
     with_tempfile,
     with_tree
 )
@@ -189,7 +189,7 @@ def test_legacy1_dataset_extraction_result(ds_path):
     extracted_metadata = metadata_record["extracted_metadata"]
     assert_in("@context", extracted_metadata)
     assert_in("@graph", extracted_metadata)
-    eq_(extracted_metadata["contentbytesize"], 1)
+    eq_(len(extracted_metadata["@graph"]), 2)
 
 
 @with_tree(meta_tree)
@@ -299,3 +299,107 @@ def test_legacy2_file_extraction_result(ds_path):
 
     extracted_metadata = metadata_record["extracted_metadata"]
     eq_(extracted_metadata, {})
+
+
+@with_tree(meta_tree)
+def test_path_parameter_directory(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    assert_raises(
+        ValueError,
+        meta_extract,
+        extractorname="metalad_core_file",
+        dataset=ds,
+        path="sub")
+
+
+@with_tree(meta_tree)
+def test_path_parameter_recognition(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            path="sub/one"
+        )
+        eq_(fe.call_count, 1)
+        eq_(de.call_count, 0)
+
+
+@with_tree(meta_tree)
+def test_extra_parameter_recognition(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            path="++",
+            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
+        )
+        eq_(fe.call_count, 0)
+        eq_(de.call_count, 1)
+        eq_(
+            de.call_args_list[0][0][0].extractor_arguments,
+            {
+                "k1": "v1",
+                "k2": "v2",
+                "k3": "v3"
+            })
+
+
+@with_tree(meta_tree)
+def test_path_and_extra_parameter_recognition(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            path="sub/one",
+            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
+        )
+        eq_(de.call_count, 0)
+        eq_(fe.call_count, 1)
+        eq_(
+            fe.call_args_list[0][0][0].extractor_arguments,
+            {
+                "k1": "v1",
+                "k2": "v2",
+                "k3": "v3"
+            })
