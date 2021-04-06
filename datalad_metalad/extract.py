@@ -20,6 +20,7 @@ from uuid import UUID
 
 from dataclasses import dataclass
 
+from datalad.coreapi import subdatasets
 from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
@@ -84,14 +85,27 @@ class Extract(Interface):
     executes it on the dataset that is given by the current working
     directory or by the "-d" argument.
 
-    If a path is given, the command assumes that the given extractor is
-    a file-level extractor and executes it on the file that is given as
-    path parameter. If the file level extractor requests the content of
-    a file that is not present, the command might "get" the file content
-    to make it locally available.
+    If a path is given, the command assumes that the path identifies a
+    file and that the given extractor is a file-level extractor, which
+    will then be executed on the specified file. If the file level
+    extractor requests the content of a file that is not present, the
+    command might "get" the file content to make it locally available.
+    Path must not refer to a sub-dataset. Path must not be a directory.
 
-    [NOT IMPLEMENTED YET] The extractor configuration can be
-    parameterized with key-value pairs given as additional arguments.
+    .. note::
+
+        If you want to insert sub-dataset-metadata into the super-dataset's
+        metadata, you currently have to do the following:
+        first, extract dataset metadata of the sub-dataset using a dataset-
+        level extractor, second add the extracted metadata with sub-dataset
+        information (i.e. inter_dataset_path, root_dataset_id, root-dataset-
+        version) to the metadata of the super-dataset.
+
+    The extractor configuration can be parameterized with key-value pairs
+    given as additional arguments. Each key-value pair consists of two
+    arguments, first the key, followed by the value. If no path is given,
+    and you want to provide key-value pairs, you have to give the path
+    "++", to prevent that the first key is interpreted as path.
 
     The results are written into the repository of the source dataset
     or into the repository of the dataset given by the "-i" parameter.
@@ -176,6 +190,7 @@ class Extract(Interface):
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs
+        path = None if path == "++" else path
 
         source_dataset = require_dataset(
             dataset or curdir,
@@ -210,7 +225,11 @@ class Extract(Interface):
         # If path is not given, we assume that a dataset-level extraction is
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
-        if path and path != "++":
+        path = None if path == "++" else path
+
+        if path:
+            # Check whether the path points to a sub_dataset.
+            ensure_path_validity(source_dataset, file_tree_path)
             yield from do_file_extraction(extraction_parameters)
         else:
             yield from do_dataset_extraction(extraction_parameters)
@@ -464,6 +483,16 @@ def get_path_info(dataset: Dataset,
     return dataset_tree_path, MetadataPath(file_tree_path)
 
 
+def ensure_path_validity(dataset: Dataset, file_tree_path: MetadataPath):
+    # TODO: there is most likely a better way to do this in datalad,
+    # but I want to ensure, that we do not enumerate all sub-datasets
+    # in order to perform this check on a known path.
+
+    full_path = dataset.pathobj / file_tree_path
+    if full_path.is_dir():
+        raise ValueError("FILE must not point to a directory")
+
+
 def ensure_content_availability(extractor: FileMetadataExtractor,
                                 file_info: FileInfo):
 
@@ -520,13 +549,7 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
 
     if issubclass(ep.extractor_class, MetadataExtractor):
 
-        # Metalad legacy extractor
-        status = [{
-            "type": "dataset",
-            "path": str(ep.source_dataset.pathobj),
-            "state": "clean",
-            "gitshasum": ep.source_dataset_version
-        }]
+        status = []
         extractor = ep.extractor_class()
         ensure_legacy_content_availability(ep, extractor, "dataset", status)
 

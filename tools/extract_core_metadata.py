@@ -29,7 +29,7 @@ running_processes: List[subprocess.Popen] = list()
 logger = logging.getLogger("extract_core_metadata")
 
 argument_parser = ArgumentParser(
-    description="Parallel recursive metadata extraction")
+    description="Parallel recursive metadata extraction and storage")
 
 argument_parser.add_argument(
     "-m", "--max-processes",
@@ -90,14 +90,15 @@ def execute_command_line(purpose, command_line):
         f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
 
-def extract_dataset_level_metadata(realm: str,
+def extract_dataset_level_metadata(metadata_store: str,
                                    dataset_path: str,
                                    metalad_arguments: List[str]):
 
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
         "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.dataset_extractor}", "-d", dataset_path, "-i", realm
+        f"{arguments.dataset_extractor}", "-d", dataset_path,
+        "-i", metadata_store
     ] + metalad_arguments
     execute_command_line(purpose, command_line)
 
