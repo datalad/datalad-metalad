@@ -93,12 +93,13 @@ class Extract(Interface):
     Path must not refer to a sub-dataset. Path must not be a directory.
 
     .. note::
-    If you want to insert sub-dataset-metadata into the super-dataset's
-    metadata, you currently have to do the following:
-    first, extract dataset metadata of the sub-dataset using a dataset-
-    level extractor, second add the extracted metadata with sub-dataset
-    information (i.e. inter_dataset_path, root_dataset_id, root-dataset-
-    version) to the metadata of the super-dataset.
+
+        If you want to insert sub-dataset-metadata into the super-dataset's
+        metadata, you currently have to do the following:
+        first, extract dataset metadata of the sub-dataset using a dataset-
+        level extractor, second add the extracted metadata with sub-dataset
+        information (i.e. inter_dataset_path, root_dataset_id, root-dataset-
+        version) to the metadata of the super-dataset.
 
     The extractor configuration can be parameterized with key-value pairs
     given as additional arguments. Each key-value pair consists of two
