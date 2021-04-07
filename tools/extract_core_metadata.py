@@ -1,11 +1,13 @@
+import json
 import logging
 import os
 import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List
+from typing import Dict, List, Optional, Tuple
 
 
 log_level = {
@@ -23,10 +25,9 @@ ignore_patterns = [
     re.compile(r"\.datalad.*")
 ]
 
-running_processes: List[subprocess.Popen] = list()
-
 
 logger = logging.getLogger("extract_core_metadata")
+
 
 argument_parser = ArgumentParser(
     description="Parallel recursive metadata extraction and storage")
@@ -44,7 +45,9 @@ argument_parser.add_argument(
 argument_parser.add_argument(
     "-r", "--recursive",
     action="store_true", default=False,
-    help="collect metadata recursively in all datasets")
+    help="collect metadata recursively in all datasets, metadata is"
+         "stored in the repository of the respective dataset unless -a"
+         "is specified")
 
 argument_parser.add_argument(
     "-a", "--aggregate",
@@ -63,6 +66,11 @@ argument_parser.add_argument(
     help="dataset extractor name (default: metalad_core_dataset)")
 
 argument_parser.add_argument(
+    "-s", "--store-metadata",
+    type=str,
+    help="store extracted metadata in the root-dataset repository")
+
+argument_parser.add_argument(
     "dataset_path",
     type=str,
     help="The dataset from which metadata should be extracted")
@@ -73,56 +81,69 @@ argument_parser.add_argument("metalad_arguments", nargs="*")
 arguments: Namespace = argument_parser.parse_args(sys.argv[1:])
 
 
+@dataclass
+class ExtractorInfo:
+    popen: subprocess.Popen
+    context_info: Dict
+
+
+running_processes: List[ExtractorInfo] = list()
+
+
 def ensure_less_processes_than(max_processes: int):
     while len(running_processes) >= max_processes:
-        for index, p in enumerate(running_processes):
-            if p.poll() is not None:
-                logger.debug(f"process {p.pid} exited")
-                del running_processes[index]
+        for index, extractor_info in enumerate(running_processes):
+            if extractor_info.popen.poll() is not None:
+                logger.debug(f"process {extractor_info.popen.pid} exited")
+                output, _ = extractor_info.popen.communicate()
+                metadata_object = json.loads(output.decode())
+                metadata_object["context"] = extractor_info.context_info
+                json.dump(metadata_object, sys.stdout)
+                running_processes.remove(extractor_info)
                 break
 
 
-def execute_command_line(purpose, command_line):
+def execute_command_line(purpose, command_line, context_info):
     ensure_less_processes_than(arguments.max_processes)
-    p = subprocess.Popen(command_line)
-    running_processes.append(p)
+    p = subprocess.Popen(command_line, stdout=subprocess.PIPE)
+    running_processes.append(ExtractorInfo(p, context_info))
     logger.info(
         f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
 
-def extract_dataset_level_metadata(metadata_store: str,
-                                   dataset_path: str,
-                                   metalad_arguments: List[str]):
+def extract_dataset_level_metadata(dataset_path: Path,
+                                   metalad_arguments: List[str],
+                                   context_info: Dict):
 
     purpose = f"extract_dataset: {dataset_path}"
     command_line = [
-        "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.dataset_extractor}", "-d", dataset_path,
-        "-i", metadata_store
-    ] + metalad_arguments
-    execute_command_line(purpose, command_line)
+        "datalad",
+        "-l", arguments.log_level,
+        "meta-extract",
+        "-d", str(dataset_path),
+        arguments.dataset_extractor,
+    ] + (
+        ["++"] + metalad_arguments
+        if metalad_arguments
+        else [])
+    execute_command_line(purpose, command_line, context_info)
 
 
-def extract_file_level_metadata(realm: str,
-                                dataset_path: str,
-                                file_path: str,
-                                metalad_arguments: List[str]):
+def extract_file_level_metadata(dataset_path: Path,
+                                file_path: Path,
+                                metalad_arguments: List[str],
+                                context_info: Dict):
 
     purpose = f"extract_file: {dataset_path}:{file_path}"
     command_line = [
-        "datalad", "-l", arguments.log_level, "meta-extract",
-        f"{arguments.file_extractor}", file_path, "-d",
-        dataset_path, "-i", realm
+        "datalad",
+        "-l", arguments.log_level,
+        "meta-extract",
+        "-d", str(dataset_path),
+        arguments.file_extractor,
+        str(file_path)
     ] + metalad_arguments
-    execute_command_line(purpose, command_line)
-
-
-def get_top_level_entry(path: str) -> os.DirEntry:
-    p_path = Path(path).resolve()
-    parent_path = Path("/".join(p_path.parts[:-1])).resolve()
-    return tuple(filter(
-        lambda entry: entry.name == p_path.parts[-1], os.scandir(
-            str(parent_path))))[0]
+    execute_command_line(purpose, command_line, context_info)
 
 
 def should_be_ignored(name: str) -> bool:
@@ -132,84 +153,200 @@ def should_be_ignored(name: str) -> bool:
     return False
 
 
-def is_dataset(child_entries: Iterable[os.DirEntry]):
-    return len(tuple(filter(
-        lambda entry: entry.name == ".datalad", child_entries))) == 1
+def is_dataset(parent_path: Path) -> Tuple[Optional[str], Optional[str]]:
+    child_entries = tuple(os.scandir(str(parent_path)))
+    datalad_dir_entry = (tuple(filter(
+        lambda entry: entry.name == ".datalad", child_entries)) + (None,))[0]
+
+    if datalad_dir_entry is not None:
+        try:
+            dataset_id = subprocess.run([
+                "git",
+                "-P",
+                "config",
+                "-f",
+                datalad_dir_entry.path + "/config",
+                "datalad.dataset.id"],
+                check=True,
+                stdout=subprocess.PIPE
+            ).stdout.decode().strip()
+
+            dataset_version = subprocess.run([
+                "git",
+                "-P",
+                "--git-dir",
+                str(parent_path / ".git"),
+                "log",
+                "--pretty=%H",
+                "HEAD...HEAD^1"],
+                check=True,
+                stdout=subprocess.PIPE
+            ).stdout.decode().strip()
+        except subprocess.CalledProcessError:
+            return None, None
+        return dataset_id, dataset_version
+
+    return None, None
 
 
-def extract_file_recursive(realm: str,
-                           dataset_entry: os.DirEntry,
-                           entry: os.DirEntry,
-                           metalad_arguments: List[str]):
-    if entry.is_dir():
-        child_entries = tuple(os.scandir(entry.path))
-        if is_dataset(child_entries):
-            if dataset_entry.path != entry.path:
-                return
-        for entry in child_entries:
+def extract_recursive(root_dataset_path: Path,
+                      root_dataset_id: str,
+                      root_dataset_version: str,
+                      current_dataset_path: Path,
+                      current_path: Path,
+                      metalad_arguments: List[str],
+                      dataset_recursive: bool,
+                      aggregate: bool):
+
+    """
+
+    Parameters
+    ----------
+    root_dataset_path
+    root_dataset_id
+    root_dataset_version
+    current_dataset_path
+    current_path
+    metalad_arguments
+    dataset_recursive
+    aggregate
+
+    Returns
+    -------
+    None
+
+    Determine which extractors should be run for dataset- and
+    file-level metadata extraction. If `dataset_recursive` is
+    `True`, extract will process datasets that are contained
+    in the root dataset. If aggregate is given, the metadata
+    records will be amended with sub-dataset information that
+    allows it to be added as aggregated data in the root
+    dataset.
+    """
+    # The following two lines assert preconditions
+    _ = current_path.relative_to(current_dataset_path)
+    _ = current_dataset_path.relative_to(root_dataset_path)
+
+    if current_path.is_dir():
+        dataset_id, dataset_version = is_dataset(current_path)
+        if dataset_id is not None:
+            if dataset_id == root_dataset_id:
+                assert dataset_version == root_dataset_version
+                assert current_dataset_path == root_dataset_path
+
+                logger.debug(
+                    f"Extract root dataset {root_dataset_path} "
+                    f"to {root_dataset_path}[]")
+
+                extract_dataset_level_metadata(
+                    root_dataset_path,
+                    metalad_arguments,
+                    dict(
+                        root_dataset_path=str(root_dataset_path),
+                        root_dataset_id=root_dataset_id,
+                        root_dataset_version=root_dataset_version,
+                        inter_dataset_path=""
+                    ))
+            else:
+                if not dataset_recursive:
+                    return
+
+                inter_dataset_path = current_path.relative_to(root_dataset_path)
+                if aggregate is True:
+
+                    logger.debug(
+                        f"Aggregate dataset "
+                        f"{root_dataset_path / inter_dataset_path} "
+                        f"to {root_dataset_path}[{inter_dataset_path}]")
+
+                    extract_dataset_level_metadata(
+                        root_dataset_path,
+                        metalad_arguments,
+                        dict(
+                            root_dataset_path=str(root_dataset_path),
+                            root_dataset_id=root_dataset_id,
+                            root_dataset_version=root_dataset_version,
+                            inter_dataset_path=str(inter_dataset_path)
+                        ))
+
+                else:
+
+                    logger.debug(
+                        f"Extract dataset "
+                        f"{root_dataset_path / inter_dataset_path} "
+                        f"to {root_dataset_path / inter_dataset_path}[]")
+
+                    extract_dataset_level_metadata(
+                        root_dataset_path / inter_dataset_path,
+                        metalad_arguments,
+                        dict(
+                            root_dataset_path=str(
+                                root_dataset_path / inter_dataset_path)
+                        ))
+
+            current_dataset_path = current_path
+
+        for entry in os.scandir(str(current_path)):
             if should_be_ignored(entry.name):
                 continue
-            extract_file_recursive(
-                realm, dataset_entry, entry, metalad_arguments)
+            extract_recursive(
+                root_dataset_path,
+                root_dataset_id,
+                root_dataset_version,
+                current_dataset_path,
+                current_path / entry.name,
+                metalad_arguments,
+                dataset_recursive,
+                aggregate)
     else:
-        extract_file_level_metadata(
-            realm,
-            dataset_entry.path,
-            entry.path[len(dataset_entry.path) + 1:],
-            metalad_arguments)
+        intra_dataset_path = current_path.relative_to(current_dataset_path)
+        inter_dataset_path = current_dataset_path.relative_to(root_dataset_path)
+        if aggregate is True:
+
+            logger.debug(
+                f"Aggregate file    {current_path} "
+                f"to {intra_dataset_path} in "
+                f"{root_dataset_path}[{inter_dataset_path}]")
+
+            extract_file_level_metadata(
+                root_dataset_path,
+                current_path,
+                metalad_arguments,
+                dict(
+                    root_dataset_path=str(root_dataset_path),
+                    root_dataset_id=root_dataset_id,
+                    root_dataset_version=root_dataset_version,
+                    inter_dataset_path=str(inter_dataset_path)
+                ))
+        else:
+
+            logger.debug(
+                f"Extract file    {current_path} "
+                f"to {intra_dataset_path} in "
+                f"{root_dataset_path / inter_dataset_path}[]")
+
+            extract_file_level_metadata(
+                root_dataset_path,
+                current_dataset_path,
+                metalad_arguments,
+                dict(
+                    root_dataset_path=str(
+                        root_dataset_path / inter_dataset_path)
+                ))
 
 
-def extract_individual(dataset_entry: os.DirEntry,
-                       metalad_arguments: List[str]):
+def extract(top_dir_path: Path, recursive: bool, aggregate: bool) -> None:
 
-    extract_dataset_level_metadata(
-        dataset_entry.path,
-        dataset_entry.path,
-        metalad_arguments)
-
-    extract_file_recursive(
-        dataset_entry.path,
-        dataset_entry,
-        dataset_entry,
-        metalad_arguments)
-
-
-def extract_individual_recursive(realm: str,
-                                 dataset_entry: os.DirEntry,
-                                 entry: os.DirEntry,
-                                 metalad_arguments: List[str]):
-
-    if entry.is_dir():
-        child_entries = tuple(os.scandir(entry.path))
-        if is_dataset(child_entries):
-            extract_individual(entry, metalad_arguments)
-        for entry in child_entries:
-            if should_be_ignored(entry.name):
-                continue
-            extract_individual_recursive(
-                realm, dataset_entry, entry, metalad_arguments)
-
-
-def extract_recursive(realm: str,
-                      dataset_entry: os.DirEntry,
-                      entry: os.DirEntry,
-                      metalad_arguments: List[str]):
-
-    if entry.is_dir():
-        child_entries = tuple(os.scandir(entry.path))
-        if is_dataset(child_entries):
-            extract_dataset_level_metadata(realm, entry.path, metalad_arguments)
-            dataset_entry = entry
-        for entry in child_entries:
-            if should_be_ignored(entry.name):
-                continue
-            extract_recursive(realm, dataset_entry, entry, metalad_arguments)
-    else:
-        extract_file_level_metadata(
-            realm,
-            dataset_entry.path,
-            entry.path[len(dataset_entry.path) + 1:],
-            metalad_arguments)
+    dataset_id, dataset_version = is_dataset(top_dir_path)
+    extract_recursive(
+        root_dataset_path=top_dir_path,
+        root_dataset_id=dataset_id,
+        root_dataset_version=dataset_version,
+        current_dataset_path=top_dir_path,
+        current_path=top_dir_path,
+        metalad_arguments=arguments.metalad_arguments,
+        dataset_recursive=recursive,
+        aggregate=aggregate)
 
 
 def main() -> int:
@@ -226,30 +363,18 @@ def main() -> int:
             print(
                 "Warning: 'aggregate' ignored, since 'recursive' is not set",
                 file=sys.stderr)
-            arguments.into = None
-        else:
-            arguments.into = arguments.dataset_path
-    else:
-        arguments.into = None
+            arguments.aggregate = False
+        if arguments.store_metadata is False:
+            print(
+                "Warning: 'aggregate' ignored, since 'store_metadata' "
+                "is not set",
+                file=sys.stderr)
+            arguments.aggregate = False
 
-    top_dir_entry = get_top_level_entry(arguments.dataset_path)
-    if arguments.recursive is True:
-        if arguments.into:
-            extract_recursive(
-                top_dir_entry.path,
-                top_dir_entry,
-                top_dir_entry,
-                arguments.metalad_arguments)
-        else:
-            extract_individual_recursive(
-                top_dir_entry.path,
-                top_dir_entry,
-                top_dir_entry,
-                arguments.metalad_arguments)
-    else:
-        extract_individual(
-            top_dir_entry,
-            arguments.metalad_arguments)
+    extract(
+        Path(arguments.dataset_path),
+        arguments.recursive,
+        arguments.aggregate)
 
     ensure_less_processes_than(1)
     return 0
