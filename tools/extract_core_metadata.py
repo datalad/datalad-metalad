@@ -65,10 +65,10 @@ argument_parser.add_argument(
     type=str, default="metalad_core_dataset",
     help="dataset extractor name (default: metalad_core_dataset)")
 
-argument_parser.add_argument(
-    "-s", "--store-metadata",
-    type=str,
-    help="store extracted metadata in the root-dataset repository")
+#argument_parser.add_argument(
+#    "-s", "--store-metadata",
+#    type=str,
+#    help="store extracted metadata in the root-dataset repository")
 
 argument_parser.add_argument(
     "dataset_path",
