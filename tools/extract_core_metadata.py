@@ -90,17 +90,37 @@ class ExtractorInfo:
 running_processes: List[ExtractorInfo] = list()
 
 
+def encapsulate(metadata_object: dict, context: dict) -> dict:
+    return {
+        "datalad_encapsulation": {
+            "creator": "extract_metadata_orchestration",
+            "encapsulated_data_creator": "meta_extract"
+        },
+        "encapsulated_data": metadata_object,
+        "this_level_data": context
+    }
+
+
+# TODO: use coroutines
+def handle_process_termination():
+    terminated_info = []
+    for index, extractor_info in enumerate(running_processes):
+        if extractor_info.popen.poll() is not None:
+            logger.debug(f"process {extractor_info.popen.pid} exited")
+            terminated_info.append(extractor_info)
+            output, _ = extractor_info.popen.communicate()
+            metadata_object = json.loads(output.decode())
+            json.dump(
+                encapsulate(metadata_object, extractor_info.context_info),
+                sys.stdout)
+
+    for extractor_info in terminated_info:
+        running_processes.remove(extractor_info)
+
+
 def ensure_less_processes_than(max_processes: int):
     while len(running_processes) >= max_processes:
-        for index, extractor_info in enumerate(running_processes):
-            if extractor_info.popen.poll() is not None:
-                logger.debug(f"process {extractor_info.popen.pid} exited")
-                output, _ = extractor_info.popen.communicate()
-                metadata_object = json.loads(output.decode())
-                metadata_object["context"] = extractor_info.context_info
-                json.dump(metadata_object, sys.stdout)
-                running_processes.remove(extractor_info)
-                break
+        handle_process_termination()
 
 
 def execute_command_line(purpose, command_line, context_info):
@@ -309,8 +329,8 @@ def extract_recursive(root_dataset_path: Path,
                 f"{root_dataset_path}[{inter_dataset_path}]")
 
             extract_file_level_metadata(
-                root_dataset_path,
-                current_path,
+                current_dataset_path,
+                intra_dataset_path,
                 metalad_arguments,
                 dict(
                     root_dataset_path=str(root_dataset_path),
@@ -323,15 +343,14 @@ def extract_recursive(root_dataset_path: Path,
             logger.debug(
                 f"Extract file    {current_path} "
                 f"to {intra_dataset_path} in "
-                f"{root_dataset_path / inter_dataset_path}[]")
+                f"{current_dataset_path}[]")
 
             extract_file_level_metadata(
-                root_dataset_path,
                 current_dataset_path,
+                intra_dataset_path,
                 metalad_arguments,
                 dict(
-                    root_dataset_path=str(
-                        root_dataset_path / inter_dataset_path)
+                    root_dataset_path=str(current_dataset_path)
                 ))
 
 
