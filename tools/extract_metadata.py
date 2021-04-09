@@ -148,9 +148,15 @@ def add_metadata(metadata_store: Path,
 def handle_process_termination():
     terminated_info = []
     for index, extractor_info in enumerate(running_processes):
-        if extractor_info.popen.poll() is not None:
-            logger.debug(f"process {extractor_info.popen.pid} exited")
+
+        return_code = extractor_info.popen.poll()
+        if return_code is not None:
+
+            logger.debug(f"process {extractor_info.popen.pid} exited with {return_code}")
             terminated_info.append(extractor_info)
+            if return_code != 0:
+                continue
+
             output, _ = extractor_info.popen.communicate()
             metadata_object = json.loads(output.decode())
             if extractor_info.metadata_store is None:
