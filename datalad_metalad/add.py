@@ -175,7 +175,7 @@ class Add(Interface):
             If the metadata is associated with a file, the following key
             indicates the file path:
             
-            'intra_dataset_path'
+            'path'
             
             It may in addition contain either all or none of the
             following keys (they are used to add metadata element
@@ -185,7 +185,7 @@ class Add(Interface):
             """,
             constraints=EnsureStr() | EnsureNone()),
         metadata_store=Parameter(
-            args=("-s", "--metadata-store"),
+            args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
             doc="""Directory in which the metadata model instance is
             stored. If no directory name is provided, the current working
@@ -198,8 +198,10 @@ class Add(Interface):
             key value-pairs. These key values-pairs are used in addition to
             the key value pairs in the metadata dictionary to describe
             the metadata that should be added. If an additional key is
-            already present in the metadata, it will override the value
-            from metadata. In this case a warning is issued.""",
+            already present in the metadata, an error is raised, unless
+            -o, --allow-override is provided. In this case, the additional
+            values will override the value in metadata and a warning is 
+            issued.""",
             nargs="?",
             constraints=EnsureStr() | EnsureNone()),
         allow_override=Parameter(
@@ -234,6 +236,8 @@ class Add(Interface):
             additional_values=get_json_object(additionalvalues),
             allow_override=allow_override,
             allow_unknown=allow_unknown)
+
+        lgr.debug(f"attempting to add metadata: {json.dumps(metadata)}")
 
         add_parameter = AddParameter(
             dataset_id=UUID(metadata["dataset_id"]),
@@ -393,7 +397,11 @@ def _get_top_nodes(realm: str, ap: AddParameter):
 
     if ap.dataset_tree_path != MetadataPath("") and ap.dataset_tree_path in dataset_tree:
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_tree_path)
-        assert mrr.dataset_identifier == ap.dataset_id
+        if mrr.dataset_identifier != ap.dataset_id:
+            raise ValueError(
+                f"add-metadata claims that the metadata store contains dataset "
+                f"id {ap.dataset_id} at path {ap.dataset_tree_path}, but the "
+                f"id of the stored dataset is {mrr.dataset_identifier}")
     else:
         dataset_level_metadata = Metadata(default_mapper_family, realm)
         file_tree = FileTree(default_mapper_family, realm)
