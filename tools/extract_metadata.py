@@ -33,9 +33,9 @@ argument_parser = ArgumentParser(
     description="Parallel recursive metadata extraction and storage")
 
 argument_parser.add_argument(
-    "-m", "--max-processes",
+    "-p", "--process-limit",
     type=int, default=20,
-    help="maximum number of processes")
+    help="maximum number of parallel processes")
 
 argument_parser.add_argument(
     "-l", "--log-level",
@@ -65,10 +65,18 @@ argument_parser.add_argument(
     type=str, default="metalad_core_dataset",
     help="dataset extractor name (default: metalad_core_dataset)")
 
-#argument_parser.add_argument(
-#    "-s", "--store-metadata",
-#    type=str,
-#    help="store extracted metadata in the root-dataset repository")
+argument_parser.add_argument(
+    "-m", "--metadata-store",
+    type=str,
+    help="if -s, --save-metadata is given, store extracted metadata in "
+         "the repository given here, instead of the root-dataset repository")
+
+argument_parser.add_argument(
+    "-s", "--save-metadata",
+    action="store_true", default=False,
+    help="save extracted metadata in the root-dataset repository (or "
+         "the repository given by -m, --metadata-store) instead of "
+         "writting records to stdout.")
 
 argument_parser.add_argument(
     "dataset_path",
@@ -79,12 +87,14 @@ argument_parser.add_argument("metalad_arguments", nargs="*")
 
 
 arguments: Namespace = argument_parser.parse_args(sys.argv[1:])
+print(arguments, file=sys.stderr)
 
 
 @dataclass
 class ExtractorInfo:
     popen: subprocess.Popen
     context_info: Dict
+    metadata_store: Optional[Path]
 
 
 running_processes: List[ExtractorInfo] = list()
@@ -101,6 +111,39 @@ def encapsulate(metadata_object: dict, context: dict) -> dict:
     }
 
 
+def get_add_cmdline(metadata_store: Path,
+                    context: Dict) -> List[str]:
+
+    command_line = [
+        "datalad",
+        "-l", arguments.log_level,
+        "meta-add",
+        "-m", str(metadata_store),
+        "-"]
+
+    if "root_dataset_id" in context:
+        additional_values = {
+            key: value
+            for key, value in context.items()
+            if key in [
+                "root_dataset_id",
+                "root_dataset_version",
+                "inter_dataset_path"]
+        }
+        command_line.append(json.dumps(additional_values))
+    return command_line
+
+
+def add_metadata(metadata_store: Path,
+                 metadata_object: Dict,
+                 context: Dict):
+
+    command_line = get_add_cmdline(metadata_store, context)
+    stdin_content = json.dumps(metadata_object).encode()
+    logger.info(f"running: {' '.join(command_line)}")
+    subprocess.run(command_line, input=stdin_content, check=True)
+
+
 # TODO: use coroutines
 def handle_process_termination():
     terminated_info = []
@@ -110,33 +153,49 @@ def handle_process_termination():
             terminated_info.append(extractor_info)
             output, _ = extractor_info.popen.communicate()
             metadata_object = json.loads(output.decode())
-            json.dump(
-                encapsulate(metadata_object, extractor_info.context_info),
-                sys.stdout)
+            if extractor_info.metadata_store is None:
+                json.dump(
+                    encapsulate(metadata_object, extractor_info.context_info),
+                    sys.stdout)
+            else:
+                add_metadata(
+                    extractor_info.metadata_store,
+                    metadata_object,
+                    extractor_info.context_info)
 
     for extractor_info in terminated_info:
         running_processes.remove(extractor_info)
 
 
-def ensure_less_processes_than(max_processes: int):
-    while len(running_processes) >= max_processes:
+def ensure_less_processes_than(process_limit: int):
+    while len(running_processes) >= process_limit:
         handle_process_termination()
 
 
-def execute_command_line(purpose, command_line, context_info):
-    ensure_less_processes_than(arguments.max_processes)
+def execute_command_line(purpose: str,
+                         command_line: List[str],
+                         context_info: Dict,
+                         metadata_store: Optional[Path] = None):
+
+    ensure_less_processes_than(arguments.process_limit)
     p = subprocess.Popen(command_line, stdout=subprocess.PIPE)
-    running_processes.append(ExtractorInfo(p, context_info))
+    running_processes.append(ExtractorInfo(p, context_info, metadata_store))
     logger.info(
         f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
 
-def extract_dataset_level_metadata(dataset_path: Path,
-                                   metalad_arguments: List[str],
-                                   context_info: Dict):
+def get_metadata_store(dataset_path: Path) -> Optional[Path]:
+    if arguments.save_metadata is True:
+        if arguments.metadata_store is not None:
+            return Path(arguments.metadata_store)
+        return dataset_path
+    return None
 
-    purpose = f"extract_dataset: {dataset_path}"
-    command_line = [
+
+def get_dataset_level_extract_cmdline(dataset_path: Path,
+                                      metalad_arguments: List[str]
+                                      ) -> List[str]:
+    return [
         "datalad",
         "-l", arguments.log_level,
         "meta-extract",
@@ -146,7 +205,35 @@ def extract_dataset_level_metadata(dataset_path: Path,
         ["++"] + metalad_arguments
         if metalad_arguments
         else [])
-    execute_command_line(purpose, command_line, context_info)
+
+
+def extract_dataset_level_metadata(dataset_path: Path,
+                                   metalad_arguments: List[str],
+                                   context_info: Dict):
+
+    purpose = f"extract_dataset: {dataset_path}"
+    command_line = get_dataset_level_extract_cmdline(
+        dataset_path,
+        metalad_arguments)
+    execute_command_line(
+        purpose,
+        command_line,
+        context_info,
+        get_metadata_store(dataset_path))
+
+
+def get_file_level_extract_cmdline(dataset_path: Path,
+                                   file_path: Path,
+                                   metalad_arguments: List[str]
+                                   ) -> List[str]:
+    return [
+        "datalad",
+        "-l", arguments.log_level,
+        "meta-extract",
+        "-d", str(dataset_path),
+        arguments.file_extractor,
+        str(file_path)
+    ] + metalad_arguments
 
 
 def extract_file_level_metadata(dataset_path: Path,
@@ -155,15 +242,15 @@ def extract_file_level_metadata(dataset_path: Path,
                                 context_info: Dict):
 
     purpose = f"extract_file: {dataset_path}:{file_path}"
-    command_line = [
-        "datalad",
-        "-l", arguments.log_level,
-        "meta-extract",
-        "-d", str(dataset_path),
-        arguments.file_extractor,
-        str(file_path)
-    ] + metalad_arguments
-    execute_command_line(purpose, command_line, context_info)
+    command_line = get_file_level_extract_cmdline(
+        dataset_path,
+        file_path,
+        metalad_arguments)
+    execute_command_line(
+        purpose,
+        command_line,
+        context_info,
+        get_metadata_store(dataset_path))
 
 
 def should_be_ignored(name: str) -> bool:
@@ -262,10 +349,7 @@ def extract_recursive(root_dataset_path: Path,
                     root_dataset_path,
                     metalad_arguments,
                     dict(
-                        root_dataset_path=str(root_dataset_path),
-                        root_dataset_id=root_dataset_id,
-                        root_dataset_version=root_dataset_version,
-                        inter_dataset_path=""
+                        root_dataset_path=str(root_dataset_path)
                     ))
             else:
                 if not dataset_recursive:
@@ -280,7 +364,7 @@ def extract_recursive(root_dataset_path: Path,
                         f"to {root_dataset_path}[{inter_dataset_path}]")
 
                     extract_dataset_level_metadata(
-                        root_dataset_path,
+                        root_dataset_path / inter_dataset_path,
                         metalad_arguments,
                         dict(
                             root_dataset_path=str(root_dataset_path),
@@ -371,7 +455,7 @@ def extract(top_dir_path: Path, recursive: bool, aggregate: bool) -> None:
 def main() -> int:
     logging.basicConfig(level=log_level[arguments.log_level])
 
-    if arguments.max_processes < 1:
+    if arguments.process_limit < 1:
         print(
             "Error: number of processes must be greater or equal to 1",
             file=sys.stderr)
@@ -383,12 +467,20 @@ def main() -> int:
                 "Warning: 'aggregate' ignored, since 'recursive' is not set",
                 file=sys.stderr)
             arguments.aggregate = False
-        if arguments.store_metadata is False:
+        if arguments.save_metadata is None:
             print(
-                "Warning: 'aggregate' ignored, since 'store_metadata' "
+                "Warning: 'aggregate' ignored, since 'save_metadata' "
                 "is not set",
                 file=sys.stderr)
-            arguments.aggregate = False
+            arguments.aggregate = None
+
+    if arguments.metadata_store:
+        if arguments.save_metadata is False:
+            print(
+                "Warning: 'metadata-store' ignored, since 'save_metadata' "
+                "is not set",
+                file=sys.stderr)
+            arguments.metadata_store = None
 
     extract(
         Path(arguments.dataset_path),
