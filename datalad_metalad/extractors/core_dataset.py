@@ -42,6 +42,6 @@ class DataladCoreDatasetExtractor(DatasetMetadataExtractor):
             immediate_data={
                 "id": self.dataset.id,
                 "refcommit": self.dataset.repo.get_hexsha(),
-                "inter_dataset_path": "",
+                "dataset_path": "",
                 "comment": "test-implementation of core_dataset"
             })

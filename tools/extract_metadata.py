@@ -39,7 +39,7 @@ argument_parser.add_argument(
 
 argument_parser.add_argument(
     "-l", "--log-level",
-    type=str, default="warning",
+    type=str,
     help="maximum number of parallel processes")
 
 argument_parser.add_argument(
@@ -52,8 +52,9 @@ argument_parser.add_argument(
 argument_parser.add_argument(
     "-a", "--aggregate",
     action="store_true", default=False,
-    help="aggregate all extracted metadata in the top level dataset, this"
-         "is only useful if recursive was specified (i.e. -r/--recursive)")
+    help="create metadata records that aggregate all extracted metadata "
+         "in the top level dataset, this is only useful if "
+         "-r/--recursive was specified")
 
 argument_parser.add_argument(
     "-f", "--file-extractor",
@@ -76,7 +77,12 @@ argument_parser.add_argument(
     action="store_true", default=False,
     help="save extracted metadata in the root-dataset repository (or "
          "the repository given by -m, --metadata-store) instead of "
-         "writting records to stdout.")
+         "writing records to stdout.")
+
+argument_parser.add_argument(
+    "--dry-run",
+    action="store_true", default=False,
+    help="do not perform extraction, just show what commands would be executed")
 
 argument_parser.add_argument(
     "dataset_path",
@@ -92,8 +98,8 @@ print(arguments, file=sys.stderr)
 
 @dataclass
 class ExtractorInfo:
-    popen: subprocess.Popen
-    context_info: Dict
+    popen: Optional[subprocess.Popen]
+    context_info: Optional[Dict]
     metadata_store: Optional[Path]
 
 
@@ -114,12 +120,10 @@ def encapsulate(metadata_object: dict, context: dict) -> dict:
 def get_add_cmdline(metadata_store: Path,
                     context: Dict) -> List[str]:
 
-    command_line = [
-        "datalad",
-        "-l", arguments.log_level,
-        "meta-add",
-        "-m", str(metadata_store),
-        "-"]
+    command_line = ["datalad"]
+    if arguments.log_level:
+        command_line.extend(["-l", arguments.log_level])
+    command_line.extend(["meta-add", "-m", str(metadata_store), "-"])
 
     if "root_dataset_id" in context:
         additional_values = {
@@ -128,17 +132,22 @@ def get_add_cmdline(metadata_store: Path,
             if key in [
                 "root_dataset_id",
                 "root_dataset_version",
-                "inter_dataset_path"]
+                "dataset_path"]
         }
         command_line.append(json.dumps(additional_values))
     return command_line
 
 
 def add_metadata(metadata_store: Path,
-                 metadata_object: Dict,
+                 metadata_object: Optional[Dict],
                  context: Dict):
 
     command_line = get_add_cmdline(metadata_store, context)
+
+    if arguments.dry_run is True:
+        print(f"[DRY]: {' '.join(command_line)}")
+        return
+
     stdin_content = json.dumps(metadata_object).encode()
     logger.info(f"running: {' '.join(command_line)}")
     subprocess.run(command_line, input=stdin_content, check=True)
@@ -148,6 +157,15 @@ def add_metadata(metadata_store: Path,
 def handle_process_termination():
     terminated_info = []
     for index, extractor_info in enumerate(running_processes):
+
+        if arguments.dry_run:
+            terminated_info.append(extractor_info)
+            if extractor_info.metadata_store is not None:
+                add_metadata(
+                    extractor_info.metadata_store,
+                    None,
+                    extractor_info.context_info)
+                continue
 
         return_code = extractor_info.popen.poll()
         if return_code is not None:
@@ -183,6 +201,11 @@ def execute_command_line(purpose: str,
                          context_info: Dict,
                          metadata_store: Optional[Path] = None):
 
+    if arguments.dry_run is True:
+        print(f"[DRY]: {' '.join(command_line)}")
+        running_processes.append(ExtractorInfo(None, context_info, metadata_store))
+        return
+
     ensure_less_processes_than(arguments.process_limit)
     p = subprocess.Popen(command_line, stdout=subprocess.PIPE)
     running_processes.append(ExtractorInfo(p, context_info, metadata_store))
@@ -194,6 +217,8 @@ def get_metadata_store(dataset_path: Path) -> Optional[Path]:
     if arguments.save_metadata is True:
         if arguments.metadata_store is not None:
             return Path(arguments.metadata_store)
+        if arguments.aggregate is True:
+            return Path(arguments.dataset_path)
         return dataset_path
     return None
 
@@ -201,9 +226,12 @@ def get_metadata_store(dataset_path: Path) -> Optional[Path]:
 def get_dataset_level_extract_cmdline(dataset_path: Path,
                                       metalad_arguments: List[str]
                                       ) -> List[str]:
-    return [
-        "datalad",
-        "-l", arguments.log_level,
+
+    command_line = ["datalad"]
+    if arguments.log_level:
+        command_line.extend(["-l", arguments.log_level])
+
+    return command_line + [
         "meta-extract",
         "-d", str(dataset_path),
         arguments.dataset_extractor,
@@ -232,9 +260,12 @@ def get_file_level_extract_cmdline(dataset_path: Path,
                                    file_path: Path,
                                    metalad_arguments: List[str]
                                    ) -> List[str]:
-    return [
-        "datalad",
-        "-l", arguments.log_level,
+
+    command_line = ["datalad"]
+    if arguments.log_level:
+        command_line.extend(["-l", arguments.log_level])
+
+    return command_line + [
         "meta-extract",
         "-d", str(dataset_path),
         arguments.file_extractor,
@@ -347,7 +378,7 @@ def extract_recursive(root_dataset_path: Path,
                 assert dataset_version == root_dataset_version
                 assert current_dataset_path == root_dataset_path
 
-                logger.debug(
+                logger.info(
                     f"Extract root dataset {root_dataset_path} "
                     f"to {root_dataset_path}[]")
 
@@ -361,37 +392,37 @@ def extract_recursive(root_dataset_path: Path,
                 if not dataset_recursive:
                     return
 
-                inter_dataset_path = current_path.relative_to(root_dataset_path)
+                dataset_path = current_path.relative_to(root_dataset_path)
                 if aggregate is True:
 
-                    logger.debug(
+                    logger.info(
                         f"Aggregate dataset "
-                        f"{root_dataset_path / inter_dataset_path} "
-                        f"to {root_dataset_path}[{inter_dataset_path}]")
+                        f"{root_dataset_path / dataset_path} "
+                        f"to {root_dataset_path}[{dataset_path}]")
 
                     extract_dataset_level_metadata(
-                        root_dataset_path / inter_dataset_path,
+                        root_dataset_path / dataset_path,
                         metalad_arguments,
                         dict(
                             root_dataset_path=str(root_dataset_path),
                             root_dataset_id=root_dataset_id,
                             root_dataset_version=root_dataset_version,
-                            inter_dataset_path=str(inter_dataset_path)
+                            dataset_path=str(dataset_path)
                         ))
 
                 else:
 
-                    logger.debug(
+                    logger.info(
                         f"Extract dataset "
-                        f"{root_dataset_path / inter_dataset_path} "
-                        f"to {root_dataset_path / inter_dataset_path}[]")
+                        f"{root_dataset_path / dataset_path} "
+                        f"to {root_dataset_path / dataset_path}[]")
 
                     extract_dataset_level_metadata(
-                        root_dataset_path / inter_dataset_path,
+                        root_dataset_path / dataset_path,
                         metalad_arguments,
                         dict(
                             root_dataset_path=str(
-                                root_dataset_path / inter_dataset_path)
+                                root_dataset_path / dataset_path)
                         ))
 
             current_dataset_path = current_path
@@ -410,13 +441,13 @@ def extract_recursive(root_dataset_path: Path,
                 aggregate)
     else:
         intra_dataset_path = current_path.relative_to(current_dataset_path)
-        inter_dataset_path = current_dataset_path.relative_to(root_dataset_path)
+        dataset_path = current_dataset_path.relative_to(root_dataset_path)
         if aggregate is True:
 
-            logger.debug(
+            logger.info(
                 f"Aggregate file    {current_path} "
                 f"to {intra_dataset_path} in "
-                f"{root_dataset_path}[{inter_dataset_path}]")
+                f"{root_dataset_path}[{dataset_path}]")
 
             extract_file_level_metadata(
                 current_dataset_path,
@@ -426,11 +457,14 @@ def extract_recursive(root_dataset_path: Path,
                     root_dataset_path=str(root_dataset_path),
                     root_dataset_id=root_dataset_id,
                     root_dataset_version=root_dataset_version,
-                    inter_dataset_path=str(inter_dataset_path)
-                ))
+                    dataset_path=str(dataset_path)
+                )
+                if dataset_path != Path("")
+                else dict(root_dataset_path=str(root_dataset_path))
+            )
         else:
 
-            logger.debug(
+            logger.info(
                 f"Extract file    {current_path} "
                 f"to {intra_dataset_path} in "
                 f"{current_dataset_path}[]")
@@ -459,7 +493,7 @@ def extract(top_dir_path: Path, recursive: bool, aggregate: bool) -> None:
 
 
 def main() -> int:
-    logging.basicConfig(level=log_level[arguments.log_level])
+    logging.basicConfig(level=log_level[arguments.log_level or "warning"])
 
     if arguments.process_limit < 1:
         print(
@@ -469,10 +503,9 @@ def main() -> int:
 
     if arguments.aggregate is True:
         if arguments.recursive is False:
-            print(
-                "Warning: 'aggregate' ignored, since 'recursive' is not set",
-                file=sys.stderr)
-            arguments.aggregate = False
+            logger.error(
+                "Nothing to aggregate since -r/--recursive' is not set")
+            return 2
         if arguments.save_metadata is None:
             print(
                 "Warning: 'aggregate' ignored, since 'save_metadata' "
@@ -482,11 +515,17 @@ def main() -> int:
 
     if arguments.metadata_store:
         if arguments.save_metadata is False:
-            print(
+            logger.warning(
                 "Warning: 'metadata-store' ignored, since 'save_metadata' "
-                "is not set",
-                file=sys.stderr)
+                "is not set")
             arguments.metadata_store = None
+        if arguments.aggregate is False:
+            if arguments.force is False:
+                logger.error(
+                    "You defined a 'metadata-store' without requesting"
+                    " aggregation. If this is really what you want, use "
+                    "-f/--force in addition.")
+                return 1
 
     extract(
         Path(arguments.dataset_path),
