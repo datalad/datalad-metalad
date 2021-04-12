@@ -489,7 +489,7 @@ class Dump(Interface):
             doc="""metadata storage backend to be used.""",
             constraints=EnsureChoice("git")),
         metadata_store=Parameter(
-            args=("-s", "--metadata-store"),
+            args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
             doc="""Directory in which the metadata model instance is
             stored (often this is the same directory as the dataset

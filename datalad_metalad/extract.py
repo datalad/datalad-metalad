@@ -20,7 +20,6 @@ from uuid import UUID
 
 from dataclasses import dataclass
 
-from datalad.coreapi import subdatasets
 from datalad.distribution.dataset import Dataset
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
@@ -98,7 +97,7 @@ class Extract(Interface):
         metadata, you currently have to do the following:
         first, extract dataset metadata of the sub-dataset using a dataset-
         level extractor, second add the extracted metadata with sub-dataset
-        information (i.e. inter_dataset_path, root_dataset_id, root-dataset-
+        information (i.e. dataset_path, root_dataset_id, root-dataset-
         version) to the metadata of the super-dataset.
 
     The extractor configuration can be parameterized with key-value pairs
@@ -248,16 +247,16 @@ class Extract(Interface):
             else {}
         )
 
-        inter_dataset_path = (
-            {"inter_dataset_path": str(metadata_record["inter_dataset_path"])}
-            if "inter_dataset_path" in metadata_record
+        dataset_path = (
+            {"dataset_path": str(metadata_record["dataset_path"])}
+            if "dataset_path" in metadata_record
             else {}
         )
 
         ui.message(json.dumps({
             **metadata_record,
             **path,
-            **inter_dataset_path,
+            **dataset_path,
             "dataset_id": str(metadata_record["dataset_id"])
         }))
 
@@ -422,17 +421,14 @@ def get_file_info(dataset: Dataset,
 
     path = dataset.pathobj / relative_path
 
-    path_status = (list(dataset.status(
-        path,
-        result_renderer="disabled")) or [None])[0]
+    path_status = (
+            list(dataset.status(path, result_renderer="disabled")) or [None])[0]
 
     if path_status is None:
-        raise FileNotFoundError(
-            "file not found: {}".format(path))
+        raise FileNotFoundError("file not found: {}".format(path))
 
     if path_status["state"] == "untracked":
-        raise ValueError(
-            "file not tracked: {}".format(path))
+        raise ValueError("file not tracked: {}".format(path))
 
     # noinspection PyUnresolvedReferences
     return FileInfo(

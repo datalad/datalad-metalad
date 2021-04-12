@@ -47,7 +47,7 @@ metadata_template = {
 additional_keys_template = {
     "root_dataset_id": "aa010203-1011-2021-3031-404142434445",
     "root_dataset_version": "aaaaaaa0000000000000000222222222",
-    "inter_dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
+    "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
 }
 
 
@@ -130,7 +130,7 @@ def test_incomplete_non_mandatory_key_handling(file_name):
         open(file_name, "tw"))
 
     _assert_raise_mke_with_keys(
-        ["root_dataset_version", "inter_dataset_path"],
+        ["root_dataset_version", "dataset_path"],
         metadata=file_name,
         additionalvalues=json.dumps({"root_dataset_id": 1}))
 
@@ -325,7 +325,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         root_dataset_id = UUID(additional_keys_template["root_dataset_id"])
         root_dataset_version = additional_keys_template["root_dataset_version"]
         dataset_tree_path = MetadataPath(
-            additional_keys_template["inter_dataset_path"])
+            additional_keys_template["dataset_path"])
 
         tree_version_list, uuid_set, mrr = _get_top_nodes(
             git_repo,
@@ -368,7 +368,7 @@ def test_subdataset_add_file_end_to_end(file_name):
         root_dataset_id = UUID(additional_keys_template["root_dataset_id"])
         root_dataset_version = additional_keys_template["root_dataset_version"]
         dataset_tree_path = MetadataPath(
-            additional_keys_template["inter_dataset_path"])
+            additional_keys_template["dataset_path"])
 
         tree_version_list, uuid_set, mrr = _get_top_nodes(
             git_repo,

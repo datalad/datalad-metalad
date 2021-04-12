@@ -66,7 +66,7 @@ class AddParameter:
 
     root_dataset_id: Optional[UUID]
     root_dataset_version: Optional[str]
-    dataset_tree_path: Optional[MetadataPath]
+    dataset_path: Optional[MetadataPath]
 
     extractor_name: str
     extractor_version: str
@@ -151,7 +151,7 @@ class Add(Interface):
     required_additional_keys = (
         "root_dataset_id",
         "root_dataset_version",
-        "inter_dataset_path")
+        "dataset_path")
 
     required_keys_lines = "\n".join(map(repr, required_keys))
     required_additional_keys_lines = "\n".join(
@@ -252,8 +252,8 @@ class Add(Interface):
                 if "root_dataset_id" in metadata
                 else None),
             root_dataset_version=metadata.get("root_dataset_version", None),
-            dataset_tree_path=MetadataPath(
-                metadata.get("inter_dataset_path", "")),
+            dataset_path=MetadataPath(
+                metadata.get("dataset_path", "")),
 
             extractor_name=metadata["extractor_name"],
             extractor_version=metadata["extractor_version"],
@@ -395,12 +395,12 @@ def _get_top_nodes(realm: str, ap: AddParameter):
     _, dataset_tree = tree_version_list.get_dataset_tree(
         ap.root_dataset_version)
 
-    if ap.dataset_tree_path != MetadataPath("") and ap.dataset_tree_path in dataset_tree:
-        mrr = dataset_tree.get_metadata_root_record(ap.dataset_tree_path)
+    if ap.dataset_path != MetadataPath("") and ap.dataset_path in dataset_tree:
+        mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
         if mrr.dataset_identifier != ap.dataset_id:
             raise ValueError(
                 f"add-metadata claims that the metadata store contains dataset "
-                f"id {ap.dataset_id} at path {ap.dataset_tree_path}, but the "
+                f"id {ap.dataset_id} at path {ap.dataset_path}, but the "
                 f"id of the stored dataset is {mrr.dataset_identifier}")
     else:
         dataset_level_metadata = Metadata(default_mapper_family, realm)
@@ -412,7 +412,7 @@ def _get_top_nodes(realm: str, ap: AddParameter):
             ap.dataset_version,
             Connector.from_object(dataset_level_metadata),
             Connector.from_object(file_tree))
-        dataset_tree.add_dataset(ap.dataset_tree_path, mrr)
+        dataset_tree.add_dataset(ap.dataset_path, mrr)
     return tree_version_list, uuid_set, mrr
 
 
