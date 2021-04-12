@@ -67,7 +67,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         found, failed = self.tree_search.get_matching_paths(
             [""],
             False,
-            auto_list_root=True)
+            auto_list_dirs=True)
 
         self.assertPathsInResult(
             found,
@@ -84,7 +84,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         found, failed = self.tree_search.get_matching_paths(
             [""],
             False,
-            auto_list_root=False)
+            auto_list_dirs=False)
 
         self.assertListEqual(
             found,

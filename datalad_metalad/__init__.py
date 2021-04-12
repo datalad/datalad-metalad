@@ -48,6 +48,12 @@ command_suite = (
             'meta-add',
             'meta_add'
         ),
+        (
+            'datalad_metalad.lsds',
+            'ListDataset',
+            'meta-lsds',
+            'meta_lsds'
+        ),
     ]
 )
 

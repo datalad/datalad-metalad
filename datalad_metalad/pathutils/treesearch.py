@@ -31,7 +31,7 @@ class TreeSearch:
     def get_matching_paths(self,
                            pattern_list: List[str],
                            recursive: bool,
-                           auto_list_root: bool = True
+                           auto_list_dirs: bool = True
                            ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
         """
         Get all metadata paths that are matching the patterns in
@@ -49,7 +49,7 @@ class TreeSearch:
         ]
         matching, failed = self._get_matching_nodes(
             pattern_elements_list,
-            auto_list_root)
+            auto_list_dirs)
 
         if recursive:
             matching = self._list_recursive(matching[:])
@@ -57,7 +57,7 @@ class TreeSearch:
 
     def _get_matching_nodes(self,
                             pattern_list: List[MetadataPath],
-                            auto_list_root: bool
+                            auto_list_dirs: bool
                             ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
 
         match_records: List[MatchRecord] = []
@@ -65,7 +65,7 @@ class TreeSearch:
 
         for pattern in pattern_list:
             if pattern.parts == ():
-                match_records.extend(self._get_root_nodes(auto_list_root))
+                match_records.extend(self._get_root_nodes(auto_list_dirs))
 
             else:
                 matching_path_records = self._search_matches(
@@ -81,14 +81,14 @@ class TreeSearch:
         return match_records, failed_patterns
 
     def _get_root_nodes(self,
-                        auto_list_root: bool
+                        auto_list_dirs: bool
                         ) -> List[MatchRecord]:
         return (
             [
                 MatchRecord(MetadataPath(name), child_node)
                 for name, child_node in self.tree.child_nodes.items()
             ]
-            if auto_list_root is True
+            if auto_list_dirs is True
             else [MatchRecord(MetadataPath(""), self.tree)])
 
     def _search_matches(self,

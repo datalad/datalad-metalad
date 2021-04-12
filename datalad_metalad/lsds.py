@@ -6,111 +6,9 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""
-Query a dataset's aggregated metadata
-
-We distinguish between two different result formats, large objects and
-small objects. Both contain the same information per metadata, but the
-large object contains all metadata in a single object, while the small
-objects contain only per-item, e.g. dataset or file, metadata together
-with context information.
-
-The large objects do not repeat information, but can become hard to
-manage in datasets with millions of subdatasets or files.
-
-The small objects are easy to manage, but identical information is
-repeated in them.
-
-We currently only support small objects
-
-Large object:
-{
-   "dataset-1": {
-       "dataset_level_metadata": {
-           "dataset-info": "some dataset info"
-           "extractor1.1": [
-                {
-                   "extraction_time": "11:00:11",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                {
-                   "extraction_time": "12:23:34",
-                   "parameter": { some other extraction parameter}
-                   metadata: [
-                      another HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor1.2": ...
-       }
-       "file_tree": {  LARGE object with file-based metadata }
-   },
-   "dataset-2": {
-       "dataset_level_metadata": {
-           "dataset-info": "another dataset info"
-           "extractor2.1": [
-                {
-                   "extraction_time": "1998",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor2.2": ...
-       },
-       "file_tree": {  LARGE object with file-based metadata }
-}
-
-Such an object would be extremely large, especially if it
-contains metadata.
-
-The second approach focuses on minimal result sizes, but
-result repetition and therefore also information duplication.
-The non-splitable information is the metadata blob.
-For example:
-
-Small object 1:
-{
-    "dataset-1": {
-        "dataset_level_metadata": {
-            "dataset-info": "some dataset-1 info"
-            "extractor1.1": {
-                "extraction_time": "11:00:11",
-                "parameter": { some extraction parameter}
-                "metadata":  " a HUGE metadata blob "
-             }
-        }
-    }
-}
-
-Small object 2:
-{
-    "dataset-1": {
-        "dataset_level_metadata": {
-            "dataset-info": "some dataset-1 info"
-            "extractor1.2": {
-                "extraction_time": "12:23:34",
-                "parameter": { some other extraction parameter}
-                "metadata":  " another HUGE metadata blob "
-             }
-        }
-    }
-}
-
-
-We use the small object approach below
-"""
-
 
 __docformat__ = 'restructuredtext'
 
-import enum
 import json
 import logging
 from typing import Generator
@@ -120,11 +18,7 @@ from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
 from datalad.interface.base import Interface
 from datalad.interface.utils import eval_results
-from datalad.support.constraints import (
-    EnsureNone,
-    EnsureStr,
-    EnsureChoice,
-)
+from datalad.support.constraints import EnsureNone, EnsureStr
 from datalad.support.param import Parameter
 from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
@@ -144,35 +38,26 @@ from .pathutils.treesearch import TreeSearch
 
 default_mapper_family = "git"
 
-lgr = logging.getLogger('datalad.metadata.dump')
-
-
-class ReportPolicy(enum.Enum):
-    INDIVIDUAL = "individual"
-    COMPLETE = "complete"
-
-
-class ReportOn(enum.Enum):
-    FILES = "files"
-    DATASETS = "datasets"
-    ALL = "all"
+lgr = logging.getLogger('datalad.metadata.lsds')
 
 
 def _create_result_record(mapper: str,
                           metadata_store: str,
                           metadata_record: JSONObject,
                           element_path: str,
-                          report_type: str):
+                          report_type: str,
+                          show_version: bool):
     return {
         "status": "ok",
-        "action": "meta_dump",
+        "action": "meta_lsds",
         "source": {
             "mapper": mapper,
             "metadata_store": metadata_store
         },
         "type": report_type,
         "metadata": metadata_record,
-        "path": element_path
+        "path": element_path,
+        "show_version": show_version
     }
 
 
@@ -192,7 +77,8 @@ def show_dataset_metadata(mapper: str,
                           root_dataset_identifier: UUID,
                           root_dataset_version: str,
                           dataset_path: MetadataPath,
-                          metadata_root_record: MetadataRootRecord
+                          metadata_root_record: MetadataRootRecord,
+                          show_version: bool
                           ) -> Generator[dict, None, None]:
 
     dataset_level_metadata = \
@@ -231,7 +117,8 @@ def show_dataset_metadata(mapper: str,
             metadata_store,
             result_json_object,
             str(dataset_path),
-            "dataset")
+            "dataset",
+            show_version)
 
     # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
@@ -310,9 +197,10 @@ def dump_from_dataset_tree(mapper: str,
                            metadata_store: str,
                            tree_version_list: TreeVersionList,
                            metadata_url: TreeMetadataURL,
-                           recursive: bool) -> Generator[dict, None, None]:
-    """ Dump dataset tree elements that are referenced in path """
+                           recursive: bool,
+                           show_version: bool) -> Generator[dict, None, None]:
 
+    """ Dump dataset tree elements that are referenced in path """
     # Normalize path representation
     if not metadata_url or metadata_url.dataset_path is None:
         metadata_url = TreeMetadataURL(MetadataPath(""), MetadataPath(""))
@@ -337,7 +225,7 @@ def dump_from_dataset_tree(mapper: str,
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [str(metadata_url.dataset_path)], recursive, auto_list_dirs=False)
+        [str(metadata_url.dataset_path)], recursive, auto_list_dirs=True)
 
     for missing_path in not_found_paths:
         lgr.error(
@@ -352,17 +240,8 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_identifier,
             root_dataset_version,
             match_record.path,
-            match_record.node.value)
-
-        yield from show_file_tree_metadata(
-            mapper,
-            metadata_store,
-            root_dataset_identifier,
-            root_dataset_version,
-            MetadataPath(match_record.path),
             match_record.node.value,
-            str(metadata_url.local_path),
-            recursive)
+            show_version)
 
     return
 
@@ -371,7 +250,8 @@ def dump_from_uuid_set(mapper: str,
                        metadata_store: str,
                        uuid_set: UUIDSet,
                        path: UUIDMetadataURL,
-                       recursive: bool) -> Generator[dict, None, None]:
+                       recursive: bool,
+                       show_version: bool) -> Generator[dict, None, None]:
 
     """ Dump UUID-identified dataset elements that are referenced in path """
 
@@ -426,68 +306,23 @@ def dump_from_uuid_set(mapper: str,
 
 
 @build_doc
-class Dump(Interface):
-    """Query a dataset's aggregated metadata for dataset and file metadata
+class ListDataset(Interface):
+    """List dataset metadata the is stored in a metadata-store
 
-    Two types of metadata are supported:
+    The DATASET_FILE_PATH_PATTERN argument specifies dataset patterns
+    that are matched against the dataset information in the metadata.
+    There are two format, UUID-based and dataset tree-based. The formats are:
 
-    1. metadata describing a dataset as a whole (dataset-global metadata), and
-
-    2. metadata for files in a dataset (content metadata).
-
-    The DATASET_FILE_PATH_PATTERN argument specifies dataset and file patterns
-    that are matched against the dataset and file information in the metadata.
-    There are two format, UUID-based and dataset-tree based. The formats are:
-
-        TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
-        UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
+        TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS]
+        UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS]
 
     (the tree-format is the default format and does not require a prefix).
     """
 
-    # Use a custom renderer to emit a self-contained metadata record. The
-    # emitted record can be fed into meta-add for example.
+    # Use a custom renderer to emit a canonical URI
     result_renderer = 'tailored'
 
-    _examples_ = [
-        dict(
-            text='Dump the metadata of the file "dataset_description.json" in '
-                 'the dataset "simon". (The queried dataset git-repository is '
-                 'determined based on the current working directory)',
-            code_cmd="datalad meta-dump simon:dataset_description.json"),
-        dict(
-            text="Sometimes it is helpful to get metadata records formatted "
-                 "in a more accessible form, here as pretty-printed JSON",
-            code_cmd="datalad -f json_pp meta-dump "
-                     "simon:dataset_description.json"),
-        dict(
-            text="Same query as above, but specify that all datasets should "
-                 "be queried for the given path",
-            code_cmd="datalad meta-dump -d . :somedir/subdir/thisfile.dat"),
-        dict(
-            text="Dump any metadata record of any dataset known to the "
-                 "queried dataset",
-            code_cmd="datalad meta-dump -r"),
-        dict(
-            text="Show metadata for all datasets",
-            code_cmd="datalad -f json_pp meta-dump -r"),
-        dict(
-            text="Show metadata for all files ending in `.json´ in the root "
-                 "directories of all datasets",
-            code_cmd="datalad -f json_pp meta-dump *:*.json -r"),
-        dict(
-            text="Show metadata for all files ending in `.json´ in all "
-                 "datasets by not specifying a dataset at all. This will "
-                 "start dumping at the top-level dataset.",
-            code_cmd="datalad -f json_pp meta-dump :*.json -r")
-    ]
-
     _params_ = dict(
-        backend=Parameter(
-            args=("--backend",),
-            metavar="BACKEND",
-            doc="""metadata storage backend to be used.""",
-            constraints=EnsureChoice("git")),
         metadata_store=Parameter(
             args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
@@ -495,12 +330,6 @@ class Dump(Interface):
             stored (often this is the same directory as the dataset
             directory). If no directory name is provided, the current working
             directory is used."""),
-        path=Parameter(
-            args=("path",),
-            metavar="DATASET_FILE_PATH_PATTERN",
-            doc="path to query metadata for",
-            constraints=EnsureStr() | EnsureNone(),
-            nargs='?'),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -508,37 +337,40 @@ class Dump(Interface):
             on given paths or reference dataset. Note, setting this option
             does not cause any recursion into potential subdatasets on the
             filesystem. It merely determines what metadata is being reported
-            from the given/discovered reference dataset."""))
+            from the given/discovered reference dataset."""),
+        show_version=Parameter(
+            args=("-v", "--show-version",),
+            action="store_true",
+            doc="""if set, instruct meta-lsds to report the root dataset version
+            in the emitted URI."""),
+        path=Parameter(
+            args=("path",),
+            metavar="DATASET_FILE_PATH_PATTERN",
+            doc="path to query metadata for",
+            constraints=EnsureStr() | EnsureNone(),
+            nargs='?'))
 
     @staticmethod
-    @datasetmethod(name='meta_dump')
+    @datasetmethod(name='meta_lsds')
     @eval_results
     def __call__(
-            backend="git",
             metadata_store=None,
-            path="",
-            recursive=False):
+            recursive=False,
+            show_version=False,
+            path=""):
 
         metadata_store = metadata_store or "."
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             default_mapper_family,
             metadata_store)
 
+        backend = "git"
+
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
-
-            message = (
-                f"No {backend}-mapped datalad metadata "
-                f"model found in: {metadata_store}")
-            lgr.warning(message)
-
-            yield dict(
-                action="meta_dump",
-                status='impossible',
-                backend=backend,
-                metadata_store=metadata_store,
-                message=message)
-            return
+            raise ValueError(
+                f"Not a valid {backend}-mapped metadata "
+                f"store: {metadata_store}")
 
         parser = MetadataURLParser(path)
         metadata_url = parser.parse()
@@ -549,7 +381,8 @@ class Dump(Interface):
                 metadata_store,
                 tree_version_list,
                 metadata_url,
-                recursive)
+                recursive,
+                show_version)
 
         elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
@@ -557,70 +390,21 @@ class Dump(Interface):
                 metadata_store,
                 uuid_set,
                 metadata_url,
-                recursive)
+                recursive,
+                show_version)
 
         return
 
     @staticmethod
     def custom_result_renderer(res, **kwargs):
 
-        if res["status"] != "ok" or res.get("action", "") != 'meta_dump':
+        if res["status"] != "ok" or res.get("action", "") != 'meta_lsds':
             # logging complained about this already
             return
 
-        render_dataset_level_metadata(
-            res["metadata"].get("dataset_level_metadata", dict()))
+        dataset_level_metadata = res['metadata']['dataset_level_metadata']
+        uri = f"tree:{dataset_level_metadata['dataset_path']}"
+        if res["show_version"] is True:
+            uri += f"@{dataset_level_metadata['root_dataset_version']}"
 
-        render_file_level_metadata(
-            res["metadata"].get("file_level_metadata", dict()))
-
-
-def render_dataset_level_metadata(dl_metadata: dict):
-    if not dl_metadata:
-        return
-
-    result_base = dict(
-        type="dataset",
-        dataset_id=dl_metadata["dataset_identifier"],
-        dataset_version=dl_metadata["dataset_version"])
-
-    render_common_metadata(dl_metadata, result_base)
-
-
-def render_file_level_metadata(fl_metadata: dict):
-    if not fl_metadata:
-        return
-
-    result_base = dict(
-        type="file",
-        dataset_id=fl_metadata["dataset_identifier"],
-        dataset_version=fl_metadata["dataset_version"],
-        path=fl_metadata["path"])
-
-    render_common_metadata(fl_metadata, result_base)
-
-
-def render_common_metadata(metadata: dict, result_base: dict):
-
-    if result_base["dataset_version"] != metadata["root_dataset_version"]:
-        assert metadata["dataset_path"] != ""
-        result_base["root_dataset_id"] = metadata["root_dataset_identifier"]
-        result_base["root_dataset_version"] = metadata[
-            "root_dataset_version"]
-        result_base["dataset_path"] = metadata["dataset_path"]
-
-    for extractor_name, extractions in metadata["metadata"].items():
-        for extraction in extractions:
-            extraction_result = dict(
-                extractor_name=extractor_name,
-                extractor_version=extraction["extractor_version"],
-                extraction_parameter=extraction["extraction_parameter"],
-                extraction_time=extraction["extraction_time"],
-                agent_name=extraction["extraction_agent_name"],
-                agent_email=extraction["extraction_agent_email"],
-                extracted_metadata=extraction["extraction_result"])
-
-            ui.message(json.dumps({
-                **result_base,
-                **extraction_result
-            }))
+        ui.message(uri)
