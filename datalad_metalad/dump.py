@@ -131,6 +131,7 @@ from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.treenode import TreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
@@ -156,6 +157,15 @@ class ReportOn(enum.Enum):
     FILES = "files"
     DATASETS = "datasets"
     ALL = "all"
+
+
+def _dataset_report_matcher(tree_node: TreeNode) -> bool:
+    return isinstance(tree_node.value, MetadataRootRecord)
+
+
+def _file_report_matcher(tree_node: TreeNode) -> bool:
+    # We only report files, not directories in file tree searches
+    return len(tree_node.child_nodes) == 0
 
 
 def _create_result_record(mapper: str,
@@ -250,9 +260,11 @@ def show_file_tree_metadata(mapper: str,
     file_tree = metadata_root_record.file_tree.load_object()
 
     # Determine matching file paths
-    tree_search = TreeSearch(file_tree)
+    tree_search = TreeSearch(file_tree, _file_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [search_pattern], recursive, auto_list_root=False)
+        pattern_list=[search_pattern],
+        recursive=recursive,
+        auto_list_dirs=False)
 
     for missing_path in not_found_paths:
         lgr.warning(
@@ -335,9 +347,11 @@ def dump_from_dataset_tree(mapper: str,
     root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
-    tree_search = TreeSearch(dataset_tree)
+    tree_search = TreeSearch(dataset_tree, _dataset_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [str(metadata_url.dataset_path)], recursive, auto_list_root=False)
+        pattern_list=[str(metadata_url.dataset_path)],
+        recursive=recursive,
+        auto_list_dirs=False)
 
     for missing_path in not_found_paths:
         lgr.error(

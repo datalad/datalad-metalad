@@ -1,11 +1,22 @@
 import unittest
 from typing import List
 
+from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadatapath import MetadataPath
+from dataladmetadatamodel.treenode import TreeNode
 
 from ..treesearch import MatchRecord, TreeSearch
+
+
+def file_report_matcher(tree_node: TreeNode) -> bool:
+    return tree_node.value is None
+    return len(tree_node.child_nodes) == 0 and tree_node.value is None
+
+
+def dataset_report_matcher(tree_node: TreeNode) -> bool:
+    return tree_node.value.startswith("test_dataset:")
 
 
 class TestTreeSearchBase(unittest.TestCase):
@@ -16,7 +27,7 @@ class TestTreeSearchBase(unittest.TestCase):
         tree = FileTree("", "")
         for path in path_list:
             tree.add_file(path)
-        return TreeSearch(tree)
+        return TreeSearch(tree, file_report_matcher)
 
     @staticmethod
     def create_dataset_tree_search_from_paths(path_list: List[MetadataPath]
@@ -24,8 +35,8 @@ class TestTreeSearchBase(unittest.TestCase):
 
         tree = DatasetTree("", "")
         for path in path_list:
-            tree.add_dataset(path, f"test:{path}")
-        return TreeSearch(tree)
+            tree.add_dataset(path, f"test_dataset:{path}")
+        return TreeSearch(tree, dataset_report_matcher)
 
     def setUp(self) -> None:
         self.path_list = [
@@ -79,7 +90,9 @@ class TestTreeSearchMatching(TestTreeSearchBase):
     def _test_pattern(self,
                       pattern_list: List[str],
                       expected_matches: List[str],
-                      use_dataset_tree: bool = False):
+                      use_dataset_tree: bool = False,
+                      recursive: bool = False,
+                      auto_list_dirs: bool = True):
 
         tree_search = (
             self.dataset_tree_search
@@ -87,20 +100,18 @@ class TestTreeSearchMatching(TestTreeSearchBase):
             else self.tree_search
         )
 
-        found, failed = tree_search.get_matching_paths(pattern_list, False)
+        found, failed = tree_search.get_matching_paths(
+            pattern_list=pattern_list,
+            recursive=recursive,
+            auto_list_dirs=auto_list_dirs)
         self.assertPathsInResult(found, expected_matches)
         self.assertListEqual(failed, [])
 
-    def _test_pattern_rec(self, pattern_list: List[str], expected_matches: List[str]):
-        found, failed = self.tree_search.get_matching_paths(pattern_list, True)
-        self.assertPathsInResult(found, expected_matches)
-        self.assertListEqual(failed, [])
-
-    def test_auto_list_root_on(self):
+    def test_auto_list_dirs_on(self):
         found, failed = self.tree_search.get_matching_paths(
-            [""],
-            False,
-            auto_list_root=True)
+            pattern_list=[""],
+            recursive=False,
+            auto_list_dirs=True)
 
         self.assertPathsInResult(
             found,
@@ -112,12 +123,12 @@ class TestTreeSearchMatching(TestTreeSearchBase):
 
         self.assertListEqual(failed, [])
 
-    def test_auto_list_root_off(self):
-        """ Expect a single root record for non-autolist root search """
+    def test_auto_list_dirs_off(self):
+        # Expect a single root record for non-autolist root search """
         found, failed = self.tree_search.get_matching_paths(
             [""],
             False,
-            auto_list_root=False)
+            auto_list_dirs=False)
 
         self.assertListEqual(
             found,
@@ -126,13 +137,22 @@ class TestTreeSearchMatching(TestTreeSearchBase):
 
     def test_root_dataset(self):
         self._test_pattern(
-            ["*"],
+            [""],
             [
                 MetadataPath(""),
+            ],
+            use_dataset_tree=True,
+            auto_list_dirs=False)
+
+    def test_autolist_dirs_dataset_on(self):
+        self._test_pattern(
+            [""],
+            [
                 MetadataPath("dataset_0.0"),
                 MetadataPath("dataset_0.1")
             ],
-            use_dataset_tree=True)
+            use_dataset_tree=True,
+            auto_list_dirs=True)
 
     def test_pattern_1(self):
         self._test_pattern(
@@ -142,6 +162,24 @@ class TestTreeSearchMatching(TestTreeSearchBase):
                 MetadataPath("s1"),
                 MetadataPath("s2"),
                 MetadataPath("d3")])
+
+    def test_root_dataset_recursive(self):
+        self._test_pattern(
+            [""],
+            [
+                MetadataPath(""),
+                MetadataPath("dataset_0.0"),
+                MetadataPath("dataset_0.0/dataset_0.0.0"),
+                MetadataPath("dataset_0.0/dataset_0.0.1"),
+                MetadataPath("dataset_0.0/dataset_0.0.2"),
+                MetadataPath("dataset_0.1"),
+                MetadataPath("dataset_0.1/dataset_0.1.0"),
+                MetadataPath("dataset_0.1/dataset_0.1.1"),
+                MetadataPath("dataset_0.1/dataset_0.1.2"),
+            ],
+            use_dataset_tree=True,
+            recursive=True,
+            auto_list_dirs=False)
 
     def test_pattern_2(self):
         self._test_pattern(["s*"], [MetadataPath("s1"), MetadataPath("s2")])
@@ -180,14 +218,22 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertListEqual(failed, [MetadataPath("see")])
 
     def test_recursive_list_1(self):
-        self._test_pattern_rec([""], self.path_list)
+        self._test_pattern(
+            pattern_list=[""],
+            expected_matches=self.path_list,
+            use_dataset_tree=False,
+            recursive=True,
+            auto_list_dirs=False)
 
     def test_recursive_list_2(self):
-        self._test_pattern_rec(
-            ["d3"],
-            [
+        self._test_pattern(
+            pattern_list=["d3"],
+            expected_matches=[
                 MetadataPath("d3/.datalad_metadata"),
-                MetadataPath("d3/some_file")])
+                MetadataPath("d3/some_file")],
+            use_dataset_tree=False,
+            recursive=True,
+            auto_list_dirs=False)
 
 
 if __name__ == '__main__':

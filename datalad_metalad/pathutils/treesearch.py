@@ -1,5 +1,5 @@
 from fnmatch import fnmatchcase
-from typing import List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import dataclasses
 
@@ -25,13 +25,16 @@ class TreeSearch:
     are always separated by "/". The root is
     identified by an empty string, i.e. "".
     """
-    def __init__(self, tree: Union[DatasetTree, FileTree]):
+    def __init__(self,
+                 tree: Union[DatasetTree, FileTree],
+                 report_matcher: Callable[[Any], bool]):
         self.tree = tree
+        self.report_matcher = report_matcher
 
     def get_matching_paths(self,
                            pattern_list: List[str],
                            recursive: bool,
-                           auto_list_root: bool = True
+                           auto_list_dirs: bool = True
                            ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
         """
         Get all metadata paths that are matching the patterns in
@@ -42,6 +45,10 @@ class TreeSearch:
 
         - Empty pattern-specifications, i.e. '', are interpreted
           as root-dataset or root-file-tree nodes.
+
+        If auto_list_dirs is True, and if the pattern identify a
+        directory, the content of the directory is reported instead
+        of the directory itself.
         """
         pattern_elements_list = [
             MetadataPath(pattern)
@@ -49,15 +56,21 @@ class TreeSearch:
         ]
         matching, failed = self._get_matching_nodes(
             pattern_elements_list,
-            auto_list_root)
+            auto_list_dirs)
 
         if recursive:
             matching = self._list_recursive(matching[:])
+        else:
+            matching = [
+                match
+                for match in matching
+                if self.report_matcher(match.node)
+            ]
         return matching, failed
 
     def _get_matching_nodes(self,
                             pattern_list: List[MetadataPath],
-                            auto_list_root: bool
+                            auto_list_dirs: bool
                             ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
 
         match_records: List[MatchRecord] = []
@@ -68,10 +81,10 @@ class TreeSearch:
 
                 # TODO: fix this case and combine with the next
                 # Special cases in which the root node is added
-                match_records.extend(self._get_root_nodes(auto_list_root))
+                match_records.extend(self._get_root_nodes(auto_list_dirs))
 
             elif pattern.parts == ():
-                match_records.extend(self._get_root_nodes(auto_list_root))
+                match_records.extend(self._get_root_nodes(auto_list_dirs))
 
             else:
                 matching_path_records = self._search_matches(
@@ -87,15 +100,16 @@ class TreeSearch:
         return match_records, failed_patterns
 
     def _get_root_nodes(self,
-                        auto_list_root: bool
+                        auto_list_dirs: bool
                         ) -> List[MatchRecord]:
         return (
             [
                 MatchRecord(MetadataPath(name), child_node)
                 for name, child_node in self.tree.child_nodes.items()
             ]
-            if auto_list_root is True
-            else [MatchRecord(MetadataPath(""), self.tree)])
+            if auto_list_dirs is True
+            else [MatchRecord(MetadataPath(""), self.tree)]
+        )
 
     def _search_matches(self,
                         pattern_parts: Tuple[str],
@@ -126,17 +140,16 @@ class TreeSearch:
             for starting_point in starting_points
             for record in self._rec_list_recursive(
                 starting_point.node,
-                starting_point.path)]
+                starting_point.path)
+            if self.report_matcher(record.node)
+        ]
 
     def _rec_list_recursive(self,
                             starting_point: FileTree,
                             starting_point_path: MetadataPath
                             ) -> List[MatchRecord]:
 
-        if starting_point.is_leaf_node():
-            return [MatchRecord(starting_point_path, starting_point)]
-
-        result = []
+        result = [MatchRecord(starting_point_path, starting_point)]
         for node_name, sub_tree in starting_point.child_nodes.items():
             sub_tree_path = starting_point_path / node_name
             result.extend(
