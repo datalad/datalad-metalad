@@ -197,7 +197,8 @@ class Extract(Interface):
             check_installed=path is not None)
 
         if not source_dataset.repo:
-            raise ValueError(f"No dataset found in {dataset or curdir}.")
+            raise ValueError(
+                f"No datalad dataset found in: {dataset or curdir}")
 
         source_dataset_version = source_dataset.repo.get_hexsha()
 
@@ -273,11 +274,15 @@ def do_dataset_extraction(ep: ExtractionParameter):
         yield from legacy_extract_dataset(ep)
         return
 
+    if not issubclass(ep.extractor_class, DatasetMetadataExtractor):
+        raise ValueError(
+            "A dataset-level metadata-extraction was attempted (since no "
+            "path argument was given), but the specified extractor "
+            f"({ep.extractor_name}) is not a dataset-level extractor.")
+
     lgr.debug(
         "extracting dataset level metadata for dataset at %s",
         ep.source_dataset.path)
-
-    assert issubclass(ep.extractor_class, DatasetMetadataExtractor)
 
     extractor = ep.extractor_class(
         ep.source_dataset,
@@ -300,12 +305,18 @@ def do_file_extraction(ep: ExtractionParameter):
         yield from legacy_extract_file(ep)
         return
 
+    if not issubclass(ep.extractor_class, FileMetadataExtractor):
+
+        raise ValueError(
+            "A file-level metadata-extraction was attempted, but the "
+            f"specified extractor ({ep.extractor_name}) is not a "
+            f"file-level extractor.")
+
     lgr.debug(
         "performing file level extracting for file at %s/%s",
         ep.source_dataset.path,
         ep.file_tree_path)
 
-    assert issubclass(ep.extractor_class, FileMetadataExtractor)
     file_info = get_file_info(ep.source_dataset, ep.file_tree_path)
     extractor = ep.extractor_class(
         ep.source_dataset,
