@@ -278,7 +278,7 @@ def show_file_tree_metadata(mapper: str,
                     metadata_root_record.dataset_identifier),
                 "dataset_version": metadata_root_record.dataset_version,
                 "dataset_path": str(dataset_path),
-                "file_path": str(path)
+                "path": str(path)
             }
         }
 
@@ -489,7 +489,7 @@ class Dump(Interface):
             doc="""metadata storage backend to be used.""",
             constraints=EnsureChoice("git")),
         metadata_store=Parameter(
-            args=("-s", "--metadata-store"),
+            args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
             doc="""Directory in which the metadata model instance is
             stored (often this is the same directory as the dataset
@@ -595,7 +595,7 @@ def render_file_level_metadata(fl_metadata: dict):
         type="file",
         dataset_id=fl_metadata["dataset_identifier"],
         dataset_version=fl_metadata["dataset_version"],
-        path=fl_metadata["file_path"])
+        path=fl_metadata["path"])
 
     render_common_metadata(fl_metadata, result_base)
 

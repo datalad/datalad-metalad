@@ -66,7 +66,7 @@ class AddParameter:
 
     root_dataset_id: Optional[UUID]
     root_dataset_version: Optional[str]
-    dataset_tree_path: Optional[MetadataPath]
+    dataset_path: Optional[MetadataPath]
 
     extractor_name: str
     extractor_version: str
@@ -151,7 +151,7 @@ class Add(Interface):
     required_additional_keys = (
         "root_dataset_id",
         "root_dataset_version",
-        "inter_dataset_path")
+        "dataset_path")
 
     required_keys_lines = "\n".join(map(repr, required_keys))
     required_additional_keys_lines = "\n".join(
@@ -175,7 +175,7 @@ class Add(Interface):
             If the metadata is associated with a file, the following key
             indicates the file path:
             
-            'intra_dataset_path'
+            'path'
             
             It may in addition contain either all or none of the
             following keys (they are used to add metadata element
@@ -185,7 +185,7 @@ class Add(Interface):
             """,
             constraints=EnsureStr() | EnsureNone()),
         metadata_store=Parameter(
-            args=("-s", "--metadata-store"),
+            args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
             doc="""Directory in which the metadata model instance is
             stored. If no directory name is provided, the current working
@@ -198,8 +198,10 @@ class Add(Interface):
             key value-pairs. These key values-pairs are used in addition to
             the key value pairs in the metadata dictionary to describe
             the metadata that should be added. If an additional key is
-            already present in the metadata, it will override the value
-            from metadata. In this case a warning is issued.""",
+            already present in the metadata, an error is raised, unless
+            -o, --allow-override is provided. In this case, the additional
+            values will override the value in metadata and a warning is 
+            issued.""",
             nargs="?",
             constraints=EnsureStr() | EnsureNone()),
         allow_override=Parameter(
@@ -235,6 +237,8 @@ class Add(Interface):
             allow_override=allow_override,
             allow_unknown=allow_unknown)
 
+        lgr.debug(f"attempting to add metadata: {json.dumps(metadata)}")
+
         add_parameter = AddParameter(
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
@@ -248,8 +252,8 @@ class Add(Interface):
                 if "root_dataset_id" in metadata
                 else None),
             root_dataset_version=metadata.get("root_dataset_version", None),
-            dataset_tree_path=MetadataPath(
-                metadata.get("inter_dataset_path", "")),
+            dataset_path=MetadataPath(
+                metadata.get("dataset_path", "")),
 
             extractor_name=metadata["extractor_name"],
             extractor_version=metadata["extractor_version"],
@@ -391,9 +395,13 @@ def _get_top_nodes(realm: str, ap: AddParameter):
     _, dataset_tree = tree_version_list.get_dataset_tree(
         ap.root_dataset_version)
 
-    if ap.dataset_tree_path != MetadataPath("") and ap.dataset_tree_path in dataset_tree:
-        mrr = dataset_tree.get_metadata_root_record(ap.dataset_tree_path)
-        assert mrr.dataset_identifier == ap.dataset_id
+    if ap.dataset_path != MetadataPath("") and ap.dataset_path in dataset_tree:
+        mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
+        if mrr.dataset_identifier != ap.dataset_id:
+            raise ValueError(
+                f"add-metadata claims that the metadata store contains dataset "
+                f"id {ap.dataset_id} at path {ap.dataset_path}, but the "
+                f"id of the stored dataset is {mrr.dataset_identifier}")
     else:
         dataset_level_metadata = Metadata(default_mapper_family, realm)
         file_tree = FileTree(default_mapper_family, realm)
@@ -404,7 +412,7 @@ def _get_top_nodes(realm: str, ap: AddParameter):
             ap.dataset_version,
             Connector.from_object(dataset_level_metadata),
             Connector.from_object(file_tree))
-        dataset_tree.add_dataset(ap.dataset_tree_path, mrr)
+        dataset_tree.add_dataset(ap.dataset_path, mrr)
     return tree_version_list, uuid_set, mrr
 
 
