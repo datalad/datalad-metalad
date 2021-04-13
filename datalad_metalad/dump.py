@@ -7,104 +7,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """
-Query a dataset's aggregated metadata
-
-We distinguish between two different result formats, large objects and
-small objects. Both contain the same information per metadata, but the
-large object contains all metadata in a single object, while the small
-objects contain only per-item, e.g. dataset or file, metadata together
-with context information.
-
-The large objects do not repeat information, but can become hard to
-manage in datasets with millions of subdatasets or files.
-
-The small objects are easy to manage, but identical information is
-repeated in them.
-
-We currently only support small objects
-
-Large object:
-{
-   "dataset-1": {
-       "dataset_level_metadata": {
-           "dataset-info": "some dataset info"
-           "extractor1.1": [
-                {
-                   "extraction_time": "11:00:11",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                {
-                   "extraction_time": "12:23:34",
-                   "parameter": { some other extraction parameter}
-                   metadata: [
-                      another HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor1.2": ...
-       }
-       "file_tree": {  LARGE object with file-based metadata }
-   },
-   "dataset-2": {
-       "dataset_level_metadata": {
-           "dataset-info": "another dataset info"
-           "extractor2.1": [
-                {
-                   "extraction_time": "1998",
-                   "parameter": { some extraction parameter}
-                   metadata: [
-                      a HUGE metadata blob
-                   ]
-                },
-                { more runs}
-           ]
-           "extractor2.2": ...
-       },
-       "file_tree": {  LARGE object with file-based metadata }
-}
-
-Such an object would be extremely large, especially if it
-contains metadata.
-
-The second approach focuses on minimal result sizes, but
-result repetition and therefore also information duplication.
-The non-splitable information is the metadata blob.
-For example:
-
-Small object 1:
-{
-    "dataset-1": {
-        "dataset_level_metadata": {
-            "dataset-info": "some dataset-1 info"
-            "extractor1.1": {
-                "extraction_time": "11:00:11",
-                "parameter": { some extraction parameter}
-                "metadata":  " a HUGE metadata blob "
-             }
-        }
-    }
-}
-
-Small object 2:
-{
-    "dataset-1": {
-        "dataset_level_metadata": {
-            "dataset-info": "some dataset-1 info"
-            "extractor1.2": {
-                "extraction_time": "12:23:34",
-                "parameter": { some other extraction parameter}
-                "metadata":  " another HUGE metadata blob "
-             }
-        }
-    }
-}
-
-
-We use the small object approach below
+Dump metadata of a dataset
 """
 
 
@@ -131,6 +34,7 @@ from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.treenode import TreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
@@ -156,6 +60,15 @@ class ReportOn(enum.Enum):
     FILES = "files"
     DATASETS = "datasets"
     ALL = "all"
+
+
+def _dataset_report_matcher(tree_node: TreeNode) -> bool:
+    return isinstance(tree_node.value, MetadataRootRecord)
+
+
+def _file_report_matcher(tree_node: TreeNode) -> bool:
+    # We only report files, not directories in file tree searches
+    return len(tree_node.child_nodes) == 0
 
 
 def _create_result_record(mapper: str,
@@ -250,9 +163,11 @@ def show_file_tree_metadata(mapper: str,
     file_tree = metadata_root_record.file_tree.load_object()
 
     # Determine matching file paths
-    tree_search = TreeSearch(file_tree)
+    tree_search = TreeSearch(file_tree, _file_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [search_pattern], recursive, auto_list_root=False)
+        pattern_list=[search_pattern],
+        recursive=recursive,
+        auto_list_dirs=False)
 
     for missing_path in not_found_paths:
         lgr.warning(
@@ -335,9 +250,11 @@ def dump_from_dataset_tree(mapper: str,
     root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
-    tree_search = TreeSearch(dataset_tree)
+    tree_search = TreeSearch(dataset_tree, _dataset_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
-        [str(metadata_url.dataset_path)], recursive, auto_list_root=False)
+        pattern_list=[str(metadata_url.dataset_path)],
+        recursive=recursive,
+        auto_list_dirs=False)
 
     for missing_path in not_found_paths:
         lgr.error(
