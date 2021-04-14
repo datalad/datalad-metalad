@@ -69,7 +69,6 @@ from datalad.support.constraints import (
     EnsureStr,
     EnsureNone
 )
-from datalad.support.constraints import EnsureChoice
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -80,6 +79,7 @@ from dataladmetadatamodel.mapper.gitmapper.utils import (
     lock_backend,
     unlock_backend)
 from .metadata import get_top_level_metadata_objects
+from .utils import error_result
 
 
 __docformat__ = 'restructuredtext'
@@ -100,13 +100,13 @@ class Aggregate(Interface):
 
     .. note::
 
-        Metadata storage is not forced to reside inside the dataset repository.
-        Metadata might be stored within the repository that is used by a
-        dataset, but it might as well be stored in another repository (or
-        a non-git backend, once those exist). To distinguish the metadata storage
-        from the dataset storage, we refer to the metadata storage as
-        metadata-store. For now, the metadata-store is usually the git-repository
-        that holds the dataset.
+        Metadata storage is not forced to reside inside the datalad repository
+        of the dataset. Metadata might be stored within the repository that
+        is used by a dataset, but it might as well be stored in another
+        repository (or a non-git backend, once those exist). To distinguish
+        metadata storage from the dataset storage, we refer to metadata storage
+        as metadata-store. For now, the metadata-store is usually the
+        git-repository that holds the dataset.
 
     .. note::
 
@@ -123,21 +123,30 @@ class Aggregate(Interface):
     i.e. the directory that contains the ".datalad"-entry, to the top-level
     directory of the respective sub-dataset.
 
-    Aggregate assumes that metadata exists. To create metadata, use the
-    meta-extract command.
+    Aggregate works on existing metadata, it will not extract meta data from
+    data file. To create metadata, use the meta-extract command.
 
     As a result of the aggregation, the metadata of all specified sub-datasets
     will be available in the root metadata-store. A datalad meta-dump command
     on the root metadata-store will therefore be able to process metadata
     from the root dataset, as well as all aggregated sub-datasets.
     """
+
+    _examples_ = [
+        dict(
+            text="For example, if the root dataset  path is '/home/root_ds', "
+                 "and the metadata of the root is store in "
+                 "'/home/metadata/root_ds', and the sub-dataset we want to "
+                 "aggregate into the root dataset is located in "
+                 "'/home/metadata/root_ds/sub_ds1/sub_ds2', with its metadata "
+                 "stored in the metadata store '/home/metadata/sub_ds2', we "
+                 "have to give the following command to aggregate the metadata "
+                 "of sub_ds2 into the root dataset",
+            code_cmd="datalad meta-aggregate --root-metadata-store "
+                     "/home/metadata/root_ds sub_ds1/sub_ds2 "
+                     "/home/metadata/sub_ds2")]
+
     _params_ = dict(
-        backend=Parameter(
-            args=("--backend",),
-            metavar="BACKEND",
-            doc="""metadata storage backend to be used. Currently only
-            "git" is supported.""",
-            constraints=EnsureChoice("git")),
         root_metadata_store=Parameter(
             args=("--root-metadata-store",),
             metavar="ROOT_METADATA_STORE",
@@ -148,26 +157,15 @@ class Aggregate(Interface):
             metavar="PATH",
             doc=r"""
             PATH is interpreted a list of pairs, where the first entry
-            a path and the second entry is a METADATA_REALM, i.e. a git
-            repository where metadata is stored. More precisely the
+            a path and the second entry is a ROOT_METADATA_STORE, i.e. 
+            a git repository where metadata is stored. More precisely the
             elements are:
                
-            1. Intra dataset path of sub-dataset whose metadata is stored
-               in the METADATA_REALM.  
-            2. Location of METADATA_REALM, i.e. metadata repository-path  
-  
-            For example, if the root dataset  path is "root_ds", and the
-            metadata of the root is located in "/metadata/root_ds", and
-            the sub-dataset we want to aggregate into the root dataset
-            is located in "root_ds/sub_ds1/sub_ds2", with its metadata
-            stored in the realm "/metadata/sub_ds2", we have to 
-            give the following command to aggregate the metadata of
-            sub_ds2 into the root dataset::
-            
-               datalad meta-extract --root-metadata-store /metadata/root_ds \
-                sub_ds1/sub_ds2 /metadata/sub_ds2
-
-            """,
+            1. The dataset path of sub-dataset whose metadata is stored
+               in the ROOT_METADATA_STORE.  
+            2. Location of ROOT_METADATA_STORE, i.e. git repository path
+               on the local disk.  
+              """,
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -175,12 +173,13 @@ class Aggregate(Interface):
     @datasetmethod(name='meta_aggregate')
     @eval_results
     def __call__(
-            backend="git",
             root_metadata_store=None,
             path=None):
 
         root_metadata_store = root_metadata_store or "."
         path_realm_associations = process_separated_path_spec(path)
+
+        backend = "git"
 
         # TODO: we should read-lock all ag_realms
         # Collect aggregate information
@@ -193,17 +192,10 @@ class Aggregate(Interface):
 
             if ag_tree_version_list is None or ag_uuid_set is None:
                 message = (
-                    f"No {backend}-mapped datalad metadata model "
-                    f"found in: {ag_metadata_store}, ignoring metadata"
-                    f"location {ag_metadata_store} (and sub-dataset "
-                    f"{ag_path}).")
-
+                    f"No valid datalad metadata found in: {ag_metadata_store}, "
+                    f"ignoring metadata store at {ag_metadata_store.resolve()} "
+                    f"(and sub-dataset {ag_path}).")
                 lgr.warning(message)
-                yield dict(
-                    backend=backend,
-                    realm=root_metadata_store,
-                    status='error',
-                    message=message)
                 continue
 
             aggregate_items.append(
@@ -211,6 +203,12 @@ class Aggregate(Interface):
                     ag_tree_version_list,
                     ag_uuid_set,
                     ag_path))
+
+        if not aggregate_items:
+            yield error_result(
+                "meta-aggregate",
+                "No valid datasets were specified for aggregation, exiting.")
+            return
 
         lock_backend(root_metadata_store)
 
@@ -256,11 +254,11 @@ def process_separated_path_spec(paths: List[str]
     if len(paths) % 2 != 0:
         raise ValueError(
             "You must provide the same number of "
-            "intra-dataset-paths and metadata-stores")
+            "dataset paths and metadata-store paths")
 
-    intra_dataset_paths, system_paths = (
-        map(MetadataPath, islice(paths, 0, len(paths), 2)),
-        map(Path, islice(paths, 1, len(paths), 2)))
+    inter_dataset_paths, system_paths = (
+        tuple(map(MetadataPath, islice(paths, 0, len(paths), 2))),
+        tuple(map(Path, islice(paths, 1, len(paths), 2))))
 
     for path in system_paths:
         if not path.exists():
@@ -268,7 +266,7 @@ def process_separated_path_spec(paths: List[str]
         if not path.is_dir():
             raise NotADirectoryError(str(path))
 
-    return tuple(zip(intra_dataset_paths, system_paths))
+    return tuple(zip(inter_dataset_paths, system_paths))
 
 
 def perform_aggregation(destination_metadata_store: str,
