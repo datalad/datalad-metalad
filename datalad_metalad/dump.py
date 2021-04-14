@@ -16,6 +16,7 @@ __docformat__ = 'restructuredtext'
 import enum
 import json
 import logging
+from pathlib import Path
 from typing import Generator
 from uuid import UUID
 
@@ -26,7 +27,6 @@ from datalad.interface.utils import eval_results
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr,
-    EnsureChoice,
 )
 from datalad.support.param import Parameter
 from datalad.ui import ui
@@ -38,6 +38,7 @@ from dataladmetadatamodel.treenode import TreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
+from .exceptions import NoMetadataStoreFound
 from .metadata import get_top_level_metadata_objects
 from .pathutils.metadataurlparser import (
     MetadataURLParser,
@@ -400,11 +401,6 @@ class Dump(Interface):
     ]
 
     _params_ = dict(
-        backend=Parameter(
-            args=("--backend",),
-            metavar="BACKEND",
-            doc="""metadata storage backend to be used.""",
-            constraints=EnsureChoice("git")),
         metadata_store=Parameter(
             args=("-m", "--metadata-store"),
             metavar="METADATA_STORE",
@@ -431,31 +427,22 @@ class Dump(Interface):
     @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
-            backend="git",
             metadata_store=None,
             path="",
             recursive=False):
 
         metadata_store = metadata_store or "."
+
+        backend = default_mapper_family
         tree_version_list, uuid_set = get_top_level_metadata_objects(
-            default_mapper_family,
+            backend,
             metadata_store)
 
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
-
-            message = (
-                f"No {backend}-mapped datalad metadata "
-                f"model found in: {metadata_store}")
-            lgr.warning(message)
-
-            yield dict(
-                action="meta_dump",
-                status='impossible',
-                backend=backend,
-                metadata_store=metadata_store,
-                message=message)
-            return
+            raise NoMetadataStoreFound(
+                f"No valid datalad metadata found in: "
+                f"{Path(metadata_store).resolve()}")
 
         parser = MetadataURLParser(path)
         metadata_url = parser.parse()
