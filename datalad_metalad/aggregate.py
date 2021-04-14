@@ -207,7 +207,8 @@ class Aggregate(Interface):
         if not aggregate_items:
             yield error_result(
                 "meta-aggregate",
-                "No valid datasets were specified for aggregation, exiting.")
+                "No valid metadata stores were specified for aggregation, "
+                "exiting.")
             return
 
         lock_backend(root_metadata_store)
