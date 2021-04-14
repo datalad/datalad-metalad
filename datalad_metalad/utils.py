@@ -211,3 +211,10 @@ def args_to_dict(args: List[str]) -> Dict[str, str]:
         zip(
             islice(args, 0, len(args), 2),
             islice(args, 1, len(args), 2)))
+
+
+def error_result(action: str, message: str, status: str = "error") -> dict:
+    return dict(
+        action=action,
+        status="error",
+        message=message)
