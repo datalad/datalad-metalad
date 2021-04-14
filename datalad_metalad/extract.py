@@ -30,6 +30,7 @@ from datalad.distribution.dataset import (
     require_dataset,
 )
 from datalad.metadata.extractors.base import BaseMetadataExtractor
+from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
@@ -197,8 +198,14 @@ class Extract(Interface):
             check_installed=path is not None)
 
         if not source_dataset.repo:
-            raise ValueError(
-                f"No datalad dataset found in: {dataset or curdir}")
+            raise NoDatasetFound(
+                "No valid datalad dataset found at: "
+                f"{Path(dataset or curdir).resolve()}")
+
+        if source_dataset.id is None:
+            raise NoDatasetFound(
+                "No valid datalad-id found in dataset at: "
+                f"{Path(dataset or curdir).resolve()}")
 
         source_dataset_version = source_dataset.repo.get_hexsha()
 
