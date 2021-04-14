@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.utils import ensure_unicode
 
 
@@ -22,3 +23,7 @@ class MetadataKeyException(RuntimeError):
 
     def __str__(self):
         return self.to_str()
+
+
+class NoMetadataStoreFound(InsufficientArgumentsError):
+    pass
