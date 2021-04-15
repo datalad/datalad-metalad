@@ -247,8 +247,16 @@ def dump_from_dataset_tree(mapper: str,
     time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
         requested_root_dataset_version)
     root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
-    root_dataset_version = root_mrr.dataset_version
-    root_dataset_identifier = root_mrr.dataset_identifier
+    if root_mrr is None:
+        lgr.warning(
+            f"no root dataset record found for version "
+            f"{requested_root_dataset_version} in metadata store {str}, "
+            f"cannot determine root dataset id")
+        root_dataset_version = requested_root_dataset_version
+        root_dataset_identifier = "<unknown>"
+    else:
+        root_dataset_version = root_mrr.dataset_version
+        root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree, _dataset_report_matcher)
