@@ -161,10 +161,10 @@ class Aggregate(Interface):
             a git repository where metadata is stored. More precisely the
             elements are:
                
-            1. The dataset path of sub-dataset whose metadata is stored
-               in the ROOT_METADATA_STORE.  
-            2. Location of ROOT_METADATA_STORE, i.e. git repository path
-               on the local disk.  
+            1. The dataset path of sub-dataset whose metadata should be
+               aggregated into the ROOT_METADATA_STORE.
+            2. Location of METADATA_STORE of the sub-dataset, i.e. path
+               to a git repository on the local disk.
               """,
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
