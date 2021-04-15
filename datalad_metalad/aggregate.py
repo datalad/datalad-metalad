@@ -64,11 +64,12 @@ from datalad.interface.base import build_doc
 from datalad.distribution.dataset import (
     datasetmethod
 )
-from datalad.support.param import Parameter
 from datalad.support.constraints import (
     EnsureStr,
     EnsureNone
 )
+from datalad.support.exceptions import InsufficientArgumentsError
+from datalad.support.param import Parameter
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -205,11 +206,8 @@ class Aggregate(Interface):
                     ag_path))
 
         if not aggregate_items:
-            yield error_result(
-                "meta-aggregate",
-                "No valid metadata stores were specified for aggregation, "
-                "exiting.")
-            return
+            raise InsufficientArgumentsError(
+                "No valid metadata stores were specified for aggregation")
 
         lock_backend(root_metadata_store)
 
