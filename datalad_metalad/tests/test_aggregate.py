@@ -14,8 +14,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from datalad.api import meta_add, meta_aggregate, meta_dump
+from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.utils import assert_result_count, eq_
+from datalad.tests.utils import assert_raises, assert_result_count, eq_
 
 
 def _add_dataset_level_metadata(metadata_store: Path,
@@ -108,3 +109,24 @@ def test_basic_aggregation():
 
                 eq_(metadata_content["extraction_result"]["content"],
                     f"metadata-content_{index}")
+
+
+def test_missing_metadata_stores():
+
+    with tempfile.TemporaryDirectory() as root:
+        root_dataset_dir = Path(root)
+        subdataset_0_dir = root_dataset_dir / "subdataset_0"
+        subdataset_1_dir = root_dataset_dir / "subdataset_1"
+
+        root_git_repo = GitRepo(root_dataset_dir)
+        subdataset_0_dir.mkdir()
+        subdataset_1_dir.mkdir()
+
+        assert_raises(
+            InsufficientArgumentsError,
+            meta_aggregate,
+            str(root_dataset_dir),
+            [
+                "subdataset_0", str(subdataset_0_dir),
+                "subdataset_1", str(subdataset_1_dir)
+            ])
