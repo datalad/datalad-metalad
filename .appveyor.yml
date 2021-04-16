@@ -79,9 +79,6 @@ environment:
       PY: 3.8
       INSTALL_GITANNEX: git-annex
       DATALAD_LOCATIONS_SOCKETS: /Users/appveyor/DLTMP/sockets
-      # the next lines are temporary until the default repo works again
-      HOMEBREW_BOTTLE_DOMAIN: https://mirrors.ustc.edu.cn/homebrew-bottles/bottles
-      HOMEBREW_BOTTLE_DEFAULT_DOMAIN: https://mirrors.aliyun.com/homebrew/homebrew-bottles/bottles/
 
 # it is OK to specify paths that may not exist for a particular test run
 cache:
