@@ -64,11 +64,12 @@ from datalad.interface.base import build_doc
 from datalad.distribution.dataset import (
     datasetmethod
 )
-from datalad.support.param import Parameter
 from datalad.support.constraints import (
     EnsureStr,
     EnsureNone
 )
+from datalad.support.exceptions import InsufficientArgumentsError
+from datalad.support.param import Parameter
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -161,10 +162,10 @@ class Aggregate(Interface):
             a git repository where metadata is stored. More precisely the
             elements are:
                
-            1. The dataset path of sub-dataset whose metadata is stored
-               in the ROOT_METADATA_STORE.  
-            2. Location of ROOT_METADATA_STORE, i.e. git repository path
-               on the local disk.  
+            1. The dataset path of sub-dataset whose metadata should be
+               aggregated into the ROOT_METADATA_STORE.
+            2. Location of METADATA_STORE of the sub-dataset, i.e. path
+               to a git repository on the local disk.
               """,
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
@@ -205,11 +206,8 @@ class Aggregate(Interface):
                     ag_path))
 
         if not aggregate_items:
-            yield error_result(
-                "meta-aggregate",
-                "No valid metadata stores were specified for aggregation, "
-                "exiting.")
-            return
+            raise InsufficientArgumentsError(
+                "No valid metadata stores were specified for aggregation")
 
         lock_backend(root_metadata_store)
 
