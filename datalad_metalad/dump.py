@@ -75,7 +75,7 @@ def _file_report_matcher(tree_node: TreeNode) -> bool:
 def _create_result_record(mapper: str,
                           metadata_store: str,
                           metadata_record: JSONObject,
-                          element_path: str,
+                          element_path: Path,
                           report_type: str):
     return {
         "status": "ok",
