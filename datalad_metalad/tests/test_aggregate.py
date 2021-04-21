@@ -12,11 +12,19 @@
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+from uuid import UUID
 
 from datalad.api import meta_add, meta_aggregate, meta_dump
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.support.gitrepo import GitRepo
 from datalad.tests.utils import assert_raises, assert_result_count, eq_
+
+from .utils import create_dataset
+
+
+root_id = UUID("00010203-1011-2021-3031-404142434445")
+sub_0_id = UUID("a0cc0203-1011-2021-3031-404142434445")
+sub_1_id = UUID("a1cc0203-1011-2021-3031-404142434445")
 
 
 def _add_dataset_level_metadata(metadata_store: Path,
@@ -38,7 +46,7 @@ def _add_dataset_level_metadata(metadata_store: Path,
                 "content": metadata_content
             }
         },
-        str(metadata_store))
+        dataset=metadata_store)
 
 
 def test_basic_aggregation():
@@ -48,23 +56,27 @@ def test_basic_aggregation():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        root_git_repo = GitRepo(root_dataset_dir)
-        subdataset_0_repo = GitRepo(subdataset_0_dir)
-        subdataset_1_repo = GitRepo(subdataset_1_dir)
+        root_git_repo = create_dataset(root_dataset_dir, root_id)
+        subdataset_0_repo = create_dataset(subdataset_0_dir, sub_0_id)
+        subdataset_1_repo = create_dataset(subdataset_1_dir, sub_1_id)
 
         # TODO: there is a dependency here in meta_add. We should instead
         #  use the model API to add metadata to metadata stores
 
         for index in range(3):
             _add_dataset_level_metadata(
-                [
+                metadata_store=[
                     root_dataset_dir,
                     subdataset_0_dir,
                     subdataset_1_dir
                 ][index],
-                f"00000000-0000-0000-0000-00000000000{index}",
-                f"000000000000000000000000000000000000000{index}",
-                f"metadata-content_{index}")
+                dataset_id=[
+                    str(root_id),
+                    str(sub_0_id),
+                    str(sub_1_id)
+                ][index],
+                dataset_version=f"000000000000000000000000000000000000000{index}",
+                metadata_content=f"metadata-content_{index}")
 
         # We have to patch "get_root_version_for_subset_version" because
         # the test git repos have no commits.
@@ -87,14 +99,16 @@ def test_basic_aggregation():
             assert_result_count(result_objects, 3)
             for index, result in enumerate(result_objects):
                 result_object = result["metadata"]["dataset_level_metadata"]
-                eq_(result_object["root_dataset_identifier"],
-                    "00000000-0000-0000-0000-000000000000")
+                eq_(result_object["root_dataset_identifier"], str(root_id))
 
                 eq_(result_object["root_dataset_version"],
                     "0000000000000000000000000000000000000000")
 
-                eq_(result_object["dataset_identifier"],
-                    f"00000000-0000-0000-0000-00000000000{index}")
+                eq_(result_object["dataset_identifier"], [
+                    str(root_id),
+                    str(sub_0_id),
+                    str(sub_1_id)
+                ][index])
 
                 eq_(result_object["dataset_version"],
                     f"000000000000000000000000000000000000000{index}")
@@ -118,9 +132,9 @@ def test_missing_metadata_stores():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        root_git_repo = GitRepo(root_dataset_dir)
-        subdataset_0_dir.mkdir()
-        subdataset_1_dir.mkdir()
+        root_git_repo = create_dataset(root_dataset_dir, root_id)
+        subdataset_0_repo = create_dataset(subdataset_0_dir, sub_0_id)
+        subdataset_1_repo = create_dataset(subdataset_1_dir, sub_1_id)
 
         assert_raises(
             InsufficientArgumentsError,
@@ -139,22 +153,25 @@ def test_basic_aggregation_into_empty_store():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        root_git_repo = GitRepo(root_dataset_dir)
-        subdataset_0_repo = GitRepo(subdataset_0_dir)
-        subdataset_1_repo = GitRepo(subdataset_1_dir)
+        root_git_repo = create_dataset(root_dataset_dir, root_id)
+        subdataset_0_repo = create_dataset(subdataset_0_dir, sub_0_id)
+        subdataset_1_repo = create_dataset(subdataset_1_dir, sub_1_id)
 
         # TODO: there is a dependency here in meta_add. We should instead
         #  use the model API to add metadata to metadata stores
 
         for index in range(2):
             _add_dataset_level_metadata(
-                [
+                metadata_store=[
                     subdataset_0_dir,
                     subdataset_1_dir
                 ][index],
-                f"00000000-0000-0000-0000-00000000000{index}",
-                f"000000000000000000000000000000000000000{index}",
-                f"metadata-content_{index}")
+                dataset_id=[
+                    str(sub_0_id),
+                    str(sub_1_id)
+                ][index],
+                dataset_version=f"000000000000000000000000000000000000000{index}",
+                metadata_content=f"metadata-content_{index}")
 
         # We have to patch "get_root_version_for_subset_version" because
         # the test git repos have no commits.
@@ -181,7 +198,10 @@ def test_basic_aggregation_into_empty_store():
                 eq_(result_object["root_dataset_version"], "0000000000000000000000000000000000000aaa")
 
                 eq_(result_object["dataset_identifier"],
-                    f"00000000-0000-0000-0000-00000000000{index}")
+                    [
+                        str(sub_0_id),
+                        str(sub_1_id)
+                    ][index])
 
                 eq_(result_object["dataset_version"],
                     f"000000000000000000000000000000000000000{index}")
