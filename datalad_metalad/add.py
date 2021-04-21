@@ -128,7 +128,7 @@ class Add(Interface):
                  'metadata model instance in the current directory and '
                  'overwrite metadata values with the values stored in '
                  '"extra-info.json"',
-            code_cmd='atalad meta-add --metadata-store /home/user/dataset_0 '
+            code_cmd='datalad meta-add --metadata-store /home/user/dataset_0 '
                      'metadata-123.json @extra-info.json'
         )
     ]
