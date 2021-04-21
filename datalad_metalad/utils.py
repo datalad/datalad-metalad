@@ -1,19 +1,26 @@
+import glob
 import os.path as op
 from collections import OrderedDict
 from itertools import islice
+from pathlib import Path
 from six import text_type
-from typing import Dict, List
-
-from datalad.utils import Path
+from typing import Dict, List, Union
 
 from datalad.distribution.dataset import (
-    rev_get_dataset_root,
+    Dataset,
+    require_dataset,
     resolve_path,
+    rev_get_dataset_root,
 )
+from datalad.support.exceptions import NoDatasetFound
+from datalad.support.json_py import load as json_load
+
 
 from . import aggregate_layout_version
 
 import logging
+
+
 lgr = logging.getLogger('datalad.dataset')
 
 
@@ -181,6 +188,8 @@ def get_ds_aggregate_db(dspath, version='default', warn_absent=True):
       dictionary (datasets, metadata object archives) are
       absolute.
     """
+    location_keys = ('dataset_info', 'content_info', 'filepath_info')
+
     info_fpath, agg_base_path = get_ds_aggregate_db_locations(
         dspath, version, warn_absent)
 
@@ -218,3 +227,26 @@ def error_result(action: str, message: str, status: str = "error") -> dict:
         action=action,
         status="error",
         message=message)
+
+
+def check_dataset(dataset_or_path: Union[Dataset, str], purpose: str) -> Dataset:
+
+    if isinstance(dataset_or_path, Dataset):
+        dataset = dataset_or_path
+    else:
+        dataset = require_dataset(
+            dataset_or_path,
+            purpose=purpose,
+            check_installed=dataset_or_path is not None)
+
+    if not dataset.repo:
+        raise NoDatasetFound(
+            "No valid datalad dataset found at: "
+            f"{dataset.path}")
+
+    if dataset.id is None:
+        raise NoDatasetFound(
+            "No valid datalad-id found in dataset at: "
+            f"{dataset.path}")
+
+    return dataset
