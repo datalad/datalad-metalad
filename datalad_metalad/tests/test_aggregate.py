@@ -16,7 +16,6 @@ from uuid import UUID
 
 from datalad.api import meta_add, meta_aggregate, meta_dump
 from datalad.support.exceptions import InsufficientArgumentsError
-from datalad.support.gitrepo import GitRepo
 from datalad.tests.utils import assert_raises, assert_result_count, eq_
 
 from .utils import create_dataset
@@ -132,9 +131,9 @@ def test_missing_metadata_stores():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        root_git_repo = create_dataset(root_dataset_dir, root_id)
-        subdataset_0_repo = create_dataset(subdataset_0_dir, sub_0_id)
-        subdataset_1_repo = create_dataset(subdataset_1_dir, sub_1_id)
+        create_dataset(root_dataset_dir, root_id)
+        create_dataset(subdataset_0_dir, sub_0_id)
+        create_dataset(subdataset_1_dir, sub_1_id)
 
         assert_raises(
             InsufficientArgumentsError,
@@ -153,12 +152,13 @@ def test_basic_aggregation_into_empty_store():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        root_git_repo = create_dataset(root_dataset_dir, root_id)
-        subdataset_0_repo = create_dataset(subdataset_0_dir, sub_0_id)
-        subdataset_1_repo = create_dataset(subdataset_1_dir, sub_1_id)
+        create_dataset(root_dataset_dir, root_id)
+        create_dataset(subdataset_0_dir, sub_0_id)
+        create_dataset(subdataset_1_dir, sub_1_id)
 
-        # TODO: there is a dependency here in meta_add. We should instead
-        #  use the model API to add metadata to metadata stores
+        # TODO: this is more an end-to-end test, since we depend
+        #  meta_add. We should instead use the model API to add
+        #  metadata to metadata stores
 
         for index in range(2):
             _add_dataset_level_metadata(
@@ -180,7 +180,7 @@ def test_basic_aggregation_into_empty_store():
             # Ensure that the root version is found
             p.return_value = ["0000000000000000000000000000000000000aaa"]
 
-            result = meta_aggregate(
+            meta_aggregate(
                 str(root_dataset_dir),
                 [
                     "subdataset_0", str(subdataset_0_dir),
@@ -195,7 +195,9 @@ def test_basic_aggregation_into_empty_store():
             for index, result in enumerate(result_objects):
                 result_object = result["metadata"]["dataset_level_metadata"]
                 eq_(result_object["root_dataset_identifier"], "<unknown>")
-                eq_(result_object["root_dataset_version"], "0000000000000000000000000000000000000aaa")
+                eq_(
+                    result_object["root_dataset_version"],
+                    "0000000000000000000000000000000000000aaa")
 
                 eq_(result_object["dataset_identifier"],
                     [
