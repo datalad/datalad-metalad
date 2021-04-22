@@ -64,10 +64,7 @@ def test_basic_aggregation():
 
             result = meta_aggregate(
                 str(root_dataset_dir),
-                [
-                    "subdataset_0", str(subdataset_0_dir),
-                    "subdataset_1", str(subdataset_1_dir)
-                ])
+                [str(subdataset_0_dir), str(subdataset_1_dir)])
 
             result_objects = meta_dump(
                 dataset=str(root_dataset_dir),
@@ -117,10 +114,7 @@ def test_missing_metadata_stores():
             InsufficientArgumentsError,
             meta_aggregate,
             str(root_dataset_dir),
-            [
-                "subdataset_0", str(subdataset_0_dir),
-                "subdataset_1", str(subdataset_1_dir)
-            ])
+            [str(subdataset_0_dir), str(subdataset_1_dir)])
 
 
 def test_basic_aggregation_into_empty_store():
@@ -160,10 +154,7 @@ def test_basic_aggregation_into_empty_store():
 
             meta_aggregate(
                 str(root_dataset_dir),
-                [
-                    "subdataset_0", str(subdataset_0_dir),
-                    "subdataset_1", str(subdataset_1_dir)
-                ])
+                [str(subdataset_0_dir), str(subdataset_1_dir)])
 
             result_objects = meta_dump(
                 dataset=str(root_dataset_dir),
