@@ -22,11 +22,10 @@ from uuid import UUID
 
 from dataclasses import dataclass
 
+from datalad.distribution.dataset import Dataset, EnsureDataset, datasetmethod
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
-from datalad.distribution.dataset import datasetmethod
-
 from datalad.support.constraints import EnsureBool
 from datalad.support.constraints import (
     EnsureNone,
@@ -46,6 +45,7 @@ from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 
 from .exceptions import MetadataKeyException
+from .utils import check_dataset
 
 
 JSONObject = Union[Dict, List]
@@ -60,6 +60,8 @@ lgr = logging.getLogger("datalad.metadata.add")
 
 @dataclass
 class AddParameter:
+    result_path: Path
+
     dataset_id: UUID
     dataset_version: str
     file_path: MetadataPath
@@ -80,12 +82,16 @@ class AddParameter:
 
 @build_doc
 class Add(Interface):
-    r"""Add metadata to metadata model instance.
+    r"""Add metadata to a dataset.
 
     This command reads metadata from a source and adds this metadata
-    to a metadata model instance. A source can be: arguments, standard
-    input, or a local file. The metadata format is a strings with the
-    JSON-serialized dictionary that describes the metadata
+    to a dataset. A source can be: arguments, standard
+    input, or a local file.
+    The metadata format is a string with the JSON-serialized dictionary
+    that describes the metadata.
+
+    In case of an API-call metadata can also be provided in a python
+    dictionary directly.
 
     [TODO: add a schema]
 
@@ -96,40 +102,39 @@ class Add(Interface):
     in which case the pre-fixed argument is interpreted as a file-name and
     the argument value is read from the file.
 
+    The metadata key "dataset-id" must be identical to the ID of the dataset
+    that receives the metadata.
     """
 
     _examples_ = [
         dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
-                 'metadata model instance in the current directory.',
+                 'dataset in the current directory.',
             code_cmd="datalad meta-add metadata-123.json"),
         dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
-                 'metadata stored in the git-repository "/home/user/dataset_0"',
-            code_cmd="datalad meta-add --metadata-store /home/user/dataset_0 "
+                 'dataset "/home/user/dataset_0"',
+            code_cmd="datalad meta-add -d /home/user/dataset_0 "
                      "metadata-123.json"),
         dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
-                 'metadata model instance in the current directory and '
-                 'overwrite the "dataset_id" value stored in '
-                 '"metadata-123.json"',
-            code_cmd='datalad meta-add --metadata-store /home/user/dataset_0 '
+                 'dataset in the current directory and overwrite the '
+                 '"dataset_id" value provided in "metadata-123.json"',
+            code_cmd='datalad meta-add -d /home/user/dataset_0 '
                      'metadata-123.json \'{"dataset_id": '
                      '"00010203-1011-2021-3031-404142434445"}\''
         ),
         dict(
-            text='Add metadata read from standard input to the metadata model '
-                 'instance in the current directory',
-            code_cmd='datalad meta-add --metadata-store /home/user/dataset_0 '
-                     'metadata-123.json @extra-info.json'
+            text='Add metadata read from standard input to the dataset '
+                 'in the current directory',
+            code_cmd='datalad meta-add -'
         ),
         dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
-                 'metadata model instance in the current directory and '
-                 'overwrite metadata values with the values stored in '
+                 'dataset the current directory and overwrite the values'
+                 'from "metadata-123.json" with the values stored in '
                  '"extra-info.json"',
-            code_cmd='atalad meta-add --metadata-store /home/user/dataset_0 '
-                     'metadata-123.json @extra-info.json'
+            code_cmd='datalad meta-add metadata-123.json @extra-info.json'
         )
     ]
 
@@ -161,8 +166,8 @@ class Add(Interface):
         metadata=Parameter(
             args=("metadata",),
             metavar="METADATA",
-            doc=f"""Path of a file that contains the metadata that
-            should be added to the metadata model instance (the
+            doc=f"""path of the file that contains the
+            metadata that should be added to the metadata model instance (the
             metadata must be provided as a JSON-serialized metadata
             dictionary).
             
@@ -184,13 +189,6 @@ class Add(Interface):
             {required_additional_keys_lines}            
             """,
             constraints=EnsureStr() | EnsureNone()),
-        metadata_store=Parameter(
-            args=("-m", "--metadata-store"),
-            metavar="METADATA_STORE",
-            doc="""Directory in which the metadata model instance is
-            stored. If no directory name is provided, the current working
-            directory is used.""",
-            constraints=EnsureStr() | EnsureNone()),
         additionalvalues=Parameter(
             args=("additionalvalues",),
             metavar="ADDITIONAL_VALUES",
@@ -204,42 +202,63 @@ class Add(Interface):
             issued.""",
             nargs="?",
             constraints=EnsureStr() | EnsureNone()),
+        dataset=Parameter(
+            args=("-d", "--dataset"),
+            doc=""""dataset to which metadata should be added. If not
+            provided, the dataset is assumed to be given by the current
+            directory.""",
+            constraints=EnsureDataset() | EnsureNone()),
         allow_override=Parameter(
-            args=("-o", "--allow-override"),
+            args=("-o", "--allow-override",),
+            action='store_true',
             doc="""Allow the additional values to override values given in
             metadata.""",
-            default=False,
-            constraints=EnsureBool() | EnsureNone()),
+            default=False),
         allow_unknown=Parameter(
-            args=("-u", "--allow-unknown"),
+            args=("-u", "--allow-unknown",),
+            action='store_true',
             doc="""Allow unknown keys. By default, unknown keys generate
             an errors. If this switch is True, unknown keys will only be
-            reported.""",
-            default=False,
-            constraints=EnsureBool() | EnsureNone()))
+            reported. For processing unknown keys will be ignored.""",
+            default=False),
+        allow_id_mismatch=Parameter(
+            args=("-i", "--allow-id-mismatch",),
+            action='store_true',
+            doc="""Allow insertion of metadata, even if the "dataset-id" in
+            the metadata source does not match the ID of the target
+            dataset.""",
+            default=False))
 
     @staticmethod
     @datasetmethod(name="meta_add")
     @eval_results
     def __call__(
             metadata: Union[str, JSONObject],
-            metadata_store: Optional[str] = None,
             additionalvalues: Optional[Union[str, JSONObject]] = None,
+            dataset: Optional[Union[str, Dataset]] = None,
             allow_override: bool = False,
-            allow_unknown: bool = False):
+            allow_unknown: bool = False,
+            allow_id_mismatch: bool = False):
 
-        additionalvalues = additionalvalues or dict()
-        metadata_store = Path(metadata_store or curdir)
+        additional_values = additionalvalues or dict()
+
+        dataset = check_dataset(dataset or curdir, "add metadata")
 
         metadata = process_parameters(
             metadata=read_json_object(metadata),
-            additional_values=get_json_object(additionalvalues),
+            additional_values=get_json_object(additional_values),
             allow_override=allow_override,
             allow_unknown=allow_unknown)
 
-        lgr.debug(f"attempting to add metadata: {json.dumps(metadata)}")
+        lgr.debug(
+            f"attempting to add metadata: '{json.dumps(metadata)}' to "
+            f"dataset {dataset.pathobj}")
 
         add_parameter = AddParameter(
+            result_path=(
+                dataset.pathobj
+                / Path(metadata.get("dataset_path", "."))
+                / Path(metadata.get("path", ""))).resolve(),
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
             file_path=(
@@ -264,14 +283,21 @@ class Add(Interface):
 
             extracted_metadata=metadata["extracted_metadata"])
 
+        error_result = check_dataset_ids(dataset, add_parameter)
+        if error_result:
+            if not allow_id_mismatch:
+                yield error_result
+                return
+            lgr.warning(error_result["message"])
+
         # If the key "path" is present in the metadata
         # dictionary, we assume that the metadata-dictionary describes
         # file-level metadata. Otherwise, we assume that the
         # metadata-dictionary contains dataset-level metadata.
         if add_parameter.file_path:
-            yield from add_file_metadata(metadata_store, add_parameter)
+            yield from add_file_metadata(dataset.pathobj, add_parameter)
         else:
-            yield from add_dataset_metadata(metadata_store, add_parameter)
+            yield from add_dataset_metadata(dataset.pathobj, add_parameter)
         return
 
 
@@ -371,6 +397,27 @@ def process_parameters(metadata: dict,
         raise MetadataKeyException(f"Unknown type {metadata['type']}")
 
     return metadata
+
+
+def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
+    if add_parameter.root_dataset_id is not None:
+        if add_parameter.root_dataset_id != UUID(dataset.id):
+            return dict(
+                action="meta-add",
+                status="error",
+                path=add_parameter.result_path,
+                message=f'value of "root-dataset-id" '
+                        f'({add_parameter.root_dataset_id}) does not match '
+                        f'ID of dataset at {dataset.path} ({dataset.id})')
+    else:
+        if add_parameter.dataset_id != UUID(dataset.id):
+            return dict(
+                action="meta-add",
+                status="error",
+                path=add_parameter.result_path,
+                message=f'value of "dataset-id" '
+                        f'({add_parameter.dataset_id}) does not match '
+                        f'ID of dataset at {dataset.path} ({dataset.id})')
 
 
 def _get_top_nodes(realm: str, ap: AddParameter):

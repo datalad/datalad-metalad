@@ -27,7 +27,6 @@ from datalad.interface.utils import eval_results
 from datalad.distribution.dataset import (
     datasetmethod,
     EnsureDataset,
-    require_dataset,
 )
 from datalad.metadata.extractors.base import BaseMetadataExtractor
 from datalad.support.exceptions import NoDatasetFound
@@ -50,7 +49,7 @@ from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
-from .utils import args_to_dict
+from .utils import args_to_dict, check_dataset
 
 
 __docformat__ = "restructuredtext"
@@ -192,21 +191,7 @@ class Extract(Interface):
         extractor_args = extractorargs
         path = None if path == "++" else path
 
-        source_dataset = require_dataset(
-            dataset or curdir,
-            purpose="extract metadata",
-            check_installed=path is not None)
-
-        if not source_dataset.repo:
-            raise NoDatasetFound(
-                "No valid datalad dataset found at: "
-                f"{Path(dataset or curdir).resolve()}")
-
-        if source_dataset.id is None:
-            raise NoDatasetFound(
-                "No valid datalad-id found in dataset at: "
-                f"{Path(dataset or curdir).resolve()}")
-
+        source_dataset = check_dataset(dataset or curdir, "extract metadata")
         source_dataset_version = source_dataset.repo.get_hexsha()
 
         extractor_class = get_extractor_class(extractor_name)

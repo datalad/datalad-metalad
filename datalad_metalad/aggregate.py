@@ -50,7 +50,6 @@ md(rds) all possible paths would be:
 """
 import logging
 import time
-from itertools import islice
 from pathlib import Path
 from typing import List, Tuple
 
@@ -62,6 +61,8 @@ from datalad.interface.utils import (
 )
 from datalad.interface.base import build_doc
 from datalad.distribution.dataset import (
+    Dataset,
+    EnsureDataset,
     datasetmethod
 )
 from datalad.support.constraints import (
@@ -80,7 +81,7 @@ from dataladmetadatamodel.mapper.gitmapper.utils import (
     lock_backend,
     unlock_backend)
 from .metadata import get_top_level_metadata_objects
-from .utils import error_result
+from .utils import check_dataset
 
 
 __docformat__ = 'restructuredtext'
@@ -135,38 +136,29 @@ class Aggregate(Interface):
 
     _examples_ = [
         dict(
-            text="For example, if the root dataset  path is '/home/root_ds', "
-                 "and the metadata of the root is store in "
-                 "'/home/metadata/root_ds', and the sub-dataset we want to "
-                 "aggregate into the root dataset is located in "
-                 "'/home/metadata/root_ds/sub_ds1/sub_ds2', with its metadata "
-                 "stored in the metadata store '/home/metadata/sub_ds2', we "
-                 "have to give the following command to aggregate the metadata "
-                 "of sub_ds2 into the root dataset",
-            code_cmd="datalad meta-aggregate --root-metadata-store "
-                     "/home/metadata/root_ds sub_ds1/sub_ds2 "
-                     "/home/metadata/sub_ds2")]
+            text="For example, if the root dataset path is '/home/root_ds', "
+                 "and we want to aggregate metadata of two sub-datasets, e.g. "
+                 "'/home/root_ds/sub_ds1/' and '/home/root_ds/sub_ds2', into "
+                 "the root dataset, we can use the follwing command",
+            code_cmd="datalad meta-aggregate -d /home/root_ds "
+                     "/home/root_ds/sub_ds1 /home/root_ds/sub_ds2")
+    ]
 
     _params_ = dict(
-        root_metadata_store=Parameter(
-            args=("--root-metadata-store",),
-            metavar="ROOT_METADATA_STORE",
-            doc="""Metadata store in which aggregated metadata will be stored.
-                   This is also interpreted as root dataset."""),
+        dataset=Parameter(
+            args=("-d", "--dataset"),
+            metavar="ROOT_DATASET",
+            doc="""Topmost dataset metadata will be aggregated into. If no
+            dataset is specified, a dataset will be discovered based on the
+            current working directory. Metadata for aggregated datasets will
+            contain a dataset path that is relative to the top-dataset""",
+            constraints=EnsureDataset() | EnsureNone()),
         path=Parameter(
             args=("path",),
             metavar="PATH",
             doc=r"""
-            PATH is interpreted a list of pairs, where the first entry
-            a path and the second entry is a ROOT_METADATA_STORE, i.e. 
-            a git repository where metadata is stored. More precisely the
-            elements are:
-               
-            1. The dataset path of sub-dataset whose metadata should be
-               aggregated into the ROOT_METADATA_STORE.
-            2. Location of METADATA_STORE of the sub-dataset, i.e. path
-               to a git repository on the local disk.
-              """,
+            PATH to a sub-dataset whose metadata shall be aggregated into
+            the topmost dataset (ROOT_DATASET)""",
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -174,11 +166,13 @@ class Aggregate(Interface):
     @datasetmethod(name='meta_aggregate')
     @eval_results
     def __call__(
-            root_metadata_store=None,
+            dataset=None,
             path=None):
 
-        root_metadata_store = root_metadata_store or "."
-        path_realm_associations = process_separated_path_spec(path)
+        root_dataset = check_dataset(dataset or ".", "meta_aggregate")
+        root_realm = root_dataset.path
+
+        path_realm_associations = process_path_spec(root_dataset, path)
 
         backend = "git"
 
@@ -209,63 +203,56 @@ class Aggregate(Interface):
             raise InsufficientArgumentsError(
                 "No valid metadata stores were specified for aggregation")
 
-        lock_backend(root_metadata_store)
+        lock_backend(root_realm)
 
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             backend,
-            root_metadata_store)
+            root_realm)
 
         if tree_version_list is None:
             lgr.warning(
-                f"no tree version list found in {root_metadata_store}, "
+                f"no tree version list found in {root_realm}, "
                 f"creating an empty tree version list")
-            tree_version_list = TreeVersionList(backend, root_metadata_store)
+            tree_version_list = TreeVersionList(backend, root_realm)
         if uuid_set is None:
             lgr.warning(
-                f"no uuid set found in {root_metadata_store}, "
+                f"no uuid set found in {root_realm}, "
                 f"creating an empty set")
-            uuid_set = UUIDSet(backend, root_metadata_store)
+            uuid_set = UUIDSet(backend, root_realm)
 
         perform_aggregation(
-            root_metadata_store,
+            root_realm,
             tree_version_list,
             uuid_set,
             aggregate_items)
 
         tree_version_list.save()
         uuid_set.save()
-        flush_object_references(root_metadata_store)
+        flush_object_references(root_realm)
 
-        unlock_backend(root_metadata_store)
+        unlock_backend(root_realm)
 
         yield dict(
             action="meta_aggregate",
             status='ok',
             backend=backend,
-            metadata_store=root_metadata_store,
+            metadata_store=root_realm,
             message="aggregation performed")
 
         return
 
 
-def process_separated_path_spec(paths: List[str]
-                                ) -> Tuple[Tuple[MetadataPath, Path], ...]:
-    if len(paths) % 2 != 0:
-        raise ValueError(
-            "You must provide the same number of "
-            "dataset paths and metadata-store paths")
+def process_path_spec(root_dataset: Dataset,
+                      paths: List[str]
+                      ) -> List[Tuple[MetadataPath, Path]]:
 
-    inter_dataset_paths, system_paths = (
-        tuple(map(MetadataPath, islice(paths, 0, len(paths), 2))),
-        tuple(map(Path, islice(paths, 1, len(paths), 2))))
-
-    for path in system_paths:
-        if not path.exists():
-            raise FileNotFoundError(str(path))
-        if not path.is_dir():
-            raise NotADirectoryError(str(path))
-
-    return tuple(zip(inter_dataset_paths, system_paths))
+    result = []
+    for path in paths:
+        sub_dataset = check_dataset(path, "meta_aggregate")
+        result.append((
+            MetadataPath(sub_dataset.pathobj.relative_to(root_dataset.pathobj)),
+            sub_dataset.pathobj))
+    return result
 
 
 def perform_aggregation(destination_metadata_store: str,

@@ -353,7 +353,7 @@ def dump_from_uuid_set(mapper: str,
 
 @build_doc
 class Dump(Interface):
-    """Query a dataset's aggregated metadata for dataset and file metadata
+    """Dump a dataset's aggregated metadata for dataset and file metadata
 
     Two types of metadata are supported:
 
@@ -368,7 +368,7 @@ class Dump(Interface):
         TREE:   ["tree:"] [DATASET_PATH] ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
         UUID:   "uuid:" UUID-DIGITS ["@" VERSION-DIGITS] [":" [LOCAL_PATH]]
 
-    (the tree-format is the default format and does not require a prefix).
+    (The tree-format is the default format and does not require a prefix).
     """
 
     # Use a custom renderer to emit a self-contained metadata record. The
@@ -378,8 +378,8 @@ class Dump(Interface):
     _examples_ = [
         dict(
             text='Dump the metadata of the file "dataset_description.json" in '
-                 'the dataset "simon". (The queried dataset git-repository is '
-                 'determined based on the current working directory)',
+                 'the dataset "simon". (The queried dataset is determined '
+                 'based on the current working directory)',
             code_cmd="datalad meta-dump simon:dataset_description.json"),
         dict(
             text="Sometimes it is helpful to get metadata records formatted "
@@ -389,33 +389,33 @@ class Dump(Interface):
         dict(
             text="Same query as above, but specify that all datasets should "
                  "be queried for the given path",
-            code_cmd="datalad meta-dump -d . :somedir/subdir/thisfile.dat"),
+            code_cmd="datalad meta-dump :somedir/subdir/thisfile.dat"),
         dict(
             text="Dump any metadata record of any dataset known to the "
                  "queried dataset",
             code_cmd="datalad meta-dump -r"),
         dict(
-            text="Show metadata for all datasets",
+            text="Dump any metadata record of any dataset known to the "
+                 "queried dataset and output pretty-printed JSON",
             code_cmd="datalad -f json_pp meta-dump -r"),
         dict(
             text="Show metadata for all files ending in `.json´ in the root "
                  "directories of all datasets",
-            code_cmd="datalad -f json_pp meta-dump *:*.json -r"),
+            code_cmd="datalad meta-dump *:*.json -r"),
         dict(
             text="Show metadata for all files ending in `.json´ in all "
                  "datasets by not specifying a dataset at all. This will "
                  "start dumping at the top-level dataset.",
-            code_cmd="datalad -f json_pp meta-dump :*.json -r")
+            code_cmd="datalad meta-dump :*.json -r")
     ]
 
     _params_ = dict(
-        metadata_store=Parameter(
-            args=("-m", "--metadata-store"),
-            metavar="METADATA_STORE",
-            doc="""Directory in which the metadata model instance is
-            stored (often this is the same directory as the dataset
-            directory). If no directory name is provided, the current working
-            directory is used."""),
+        dataset=Parameter(
+            args=("-d", "--dataset"),
+            metavar="DATASET",
+            doc="""Dataset for which metadata should be dumped. If no 
+            directory name is provided, the current working directory is 
+            used."""),
         path=Parameter(
             args=("path",),
             metavar="DATASET_FILE_PATH_PATTERN",
@@ -435,22 +435,22 @@ class Dump(Interface):
     @datasetmethod(name='meta_dump')
     @eval_results
     def __call__(
-            metadata_store=None,
+            dataset=None,
             path="",
             recursive=False):
 
-        metadata_store = metadata_store or "."
+        metadata_store_path = Path(dataset or ".")
 
         backend = default_mapper_family
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             backend,
-            metadata_store)
+            metadata_store_path)
 
         # We require both entry points to exist for valid metadata
         if tree_version_list is None or uuid_set is None:
             raise NoMetadataStoreFound(
                 f"No valid datalad metadata found in: "
-                f"{Path(metadata_store).resolve()}")
+                f"{Path(metadata_store_path).resolve()}")
 
         parser = MetadataURLParser(path)
         metadata_url = parser.parse()
@@ -458,7 +458,7 @@ class Dump(Interface):
         if isinstance(metadata_url, TreeMetadataURL):
             yield from dump_from_dataset_tree(
                 backend,
-                metadata_store,
+                metadata_store_path,
                 tree_version_list,
                 metadata_url,
                 recursive)
@@ -466,7 +466,7 @@ class Dump(Interface):
         elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
                 backend,
-                metadata_store,
+                metadata_store_path,
                 uuid_set,
                 metadata_url,
                 recursive)
