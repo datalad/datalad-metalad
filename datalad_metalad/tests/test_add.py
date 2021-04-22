@@ -24,7 +24,6 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_true,
     eq_,
-    skip_if_on_windows,
     with_tempfile
 )
 
