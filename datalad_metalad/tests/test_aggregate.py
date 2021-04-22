@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID
 
-from datalad.api import meta_add, meta_aggregate, meta_dump
+from datalad.api import meta_aggregate, meta_dump
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.tests.utils import assert_raises, assert_result_count, eq_
 
