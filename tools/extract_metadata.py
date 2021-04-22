@@ -123,7 +123,7 @@ def get_add_cmdline(metadata_store: Path,
     command_line = ["datalad"]
     if arguments.log_level:
         command_line.extend(["-l", arguments.log_level])
-    command_line.extend(["meta-add", "-m", str(metadata_store), "-"])
+    command_line.extend(["meta-add", "-d", str(metadata_store), "-"])
 
     if "root_dataset_id" in context:
         additional_values = {
