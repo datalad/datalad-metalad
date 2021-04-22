@@ -386,7 +386,6 @@ def _get_metadata_content(metadata):
     return instances[0].metadata_content
 
 
-@skip_if_on_windows
 @with_tempfile
 def test_add_dataset_end_to_end(file_name):
     json.dump({
@@ -415,7 +414,6 @@ def test_add_dataset_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
-@skip_if_on_windows
 @with_tempfile
 def test_add_file_end_to_end(file_name):
 
@@ -450,7 +448,6 @@ def test_add_file_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
-@skip_if_on_windows
 @with_tempfile
 def test_subdataset_add_dataset_end_to_end(file_name):
 
@@ -494,7 +491,6 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
-@skip_if_on_windows
 @with_tempfile
 def test_subdataset_add_file_end_to_end(file_name):
 
@@ -544,7 +540,6 @@ def test_subdataset_add_file_end_to_end(file_name):
         eq_(metadata_content, metadata_template["extracted_metadata"])
 
 
-@skip_if_on_windows
 @with_tempfile
 def test_current_dir_add_end_to_end(file_name):
 
