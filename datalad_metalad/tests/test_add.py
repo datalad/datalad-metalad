@@ -9,14 +9,15 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata adding"""
 import json
+import os
 import tempfile
-from typing import List, Optional
+from pathlib import Path
+from typing import List
 from unittest.mock import patch
 from uuid import UUID
 
-from datalad.api import meta_add
+from datalad.api import meta_add, meta_dump
 from datalad.support.exceptions import IncompleteResultsError
-from datalad.support.gitrepo import GitRepo
 from datalad.tests.utils import (
     assert_is_not_none,
     assert_raises,
@@ -68,10 +69,6 @@ def _assert_raise_mke_with_keys(exception_keys: List[str],
         eq_(mke.keys, exception_keys)
 
 
-def _create_dataset(directory: str, id: Optional[UUID] = None) -> GitRepo:
-    return create_dataset(directory, id or default_id)
-
-
 @with_tempfile
 def test_unknown_key_reporting(file_name):
 
@@ -103,7 +100,7 @@ def test_unknown_key_allowed(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata=file_name,
@@ -129,7 +126,7 @@ def test_optional_keys(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata=file_name,
@@ -177,7 +174,7 @@ def test_object_parameter():
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata={
@@ -197,7 +194,7 @@ def test_additional_values_object_parameter():
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata={
@@ -226,7 +223,7 @@ def test_id_mismatch_detection(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         assert_raises(
             IncompleteResultsError,
@@ -254,7 +251,7 @@ def test_id_mismatch_allowed(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata=file_name,
@@ -281,7 +278,7 @@ def test_root_id_mismatch_detection(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         assert_raises(
             IncompleteResultsError,
@@ -313,7 +310,7 @@ def test_root_id_mismatch_allowed(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata=file_name,
@@ -344,7 +341,7 @@ def test_override_key_allowed(file_name):
             patch("datalad_metalad.add.add_dataset_metadata") as dp, \
             tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         meta_add(
             metadata=file_name,
@@ -400,7 +397,7 @@ def test_add_dataset_end_to_end(file_name):
 
     with tempfile.TemporaryDirectory() as temp_dir:
 
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
@@ -431,7 +428,7 @@ def test_add_file_end_to_end(file_name):
     }, open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
@@ -468,7 +465,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
@@ -514,7 +511,7 @@ def test_subdataset_add_file_end_to_end(file_name):
     }, open(file_name, "tw"))
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        git_repo = _create_dataset(temp_dir)
+        git_repo = create_dataset(temp_dir, default_id)
 
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
@@ -545,3 +542,47 @@ def test_subdataset_add_file_end_to_end(file_name):
         metadata = file_tree.get_metadata(MetadataPath(test_path))
         metadata_content = _get_metadata_content(metadata)
         eq_(metadata_content, metadata_template["extracted_metadata"])
+
+
+@skip_if_on_windows
+@with_tempfile
+def test_current_dir_add_end_to_end(file_name):
+
+    json.dump({
+            **{
+                **metadata_template,
+                "dataset_id": str(another_id)
+            },
+            "type": "dataset",
+            **additional_keys_template
+        },
+        open(file_name, "tw"))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        git_repo = create_dataset(temp_dir, default_id)
+
+        execute_directory = Path.cwd()
+        os.chdir(git_repo.pathobj)
+
+        res = meta_add(metadata=file_name)
+        assert_result_count(res, 1)
+        assert_result_count(res, 1, type='dataset')
+        assert_result_count(res, 0, type='file')
+
+        os.chdir(execute_directory)
+
+        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+
+        assert_true(len(results), 1)
+        result = results[0]["metadata"]["dataset_level_metadata"]
+        eq_(result["root_dataset_identifier"], str(default_id))
+        eq_(result["dataset_identifier"], str(another_id))
+
+        metadata = result["metadata"]["ex_extractor_name"][0]
+        translate = {
+            "extraction_agent_name": "agent_name",
+            "extraction_agent_email": "agent_email",
+            "extraction_result": "extracted_metadata"
+        }
+        for key, value in metadata.items():
+            eq_(value, metadata_template[translate.get(key, key)])

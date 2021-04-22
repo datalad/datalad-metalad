@@ -209,25 +209,25 @@ class Add(Interface):
             directory.""",
             constraints=EnsureDataset() | EnsureNone()),
         allow_override=Parameter(
-            args=("-o", "--allow-override"),
+            args=("-o", "--allow-override",),
+            action='store_true',
             doc="""Allow the additional values to override values given in
             metadata.""",
-            default=False,
-            constraints=EnsureBool() | EnsureNone()),
+            default=False),
         allow_unknown=Parameter(
-            args=("-u", "--allow-unknown"),
+            args=("-u", "--allow-unknown",),
+            action='store_true',
             doc="""Allow unknown keys. By default, unknown keys generate
             an errors. If this switch is True, unknown keys will only be
             reported. For processing unknown keys will be ignored.""",
-            default=False,
-            constraints=EnsureBool() | EnsureNone()),
+            default=False),
         allow_id_mismatch=Parameter(
-            args=("-m", "--allow-id-mismatch"),
+            args=("-i", "--allow-id-mismatch",),
+            action='store_true',
             doc="""Allow insertion of metadata, even if the "dataset-id" in
             the metadata source does not match the ID of the target
             dataset.""",
-            default=False,
-            constraints=EnsureBool() | EnsureNone()))
+            default=False))
 
     @staticmethod
     @datasetmethod(name="meta_add")
@@ -256,8 +256,9 @@ class Add(Interface):
 
         add_parameter = AddParameter(
             result_path=(
-                Path(metadata.get("dataset_path", "."))
-                / Path(metadata.get("path", ""))),
+                dataset.pathobj
+                / Path(metadata.get("dataset_path", "."))
+                / Path(metadata.get("path", ""))).resolve(),
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
             file_path=(
@@ -405,16 +406,18 @@ def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
                 action="meta-add",
                 status="error",
                 path=add_parameter.result_path,
-                message='provided "root-dataset-id" does not match ID of '
-                        'dataset {dataset.path}')
+                message=f'value of "root-dataset-id" '
+                        f'({add_parameter.root_dataset_id}) does not match '
+                        f'ID of dataset at {dataset.path} ({dataset.id})')
     else:
         if add_parameter.dataset_id != UUID(dataset.id):
             return dict(
                 action="meta-add",
                 status="error",
                 path=add_parameter.result_path,
-                message='provided "dataset-id" does not match ID of '
-                        'dataset {dataset.path}')
+                message=f'value of "dataset-id" '
+                        f'({add_parameter.dataset_id}) does not match '
+                        f'ID of dataset at {dataset.path} ({dataset.id})')
 
 
 def _get_top_nodes(realm: str, ap: AddParameter):
