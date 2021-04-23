@@ -235,9 +235,11 @@ class Aggregate(Interface):
         yield dict(
             action="meta_aggregate",
             status='ok',
+            path=root_realm,
+            destination=root_realm,
+            sources=[str(pam[1]) for pam in path_realm_associations],
             backend=backend,
-            metadata_store=root_realm,
-            message="aggregation performed")
+            message=f"aggregated metadata into {root_realm}")
 
         return
 
