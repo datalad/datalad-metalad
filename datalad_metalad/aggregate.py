@@ -81,7 +81,7 @@ from dataladmetadatamodel.mapper.gitmapper.utils import (
     lock_backend,
     unlock_backend)
 from .metadata import get_top_level_metadata_objects
-from .utils import check_dataset
+from .utils import check_dataset, get_lock_dir
 
 
 __docformat__ = 'restructuredtext'
@@ -203,7 +203,8 @@ class Aggregate(Interface):
             raise InsufficientArgumentsError(
                 "No valid metadata stores were specified for aggregation")
 
-        lock_backend(root_realm)
+        lock_dir = get_lock_dir(root_dataset)
+        lock_backend(lock_dir)
 
         tree_version_list, uuid_set = get_top_level_metadata_objects(
             backend,
@@ -228,9 +229,9 @@ class Aggregate(Interface):
 
         tree_version_list.save()
         uuid_set.save()
-        flush_object_references(root_realm)
+        flush_object_references(root_dataset.pathobj)
 
-        unlock_backend(root_realm)
+        unlock_backend(lock_dir)
 
         yield dict(
             action="meta_aggregate",
