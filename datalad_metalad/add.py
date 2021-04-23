@@ -61,6 +61,8 @@ lgr = logging.getLogger("datalad.metadata.add")
 @dataclass
 class AddParameter:
     result_path: Path
+    destination_path: Path
+    allow_id_mismatch: bool
 
     dataset_id: UUID
     dataset_version: str
@@ -259,6 +261,9 @@ class Add(Interface):
                 dataset.pathobj
                 / Path(metadata.get("dataset_path", "."))
                 / Path(metadata.get("path", ""))).resolve(),
+            destination_path=dataset.pathobj,
+            allow_id_mismatch=allow_id_mismatch,
+
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
             file_path=(
@@ -403,7 +408,7 @@ def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
     if add_parameter.root_dataset_id is not None:
         if add_parameter.root_dataset_id != UUID(dataset.id):
             return dict(
-                action="meta-add",
+                action="meta_add",
                 status="error",
                 path=add_parameter.result_path,
                 message=f'value of "root-dataset-id" '
@@ -412,7 +417,7 @@ def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
     else:
         if add_parameter.dataset_id != UUID(dataset.id):
             return dict(
-                action="meta-add",
+                action="meta_add",
                 status="error",
                 path=add_parameter.result_path,
                 message=f'value of "dataset-id" '
@@ -446,9 +451,9 @@ def _get_top_nodes(realm: str, ap: AddParameter):
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
         if mrr.dataset_identifier != ap.dataset_id:
             raise ValueError(
-                f"add-metadata claims that the metadata store contains dataset "
-                f"id {ap.dataset_id} at path {ap.dataset_path}, but the "
-                f"id of the stored dataset is {mrr.dataset_identifier}")
+                f"provided metadata claims that the metadata store contains "
+                f"dataset id {ap.dataset_id} at path {ap.dataset_path}, but "
+                f"the id of the stored dataset is {mrr.dataset_identifier}")
     else:
         dataset_level_metadata = Metadata(default_mapper_family, realm)
         file_tree = FileTree(default_mapper_family, realm)
@@ -491,9 +496,11 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     yield {
         "status": "ok",
-        "action": "add",
+        "action": "meta_add",
         "type": "file",
-        "message": "added file metadata"
+        "path": ap.result_path,
+        "destination": ap.destination_path,
+        "message": f"added file metadata to {ap.destination_path}"
     }
     return
 
@@ -520,9 +527,11 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
     yield {
         "status": "ok",
-        "action": "add",
+        "action": "meta_add",
         "type": "dataset",
-        "message": "added dataset metadata"
+        "path": ap.result_path,
+        "destination": ap.destination_path,
+        "message": f"added dataset metadata to {ap.destination_path}"
     }
     return
 
