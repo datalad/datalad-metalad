@@ -73,12 +73,12 @@ def test_basic_aggregation():
             assert_result_count(result_objects, 3)
             for index, result in enumerate(result_objects):
                 result_object = result["metadata"]["dataset_level_metadata"]
-                eq_(result_object["root_dataset_identifier"], str(root_id))
+                eq_(result_object["root_dataset_id"], str(root_id))
 
                 eq_(result_object["root_dataset_version"],
                     "0000000000000000000000000000000000000000")
 
-                eq_(result_object["dataset_identifier"], [
+                eq_(result_object["dataset_id"], [
                     str(root_id),
                     str(sub_0_id),
                     str(sub_1_id)
@@ -95,7 +95,7 @@ def test_basic_aggregation():
 
                 metadata_content = result_object["metadata"]["test_dataset"][0]
 
-                eq_(metadata_content["extraction_result"]["content"],
+                eq_(metadata_content["extracted_metadata"]["content"],
                     f"metadata-content_{index}")
 
 
@@ -163,12 +163,12 @@ def test_basic_aggregation_into_empty_store():
             assert_result_count(result_objects, 2)
             for index, result in enumerate(result_objects):
                 result_object = result["metadata"]["dataset_level_metadata"]
-                eq_(result_object["root_dataset_identifier"], "<unknown>")
+                eq_(result_object["root_dataset_id"], "<unknown>")
                 eq_(
                     result_object["root_dataset_version"],
                     "0000000000000000000000000000000000000aaa")
 
-                eq_(result_object["dataset_identifier"],
+                eq_(result_object["dataset_id"],
                     [
                         str(sub_0_id),
                         str(sub_1_id)
@@ -184,5 +184,5 @@ def test_basic_aggregation_into_empty_store():
 
                 metadata_content = result_object["metadata"]["test_dataset"][0]
 
-                eq_(metadata_content["extraction_result"]["content"],
+                eq_(metadata_content["extracted_metadata"]["content"],
                     f"metadata-content_{index}")

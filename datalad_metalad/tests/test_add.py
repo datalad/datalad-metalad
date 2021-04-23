@@ -569,14 +569,9 @@ def test_current_dir_add_end_to_end(file_name):
 
         assert_true(len(results), 1)
         result = results[0]["metadata"]["dataset_level_metadata"]
-        eq_(result["root_dataset_identifier"], str(default_id))
-        eq_(result["dataset_identifier"], str(another_id))
+        eq_(result["root_dataset_id"], str(default_id))
+        eq_(result["dataset_id"], str(another_id))
 
         metadata = result["metadata"]["ex_extractor_name"][0]
-        translate = {
-            "extraction_agent_name": "agent_name",
-            "extraction_agent_email": "agent_email",
-            "extraction_result": "extracted_metadata"
-        }
         for key, value in metadata.items():
-            eq_(value, metadata_template[translate.get(key, key)])
+            eq_(value, metadata_template[key])
