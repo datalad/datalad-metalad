@@ -64,6 +64,7 @@ class ExtractionParameter:
     source_dataset: Dataset
     source_dataset_id: UUID
     source_dataset_version: str
+    local_source_object_path: Path
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
     extractor_name: str
     extractor_arguments: Dict[str, str]
@@ -204,6 +205,8 @@ class Extract(Interface):
             source_dataset=source_dataset,
             source_dataset_id=UUID(source_dataset.id),
             source_dataset_version=source_dataset_version,
+            local_source_object_path=(
+                    source_dataset.pathobj / file_tree_path).absolute(),
             extractor_class=extractor_class,
             extractor_name=extractor_name,
             extractor_arguments=args_to_dict(extractor_args),
@@ -331,6 +334,7 @@ def perform_file_metadata_extraction(ep: ExtractionParameter,
 
     result = extractor.extract(None)
     result.datalad_result_dict["action"] = "meta_extract"
+    result.datalad_result_dict["path"] = ep.local_source_object_path
     if result.extraction_success:
         result.datalad_result_dict["metadata_record"] = dict(
             type="file",
@@ -359,6 +363,7 @@ def perform_dataset_metadata_extraction(ep: ExtractionParameter,
     # Process results
     result = extractor.extract(None)
     result.datalad_result_dict["action"] = "meta_extract"
+    result.datalad_result_dict["path"] = ep.local_source_object_path
     if result.extraction_success:
         result.datalad_result_dict["metadata_record"] = dict(
             type="dataset",
@@ -615,7 +620,8 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
         # Metalad legacy extractor
         status = [{
             "type": "file",
-            "path": str(ep.source_dataset.pathobj / ep.file_tree_path),
+            "path": str(
+                (ep.source_dataset.pathobj / ep.file_tree_path).absolute()),
             "state": "clean",
             "gitshasum": ep.source_dataset_version
         }]

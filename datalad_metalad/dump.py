@@ -73,36 +73,56 @@ def _file_report_matcher(tree_node: TreeNode) -> bool:
 
 
 def _create_result_record(mapper: str,
-                          metadata_store: str,
+                          metadata_store: Path,
                           metadata_record: JSONObject,
-                          element_path: str,
+                          element_path: MetadataPath,
                           report_type: str):
     return {
         "status": "ok",
         "action": "meta_dump",
-        "source": {
-            "mapper": mapper,
-            "metadata_store": metadata_store
-        },
+        "backend": mapper,
+        "metadata_source": metadata_store,
         "type": report_type,
         "metadata": metadata_record,
-        "path": element_path
+        "path": str((metadata_store / element_path).absolute())
     }
 
 
-def _create_metadata_instance_record(instance: MetadataInstance) -> dict:
+def _get_common_properties(root_dataset_identifier: UUID,
+                           root_dataset_version: str,
+                           metadata_root_record: MetadataRootRecord,
+                           dataset_path: MetadataPath) -> dict:
+
+    if dataset_path != MetadataPath(""):
+        root_info = {
+            "root_dataset_id": str(root_dataset_identifier),
+            "root_dataset_version": root_dataset_version,
+            "dataset_path": str(dataset_path)}
+    else:
+        root_info = {}
+
+    return {
+        **root_info,
+        "dataset_id": str(metadata_root_record.dataset_identifier),
+        "dataset_version": metadata_root_record.dataset_version
+    }
+
+
+def _get_instance_properties(extractor_name: str,
+                             instance: MetadataInstance) -> dict:
     return {
         "extraction_time": instance.time_stamp,
-        "extraction_agent_name": instance.author_name,
-        "extraction_agent_email": instance.author_email,
+        "agent_name": instance.author_name,
+        "agent_email": instance.author_email,
+        "extractor_name": extractor_name,
         "extractor_version": instance.configuration.version,
         "extraction_parameter": instance.configuration.parameter,
-        "extraction_result": instance.metadata_content
+        "extracted_metadata": instance.metadata_content
     }
 
 
 def show_dataset_metadata(mapper: str,
-                          metadata_store: str,
+                          metadata_store: Path,
                           root_dataset_identifier: UUID,
                           root_dataset_version: str,
                           dataset_path: MetadataPath,
@@ -118,41 +138,36 @@ def show_dataset_metadata(mapper: str,
             f"uuid:{root_dataset_identifier}@{root_dataset_version}")
         return
 
-    result_json_object = {
-        "dataset_level_metadata": {
-            "root_dataset_metadata_store": metadata_store,
-            "root_dataset_identifier": str(root_dataset_identifier),
-            "root_dataset_version": root_dataset_version,
-            "dataset_identifier": str(metadata_root_record.dataset_identifier),
-            "dataset_version": metadata_root_record.dataset_version,
-            "dataset_path": str(dataset_path),
-        }
-    }
+    common_properties = _get_common_properties(
+        root_dataset_identifier,
+        root_dataset_version,
+        metadata_root_record,
+        dataset_path)
 
     for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
+        for instance in extractor_runs:
 
-        instances = [
-            _create_metadata_instance_record(instance)
-            for instance in extractor_runs
-        ]
+            instance_properties = _get_instance_properties(
+                extractor_name,
+                instance)
 
-        result_json_object["dataset_level_metadata"]["metadata"] = {
-            extractor_name: instances
-        }
-
-        yield _create_result_record(
-            mapper,
-            metadata_store,
-            result_json_object,
-            str(dataset_path),
-            "dataset")
+            yield _create_result_record(
+                mapper=mapper,
+                metadata_store=metadata_store,
+                metadata_record={
+                    "type": "dataset",
+                    **common_properties,
+                    **instance_properties
+                },
+                element_path=dataset_path,
+                report_type="dataset")
 
     # Remove dataset-level metadata when we are done with it
     metadata_root_record.dataset_level_metadata.purge()
 
 
 def show_file_tree_metadata(mapper: str,
-                            metadata_store: str,
+                            metadata_store: Path,
                             root_dataset_identifier: UUID,
                             root_dataset_version: str,
                             dataset_path: MetadataPath,
@@ -185,35 +200,31 @@ def show_file_tree_metadata(mapper: str,
         if metadata_connector is None:
             continue
 
+        common_properties = _get_common_properties(
+            root_dataset_identifier,
+            root_dataset_version,
+            metadata_root_record,
+            dataset_path)
+
         metadata = metadata_connector.load_object()
-        result_json_object = {
-            "file_level_metadata": {
-                "root_dataset_identifier": str(root_dataset_identifier),
-                "root_dataset_version": root_dataset_version,
-                "dataset_identifier": str(
-                    metadata_root_record.dataset_identifier),
-                "dataset_version": metadata_root_record.dataset_version,
-                "dataset_path": str(dataset_path),
-                "path": str(path)
-            }
-        }
-
         for extractor_name, extractor_runs in metadata.extractor_runs():
-            instances = [
-                _create_metadata_instance_record(instance)
-                for instance in extractor_runs
-            ]
+            for instance in extractor_runs:
 
-            result_json_object["file_level_metadata"]["metadata"] = {
-                extractor_name: instances
-            }
+                instance_properties = _get_instance_properties(
+                    extractor_name,
+                    instance)
 
-            yield _create_result_record(
-                mapper,
-                metadata_store,
-                result_json_object,
-                str(dataset_path / path),
-                "file")
+                yield _create_result_record(
+                    mapper=mapper,
+                    metadata_store=metadata_store,
+                    metadata_record={
+                        "type": "file",
+                        "path": str(path),
+                        **common_properties,
+                        **instance_properties
+                    },
+                    element_path=dataset_path / path,
+                    report_type="dataset")
 
         # Remove metadata object after all instances are reported
         metadata_connector.purge()
@@ -223,7 +234,7 @@ def show_file_tree_metadata(mapper: str,
 
 
 def dump_from_dataset_tree(mapper: str,
-                           metadata_store: str,
+                           metadata_store: Path,
                            tree_version_list: TreeVersionList,
                            metadata_url: TreeMetadataURL,
                            recursive: bool) -> Generator[dict, None, None]:
@@ -294,7 +305,7 @@ def dump_from_dataset_tree(mapper: str,
 
 
 def dump_from_uuid_set(mapper: str,
-                       metadata_store: str,
+                       metadata_store: Path,
                        uuid_set: UUIDSet,
                        path: UUIDMetadataURL,
                        recursive: bool) -> Generator[dict, None, None]:
@@ -480,59 +491,4 @@ class Dump(Interface):
             # logging complained about this already
             return
 
-        render_dataset_level_metadata(
-            res["metadata"].get("dataset_level_metadata", dict()))
-
-        render_file_level_metadata(
-            res["metadata"].get("file_level_metadata", dict()))
-
-
-def render_dataset_level_metadata(dl_metadata: dict):
-    if not dl_metadata:
-        return
-
-    result_base = dict(
-        type="dataset",
-        dataset_id=dl_metadata["dataset_identifier"],
-        dataset_version=dl_metadata["dataset_version"])
-
-    render_common_metadata(dl_metadata, result_base)
-
-
-def render_file_level_metadata(fl_metadata: dict):
-    if not fl_metadata:
-        return
-
-    result_base = dict(
-        type="file",
-        dataset_id=fl_metadata["dataset_identifier"],
-        dataset_version=fl_metadata["dataset_version"],
-        path=fl_metadata["path"])
-
-    render_common_metadata(fl_metadata, result_base)
-
-
-def render_common_metadata(metadata: dict, result_base: dict):
-
-    if result_base["dataset_version"] != metadata["root_dataset_version"]:
-        assert metadata["dataset_path"] != ""
-        result_base["root_dataset_id"] = metadata["root_dataset_identifier"]
-        result_base["root_dataset_version"] = metadata[
-            "root_dataset_version"]
-        result_base["dataset_path"] = metadata["dataset_path"]
-
-    for extractor_name, extractions in metadata["metadata"].items():
-        for extraction in extractions:
-            extraction_result = dict(
-                extractor_name=extractor_name,
-                extractor_version=extraction["extractor_version"],
-                extraction_parameter=extraction["extraction_parameter"],
-                extraction_time=extraction["extraction_time"],
-                agent_name=extraction["extraction_agent_name"],
-                agent_email=extraction["extraction_agent_email"],
-                extracted_metadata=extraction["extraction_result"])
-
-            ui.message(json.dumps({
-                **result_base,
-                **extraction_result
-            }))
+        ui.message(json.dumps(res["metadata"]))

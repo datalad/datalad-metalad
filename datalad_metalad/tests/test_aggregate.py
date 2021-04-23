@@ -11,12 +11,15 @@
 
 import tempfile
 from pathlib import Path
+from typing import Optional
 from unittest.mock import patch
 from uuid import UUID
 
+
 from datalad.api import meta_aggregate, meta_dump
 from datalad.support.exceptions import InsufficientArgumentsError
-from datalad.tests.utils import assert_raises, assert_result_count, eq_
+from datalad.tests.utils import assert_not_in, assert_raises, \
+    assert_result_count, eq_
 
 from .utils import add_dataset_level_metadata, create_dataset
 
@@ -24,6 +27,27 @@ from .utils import add_dataset_level_metadata, create_dataset
 root_id = UUID("00010203-1011-2021-3031-404142434445")
 sub_0_id = UUID("a0cc0203-1011-2021-3031-404142434445")
 sub_1_id = UUID("a1cc0203-1011-2021-3031-404142434445")
+
+version_base = "000000000000000000000000000000000000000{index}"
+
+
+def _check_root_elements(result_object: dict,
+                         dataset_path: Optional[str],
+                         root_dataset_id: Optional[str],
+                         root_dataset_version: Optional[str]):
+
+    if dataset_path is None:
+        # Ensure that identical values, i.e. dataset_id and
+        # dataset_version, and empty values, i.e. dataset_path, are
+        # not present in the result.
+        assert_not_in("root_dataset_id", result_object)
+        assert_not_in("root_dataset_version", result_object)
+        assert_not_in("dataset_path", result_object)
+
+    else:
+        eq_(result_object["root_dataset_id"], root_dataset_id)
+        eq_(result_object["root_dataset_version"], root_dataset_version)
+        eq_(result_object["dataset_path"], dataset_path)
 
 
 def test_basic_aggregation():
@@ -52,7 +76,7 @@ def test_basic_aggregation():
                     str(sub_0_id),
                     str(sub_1_id)
                 ][index],
-                dataset_version=f"000000000000000000000000000000000000000{index}",
+                dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
         # We have to patch "get_root_version_for_subset_version" because
@@ -60,7 +84,7 @@ def test_basic_aggregation():
         with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
 
             # Ensure that the root version is found
-            p.return_value = ["0000000000000000000000000000000000000000"]
+            p.return_value = [version_base.format(index=0)]
 
             result = meta_aggregate(
                 str(root_dataset_dir),
@@ -71,31 +95,34 @@ def test_basic_aggregation():
                 recursive=True)
 
             assert_result_count(result_objects, 3)
+
+            zero_version = version_base.format(index=0)
+            check_parameters = [
+                dict(dataset_path=None, root_dataset_id=None),
+                dict(dataset_path="subdataset_0", root_dataset_id=str(root_id)),
+                dict(dataset_path="subdataset_1", root_dataset_id=str(root_id))
+            ]
+
             for index, result in enumerate(result_objects):
-                result_object = result["metadata"]["dataset_level_metadata"]
-                eq_(result_object["root_dataset_identifier"], str(root_id))
+                result_object = result["metadata"]
 
-                eq_(result_object["root_dataset_version"],
-                    "0000000000000000000000000000000000000000")
+                _check_root_elements(
+                    result_object=result_object,
+                    root_dataset_version=zero_version,
+                    **(check_parameters[index]))
 
-                eq_(result_object["dataset_identifier"], [
+                eq_(result_object["dataset_id"], [
                     str(root_id),
                     str(sub_0_id),
                     str(sub_1_id)
                 ][index])
 
-                eq_(result_object["dataset_version"],
-                    f"000000000000000000000000000000000000000{index}")
+                eq_(
+                    result_object["dataset_version"],
+                    version_base.format(index=index))
 
-                eq_(result_object["dataset_path"], [
-                    "",
-                    "subdataset_0",
-                    "subdataset_1"
-                ][index])
-
-                metadata_content = result_object["metadata"]["test_dataset"][0]
-
-                eq_(metadata_content["extraction_result"]["content"],
+                eq_(result_object["extractor_name"], "test_dataset")
+                eq_(result_object["extracted_metadata"]["content"],
                     f"metadata-content_{index}")
 
 
@@ -142,7 +169,7 @@ def test_basic_aggregation_into_empty_store():
                     str(sub_0_id),
                     str(sub_1_id)
                 ][index],
-                dataset_version=f"000000000000000000000000000000000000000{index}",
+                dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
         # We have to patch "get_root_version_for_subset_version" because
@@ -150,7 +177,7 @@ def test_basic_aggregation_into_empty_store():
         with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
 
             # Ensure that the root version is found
-            p.return_value = ["0000000000000000000000000000000000000aaa"]
+            p.return_value = [version_base.format(index="a")]
 
             meta_aggregate(
                 str(root_dataset_dir),
@@ -161,28 +188,31 @@ def test_basic_aggregation_into_empty_store():
                 recursive=True)
 
             assert_result_count(result_objects, 2)
-            for index, result in enumerate(result_objects):
-                result_object = result["metadata"]["dataset_level_metadata"]
-                eq_(result_object["root_dataset_identifier"], "<unknown>")
-                eq_(
-                    result_object["root_dataset_version"],
-                    "0000000000000000000000000000000000000aaa")
 
-                eq_(result_object["dataset_identifier"],
+            a_version = version_base.format(index="a")
+            check_parameters = [
+                dict(dataset_path="subdataset_0", root_dataset_id="<unknown>"),
+                dict(dataset_path="subdataset_1", root_dataset_id="<unknown>")
+            ]
+
+            for index, result in enumerate(result_objects):
+
+                result_object = result["metadata"]
+                _check_root_elements(
+                    result_object=result_object,
+                    root_dataset_version=a_version,
+                    **(check_parameters[index]))
+
+                eq_(result_object["dataset_id"],
                     [
                         str(sub_0_id),
                         str(sub_1_id)
                     ][index])
 
-                eq_(result_object["dataset_version"],
-                    f"000000000000000000000000000000000000000{index}")
+                eq_(
+                    result_object["dataset_version"],
+                    version_base.format(index=index))
 
-                eq_(result_object["dataset_path"], [
-                    "subdataset_0",
-                    "subdataset_1"
-                ][index])
-
-                metadata_content = result_object["metadata"]["test_dataset"][0]
-
-                eq_(metadata_content["extraction_result"]["content"],
+                eq_(result_object["extractor_name"], "test_dataset")
+                eq_(result_object["extracted_metadata"]["content"],
                     f"metadata-content_{index}")

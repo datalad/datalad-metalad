@@ -19,6 +19,7 @@ from uuid import UUID
 from datalad.api import meta_add, meta_dump
 from datalad.support.exceptions import IncompleteResultsError
 from datalad.tests.utils import (
+    assert_dict_equal,
     assert_is_not_none,
     assert_raises,
     assert_result_count,
@@ -568,15 +569,20 @@ def test_current_dir_add_end_to_end(file_name):
         results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
 
         assert_true(len(results), 1)
-        result = results[0]["metadata"]["dataset_level_metadata"]
-        eq_(result["root_dataset_identifier"], str(default_id))
-        eq_(result["dataset_identifier"], str(another_id))
+        result = results[0]["metadata"]
 
-        metadata = result["metadata"]["ex_extractor_name"][0]
-        translate = {
-            "extraction_agent_name": "agent_name",
-            "extraction_agent_email": "agent_email",
-            "extraction_result": "extracted_metadata"
+        expected = {
+            **metadata_template,
+            **additional_keys_template,
+            "type": "dataset",
+            "dataset_id": str(another_id),
         }
-        for key, value in metadata.items():
-            eq_(value, metadata_template[translate.get(key, key)])
+
+        # Check extraction parameter result
+        ep_key = "extraction_parameter"
+        assert_dict_equal(expected[ep_key], result[ep_key])
+        del expected[ep_key]
+        del result[ep_key]
+
+        # Check remaining result
+        assert_dict_equal(result, expected)
