@@ -26,7 +26,6 @@ from datalad.distribution.dataset import Dataset, EnsureDataset, datasetmethod
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
-from datalad.support.constraints import EnsureBool
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr
@@ -45,7 +44,7 @@ from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 
 from .exceptions import MetadataKeyException
-from .utils import check_dataset
+from .utils import check_dataset, get_lock_dir
 
 
 JSONObject = Union[Dict, List]
@@ -63,6 +62,7 @@ class AddParameter:
     result_path: Path
     destination_path: Path
     allow_id_mismatch: bool
+    lock_dir: Path
 
     dataset_id: UUID
     dataset_version: str
@@ -263,6 +263,7 @@ class Add(Interface):
                 / Path(metadata.get("path", ""))).resolve(),
             destination_path=dataset.pathobj,
             allow_id_mismatch=allow_id_mismatch,
+            lock_dir=get_lock_dir(dataset),
 
             dataset_id=UUID(metadata["dataset_id"]),
             dataset_version=metadata["dataset_version"],
@@ -471,7 +472,7 @@ def _get_top_nodes(realm: str, ap: AddParameter):
 def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     realm = str(metadata_store)
-    lock_backend(realm)
+    lock_backend(ap.lock_dir)
 
     tree_version_list, uuid_set, mrr = _get_top_nodes(realm, ap)
 
@@ -490,9 +491,9 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     tree_version_list.save()
     uuid_set.save()
-    flush_object_references(realm)
+    flush_object_references(metadata_store)
 
-    unlock_backend(realm)
+    unlock_backend(ap.lock_dir)
 
     yield {
         "status": "ok",
@@ -508,7 +509,7 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
     realm = str(metadata_store)
-    lock_backend(realm)
+    lock_backend(ap.lock_dir)
 
     tree_version_list, uuid_set, mrr = _get_top_nodes(realm, ap)
 
@@ -521,9 +522,9 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
     tree_version_list.save()
     uuid_set.save()
-    flush_object_references(realm)
+    flush_object_references(metadata_store)
 
-    unlock_backend(realm)
+    unlock_backend(ap.lock_dir)
 
     yield {
         "status": "ok",
