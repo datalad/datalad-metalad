@@ -54,6 +54,18 @@ definitions:
     type: string
     format: date
 
+  license:
+    type: object
+    additionalProperties: false
+    required:
+      - name
+      - url
+    properties:
+      name:
+        type: string
+      url:
+        type: string
+
   publication:
     type: object
     additionalProperties: false
@@ -150,6 +162,8 @@ definitions:
         $ref: "#definitions/funding-spec"
       standard:
         $ref: "#definitions/standard-list"
+      license:
+        $ref: "#definitions/license"
 
   study:
     type: object

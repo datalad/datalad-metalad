@@ -156,6 +156,13 @@ dataset:
     - <ex>NIH</ex>
     - <ex>DFG</ex>
 
+  # optional license for the dataset.
+  license:
+    # The name of the license
+    name: <ex>Creative Commons 1.0</ex>
+    # A URL where the license can be retrieved.
+    url: <ex>https://creativecommons.org/1.0</ex>
+
 
 # one or more publications on or using the dataset, optional
 publication:

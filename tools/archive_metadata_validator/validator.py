@@ -49,7 +49,11 @@ OBJECT_HIERARCHY = {
         },
         "description": False,
         "funding": False,
-        "standard": False
+        "standard": False,
+        "license": {
+            "name": True,
+            "url": True
+        }
     },
     "person": {
         "<email>": {

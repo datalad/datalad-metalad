@@ -37,6 +37,9 @@ dataset:
   funding:
     - DFG dataset funds
     - NIH dataset funds
+  license:
+    name: Creative Commons CC
+    url: https://creative-commons.org/version1.0
 
 publication:
   - title: Food-based intelligence
