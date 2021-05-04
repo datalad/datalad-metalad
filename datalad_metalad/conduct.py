@@ -80,59 +80,31 @@ class PathEater(Processor):
         return "pathlib.Path"
 
 
-"""
-{
-    "provider": {
-        "module": "datalad_metalad.conduct",
-        "class": "FilesystemTraverser",
-        "arguments": [
-            "/home/cristian/datalad/dummy"
-        ],
-        "keyword_arguments": {}
-    },
-    "processors": [
-        {
-            "module": "datalad_metalad.conduct",
-            "class": "PathEater",
-            "arguments": [],
-            "keyword_arguments": {}
-        },
-        {
-            "module": "datalad_metalad.conduct",
-            "class": "PathEater",
-            "arguments": [],
-            "keyword_arguments": {}
-        },
-        {
-            "module": "datalad_metalad.conduct",
-            "class": "PathEater",
-            "arguments": [],
-            "keyword_arguments": {}
-        }
-    ]
-}
-"""
-
-
-###########################################################
-
-
 @build_doc
 class Conduct(Interface):
     """Conduct the execution of a processing pipeline
 
+    A processing pipeline is a metalad-specific application of
+    the Unix shell philosophy, have a number of small programs
+    that do one thing, but that one thing, very well.
+
     Processing pipelines consist of:
 
-    - A provider, that provides entities that should be processed
+    - A provider, that provides data that should be processed
 
-    - A list of processors. A processor read entities,
-      either from the previous processor or the providerm and performs
-      a computation on the entity. The computation may have side-effect,
-      e.g. store metadata, and yields a result that is processed by
-      the next processor.
+    - A list of processors. A processor reads data,
+      either from the previous processor or the provider and performs
+      computations on the data and return a result that is processed by
+      the next processor. The computation may have side-effect,
+      e.g. store metadata.
 
-    Processors are usually executed in concurrent processes, i.e. workers.
-    The maximum number of workers is given by the parameter `max_workers`.
+    The provider is usually executed in the current processes' main
+    thread. Processors are usually executed in concurrent processes,
+    i.e. workers. The maximum number of workers is given by the
+    parameter `max_workers`.
+
+    Which provider and which processors are used is defined in an
+    "configuration", which is given as JSON-serialized dictionary.
     """
 
     _examples_ = [
@@ -199,17 +171,21 @@ class Conduct(Interface):
 
             for future in done:
                 index, result = future.result()
-                print(f"E[{index}]: {result}")
+                lgr.debug(f"Element[{index}] returned result {result} [provider not yet exhausted]")
                 next_index = index + 1
                 if next_index >= len(processor_instances):
                     yield dict(
                         action="meta_conduct",
                         status="ok",
                         logger=lgr,
+                        path=str(result),
                         result=result)
                 else:
                     running.add(
-                        executor.submit(processor_instances[next_index].execute, next_index, result))
+                        executor.submit(
+                            processor_instances[next_index].execute,
+                            next_index,
+                            result))
 
         while True:
             done, running = concurrent.futures.wait(
@@ -218,17 +194,21 @@ class Conduct(Interface):
 
             for future in done:
                 index, result = future.result()
-                print(f"L[{index}]: {result}")
+                lgr.debug(f"Element[{index}] returned result {result} [provider exhausted]")
                 next_index = index + 1
                 if next_index >= len(processor_instances):
                     yield dict(
                         action="meta_conduct",
                         status="ok",
                         logger=lgr,
+                        path=str(result),
                         result=result)
                 else:
                     running.add(
-                        executor.submit(processor_instances[next_index].execute, next_index, result))
+                        executor.submit(
+                            processor_instances[next_index].execute,
+                            next_index,
+                            result))
 
             if not running:
                 break
