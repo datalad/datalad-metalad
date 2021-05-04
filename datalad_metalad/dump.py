@@ -13,7 +13,7 @@ Dump metadata of a dataset
 
 __docformat__ = 'restructuredtext'
 
-import enum
+
 import json
 import logging
 from pathlib import Path
@@ -50,17 +50,6 @@ from .pathutils.treesearch import TreeSearch
 default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.dump')
-
-
-class ReportPolicy(enum.Enum):
-    INDIVIDUAL = "individual"
-    COMPLETE = "complete"
-
-
-class ReportOn(enum.Enum):
-    FILES = "files"
-    DATASETS = "datasets"
-    ALL = "all"
 
 
 def _dataset_report_matcher(tree_node: TreeNode) -> bool:
