@@ -48,6 +48,12 @@ command_suite = (
             'meta-add',
             'meta_add'
         ),
+        (
+            'datalad_metalad.conduct',
+            'Conduct',
+            'meta-conduct',
+            'meta_conduct'
+        ),
     ]
 )
 
