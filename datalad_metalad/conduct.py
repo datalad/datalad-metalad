@@ -40,46 +40,6 @@ default_metadata_backend = "git"
 lgr = logging.getLogger('datalad.metadata.conduct')
 
 
-###########################################################
-
-class FilesystemTraverser(Provider):
-    def __init__(self, file_system_object: Union[str, Path]):
-        super().__init__(file_system_object)
-        self.file_system_objects = [Path(file_system_object)]
-
-    def next_object(self):
-        while self.file_system_objects:
-            file_system_object = self.file_system_objects.pop()
-            if file_system_object.is_symlink():
-                continue
-            elif file_system_object.is_dir():
-                self.file_system_objects.extend(list(file_system_object.glob("*")))
-            else:
-                yield file_system_object
-
-    @staticmethod
-    def output_type() -> str:
-        return "pathlib.Path"
-
-
-class PathEater(Processor):
-    def __init__(self):
-        super().__init__()
-
-    def process(self, path: Path) -> Path:
-        if path.parts:
-            return Path().joinpath(*(path.parts[1:]))
-        return path
-
-    @staticmethod
-    def input_type() -> str:
-        return "pathlib.Path"
-
-    @staticmethod
-    def output_type() -> str:
-        return "pathlib.Path"
-
-
 @build_doc
 class Conduct(Interface):
     """Conduct the execution of a processing pipeline
@@ -171,7 +131,9 @@ class Conduct(Interface):
 
             for future in done:
                 index, result = future.result()
-                lgr.debug(f"Element[{index}] returned result {result} [provider not yet exhausted]")
+                lgr.debug(
+                    f"Element[{index}] returned result "
+                    f"{result} [provider not yet exhausted]")
                 next_index = index + 1
                 if next_index >= len(processor_instances):
                     yield dict(
@@ -194,7 +156,9 @@ class Conduct(Interface):
 
             for future in done:
                 index, result = future.result()
-                lgr.debug(f"Element[{index}] returned result {result} [provider exhausted]")
+                lgr.debug(
+                    f"Element[{index}] returned result "
+                    f"{result} [provider exhausted]")
                 next_index = index + 1
                 if next_index >= len(processor_instances):
                     yield dict(
