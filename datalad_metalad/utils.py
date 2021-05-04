@@ -1,6 +1,8 @@
 import glob
+import json
 import os
 import os.path as op
+import sys
 from collections import OrderedDict
 from itertools import islice
 from pathlib import Path
@@ -15,6 +17,7 @@ from datalad.distribution.dataset import (
 )
 from datalad.support.exceptions import NoDatasetFound
 from datalad.support.json_py import load as json_load
+from dataladmetadatamodel import JSONObject
 
 
 from . import aggregate_layout_version
@@ -258,3 +261,13 @@ def get_lock_dir(dataset: Dataset) -> Path:
     if not lock_dir.exists():
         os.makedirs(lock_dir)
     return lock_dir
+
+
+def read_json_object(path_or_object: Union[str, JSONObject]):
+    if isinstance(path_or_object, str):
+        if path_or_object == "-":
+            metadata_file = sys.stdin
+        else:
+            metadata_file = open(path_or_object, "tr")
+        return json.load(metadata_file)
+    return path_or_object
