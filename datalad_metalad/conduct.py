@@ -10,16 +10,11 @@
 Conduct the execution of a processing pipeline
 """
 import concurrent.futures
-import json
 import logging
 import sys
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Tuple, Union
 from uuid import UUID
-
-
-from .provider.base import Provider
-from .processor.base import Processor
 
 
 from datalad.distribution.dataset import Dataset, datasetmethod
@@ -32,20 +27,10 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
-from dataladmetadatamodel.metadata import MetadataInstance
-from dataladmetadatamodel.metadatapath import MetadataPath
-from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
-from dataladmetadatamodel.treenode import TreeNode
-from dataladmetadatamodel.uuidset import UUIDSet
-from dataladmetadatamodel.versionlist import TreeVersionList
 
-from .exceptions import NoMetadataStoreFound
-from .metadata import get_top_level_metadata_objects
-from .pathutils.metadataurlparser import (
-    MetadataURLParser,
-    TreeMetadataURL,
-    UUIDMetadataURL
-)
+from .processor.base import Processor
+from .provider.base import Provider
+from .utils import read_json_object
 
 
 __docformat__ = 'restructuredtext'
@@ -95,7 +80,7 @@ class PathEater(Processor):
         return "pathlib.Path"
 
 
-test_configuration = """
+"""
 {
     "provider": {
         "module": "datalad_metalad.conduct",
@@ -167,31 +152,25 @@ class Conduct(Interface):
             doc="maximum number of workers",
             default=None,
             constraints=EnsureInt() | EnsureNone()),
-        provider=Parameter(
-            args=("provider",),
-            metavar="PROVIDER",
-            doc="provider instance",
-            nargs=1),
-        processors=Parameter(
-            #args=("processors",),
-            metavar="PROCESSORS",
-            doc="processor classes",
-            nargs='+'),
+        configuration=Parameter(
+            args=("configuration",),
+            metavar="CONFIGURATION",
+            doc="""Path to a file with contains the pipeline configuration
+                   as JSON-serialized object. If the path is "-", the
+                   configuration is read from standard input.""")
     )
 
     @staticmethod
     @datasetmethod(name='meta_conduct')
     @eval_results
     def __call__(
-            provider,
-            processors,
+            configuration: Union[str, JSONObject],
             dataset=None,
             max_workers=None):
 
         dataset_path = Path(dataset or ".")
 
-        # Read provider and instances from configuration
-        conduct_configuration = json.loads(test_configuration)
+        conduct_configuration = read_json_object(configuration)
 
         provider_instance = get_class_instance(
             conduct_configuration["provider"])(

@@ -13,7 +13,6 @@ can also be created by other means.
 """
 import json
 import logging
-import sys
 from itertools import chain
 from os import curdir
 from pathlib import Path
@@ -44,7 +43,7 @@ from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 
 from .exceptions import MetadataKeyException
-from .utils import check_dataset
+from .utils import check_dataset, read_json_object
 
 
 JSONObject = Union[Dict, List]
@@ -309,16 +308,6 @@ def get_json_object(string_or_object: Union[str, JSONObject]):
     if isinstance(string_or_object, str):
         return json.loads(string_or_object)
     return string_or_object
-
-
-def read_json_object(path_or_object: Union[str, JSONObject]):
-    if isinstance(path_or_object, str):
-        if path_or_object == "-":
-            metadata_file = sys.stdin
-        else:
-            metadata_file = open(path_or_object, "tr")
-        return json.load(metadata_file)
-    return path_or_object
 
 
 def process_parameters(metadata: dict,
