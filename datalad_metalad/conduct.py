@@ -12,8 +12,9 @@ Conduct the execution of a processing pipeline
 import concurrent.futures
 import json
 import logging
+import sys
 from pathlib import Path
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 from uuid import UUID
 
 
@@ -76,7 +77,7 @@ class FilesystemTraverser(Provider):
         return "pathlib.Path"
 
 
-class StringEater(Processor):
+class PathEater(Processor):
     def __init__(self):
         super().__init__()
 
@@ -93,6 +94,39 @@ class StringEater(Processor):
     def output_type() -> str:
         return "pathlib.Path"
 
+
+test_configuration = """
+{
+    "provider": {
+        "module": "datalad_metalad.conduct",
+        "class": "FilesystemTraverser",
+        "arguments": [
+            "/home/cristian/datalad/dummy"
+        ],
+        "keyword_arguments": {}
+    },
+    "processors": [
+        {
+            "module": "datalad_metalad.conduct",
+            "class": "PathEater",
+            "arguments": [],
+            "keyword_arguments": {}
+        },
+        {
+            "module": "datalad_metalad.conduct",
+            "class": "PathEater",
+            "arguments": [],
+            "keyword_arguments": {}
+        },
+        {
+            "module": "datalad_metalad.conduct",
+            "class": "PathEater",
+            "arguments": [],
+            "keyword_arguments": {}
+        }
+    ]
+}
+"""
 
 
 ###########################################################
@@ -156,14 +190,29 @@ class Conduct(Interface):
 
         dataset_path = Path(dataset or ".")
 
-        provider = FilesystemTraverser(dataset_path)
-        processors = [StringEater() for i in range(5)]
+        # Read provider and instances from configuration
+        conduct_configuration = json.loads(test_configuration)
+
+        provider_instance = get_class_instance(
+            conduct_configuration["provider"])(
+                *conduct_configuration["provider"]["arguments"],
+                **conduct_configuration["provider"]["keyword_arguments"])
+
+        processor_instances = [
+            get_class_instance(spec)(
+                *spec["arguments"],
+                **spec["keyword_arguments"])
+            for spec in conduct_configuration["processors"]]
+
+        assert_pipeline_validity(
+            provider_instance.output_type(),
+            processor_instances)
 
         executor = concurrent.futures.ProcessPoolExecutor(max_workers)
         running = set()
 
-        for element in provider.next_object():
-            running.add(executor.submit(processors[0].execute, -1, element))
+        for element in provider_instance.next_object():
+            running.add(executor.submit(processor_instances[0].execute, -1, element))
             done, running = concurrent.futures.wait(
                 running,
                 return_when=concurrent.futures.FIRST_COMPLETED,
@@ -173,7 +222,7 @@ class Conduct(Interface):
                 index, result = future.result()
                 print(f"E[{index}]: {result}")
                 next_index = index + 1
-                if next_index >= len(processors):
+                if next_index >= len(processor_instances):
                     yield dict(
                         action="meta_conduct",
                         status="ok",
@@ -181,7 +230,7 @@ class Conduct(Interface):
                         result=result)
                 else:
                     running.add(
-                        executor.submit(processors[next_index].execute, next_index, result))
+                        executor.submit(processor_instances[next_index].execute, next_index, result))
 
         while True:
             done, running = concurrent.futures.wait(
@@ -192,7 +241,7 @@ class Conduct(Interface):
                 index, result = future.result()
                 print(f"L[{index}]: {result}")
                 next_index = index + 1
-                if next_index >= len(processors):
+                if next_index >= len(processor_instances):
                     yield dict(
                         action="meta_conduct",
                         status="ok",
@@ -200,9 +249,25 @@ class Conduct(Interface):
                         result=result)
                 else:
                     running.add(
-                        executor.submit(processors[next_index].execute, next_index, result))
+                        executor.submit(processor_instances[next_index].execute, next_index, result))
 
             if not running:
                 break
 
         return
+
+
+def get_class_instance(module_class_spec: dict):
+    module_instance = sys.modules[module_class_spec["module"]]
+    class_instance = getattr(module_instance, module_class_spec["class"])
+    return class_instance
+
+
+def assert_pipeline_validity(current_output_type: str, processors: List[Processor]):
+    for processor in processors:
+        next_input_type = processor.input_type()
+        if next_input_type != current_output_type:
+            raise ValueError(
+                f"Input type mismatch: {next_input_type} "
+                f"!= {current_output_type}")
+        current_output_type = processor.output_type()
