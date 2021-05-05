@@ -12,9 +12,7 @@ Conduct the execution of a processing pipeline
 import concurrent.futures
 import logging
 from importlib import import_module
-from pathlib import Path
 from typing import List, Union, Optional
-
 
 from datalad.distribution.dataset import Dataset, datasetmethod
 from datalad.interface.base import build_doc
@@ -36,6 +34,10 @@ __docformat__ = 'restructuredtext'
 default_metadata_backend = "git"
 
 lgr = logging.getLogger('datalad.metadata.conduct')
+
+
+class ConductProcessorException(Exception):
+    pass
 
 
 @build_doc
@@ -139,25 +141,33 @@ class Conduct(Interface):
                 timeout=0)
 
             for future in done:
-                index, result_list = future.result()
-                for result in result_list:
-                    lgr.debug(
-                        f"Element[{index}] returned result "
-                        f"{result} [provider not yet exhausted]")
-                    next_index = index + 1
-                    if next_index >= len(processor_instances):
-                        yield dict(
-                            action="meta_conduct",
-                            status="ok",
-                            logger=lgr,
-                            path=str(result),
-                            result=result)
-                    else:
-                        running.add(
-                            executor.submit(
-                                processor_instances[next_index].execute,
-                                next_index,
-                                result))
+                try:
+                    index, result_list = future.result()
+                    for result in result_list:
+                        lgr.debug(
+                            f"Element[{index}] returned result "
+                            f"{result} [provider not yet exhausted]")
+                        next_index = index + 1
+                        if next_index >= len(processor_instances):
+                            yield dict(
+                                action="meta_conduct",
+                                status="ok",
+                                logger=lgr,
+                                path=str(result),
+                                result=result)
+                        else:
+                            running.add(
+                                executor.submit(
+                                    processor_instances[next_index].execute,
+                                    next_index,
+                                    result))
+                except ConductProcessorException as e:
+                    lgr.error(f"Exception {e} in processor {future}")
+                    yield dict(
+                        action="meta_conduct",
+                        status="error",
+                        logger=lgr,
+                        message=e.args[0])
 
         while True:
             done, running = concurrent.futures.wait(
@@ -165,25 +175,33 @@ class Conduct(Interface):
                 return_when=concurrent.futures.FIRST_COMPLETED)
 
             for future in done:
-                index, result_list = future.result()
-                for result in result_list:
-                    lgr.debug(
-                        f"Element[{index}] returned result "
-                        f"{result} [provider exhausted]")
-                    next_index = index + 1
-                    if next_index >= len(processor_instances):
-                        yield dict(
-                            action="meta_conduct",
-                            status="ok",
-                            logger=lgr,
-                            path=str(result),
-                            result=result)
-                    else:
-                        running.add(
-                            executor.submit(
-                                processor_instances[next_index].execute,
-                                next_index,
-                                result))
+                try:
+                    index, result_list = future.result()
+                    for result in result_list:
+                        lgr.debug(
+                            f"Element[{index}] returned result "
+                            f"{result} [provider exhausted]")
+                        next_index = index + 1
+                        if next_index >= len(processor_instances):
+                            yield dict(
+                                action="meta_conduct",
+                                status="ok",
+                                logger=lgr,
+                                path=str(result),
+                                result=result)
+                        else:
+                            running.add(
+                                executor.submit(
+                                    processor_instances[next_index].execute,
+                                    next_index,
+                                    result))
+                except ConductProcessorException as e:
+                    lgr.error(f"Exception {e} in processor {future}")
+                    yield dict(
+                        action="meta_conduct",
+                        status="error",
+                        logger=lgr,
+                        message=e.args[0])
 
             if not running:
                 break
