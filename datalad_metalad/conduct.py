@@ -72,10 +72,6 @@ class Conduct(Interface):
     ]
 
     _params_ = dict(
-        dataset=Parameter(
-            args=("-d", "--dataset"),
-            metavar="DATASET",
-            doc="""Dataset on which the execution should be conducted"""),
         max_workers=Parameter(
             args=("-m", "--max-workers",),
             metavar="MAX_WORKERS",
@@ -87,7 +83,20 @@ class Conduct(Interface):
             metavar="CONFIGURATION",
             doc="""Path to a file with contains the pipeline configuration
                    as JSON-serialized object. If the path is "-", the
-                   configuration is read from standard input.""")
+                   configuration is read from standard input."""),
+        arguments=Parameter(
+            args=("arguments",),
+            metavar="ARGUMENTS",
+            nargs="*",
+            doc="""Additional constructor arguments for provider or processors.
+            The arguments have to be prefixed with either "p:" for provider,
+            or an integer for a processor. The integer is the index of the
+            processor in the processor list of the configuration, e.g.
+            "0:" for the first processor, "1:" for the second processor
+            etc.
+    
+            The arguments will be appended to the respective argument list
+            that is given in the configuration.""")
     )
 
     @staticmethod
@@ -95,23 +104,25 @@ class Conduct(Interface):
     @eval_results
     def __call__(
             configuration: Union[str, JSONObject],
-            dataset: Optional[Dataset] = None,
+            arguments: List[str],
             max_workers: Optional[int] = None):
-
-        dataset_path = Path(dataset or ".")
 
         conduct_configuration = read_json_object(configuration)
 
+        additional_arguments = get_additional_arguments(
+            arguments,
+            conduct_configuration)
+
         provider_instance = get_class_instance(
             conduct_configuration["provider"])(
-                *conduct_configuration["provider"]["arguments"],
+                *(conduct_configuration["provider"]["arguments"] + additional_arguments["provider"]),
                 **conduct_configuration["provider"]["keyword_arguments"])
 
         processor_instances = [
             get_class_instance(spec)(
-                *spec["arguments"],
+                *spec["arguments"] + additional_arguments["processors"][index],
                 **spec["keyword_arguments"])
-            for spec in conduct_configuration["processors"]]
+            for index, spec in enumerate(conduct_configuration["processors"])]
 
         assert_pipeline_validity(
             provider_instance.output_type(),
@@ -194,3 +205,22 @@ def assert_pipeline_validity(current_output_type: str, processors: List[Processo
                 f"Input type mismatch: {next_input_type} "
                 f"!= {current_output_type}")
         current_output_type = processor.output_type()
+
+
+def get_additional_arguments(arguments: List[str],
+                             conduct_configuration: JSONObject) -> dict:
+
+    result = dict(
+        provider=[],
+        processors={
+            i: []
+            for i in range(len(conduct_configuration["processors"]))})
+
+    for argument in arguments:
+        if argument.startswith("p:"):
+            result["provider"].append(argument[2:])
+        else:
+            prefix, argument = argument.split(":", 1)
+            result["processors"][int(prefix)].append(argument)
+
+    return result

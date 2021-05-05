@@ -7,23 +7,14 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-import json
-import tempfile
 from pathlib import Path
 from typing import List, Union
-from unittest.mock import patch
-from uuid import UUID
 
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
-    with_tempfile,
+    assert_in,
     with_tree,
-    assert_result_count,
-    assert_true,
-    assert_raises,
-    assert_repo_status,
     eq_,
-    known_failure,
 )
 
 from ..processor.base import Processor
@@ -114,6 +105,15 @@ class PathEater(Processor):
     })
 def test_simple_pipeline(dataset):
 
-    configuration["provider"]["arguments"].append(dataset)
-    result = list(meta_conduct(dataset=dataset, configuration=configuration))
-    print(result)
+    pipeline_results = list(
+        meta_conduct(
+            arguments=[f"p:{dataset}"],
+            configuration=configuration))
+
+    eq_(len(pipeline_results), 4)
+
+    result_paths = [str(result["result"]) for result in pipeline_results]
+    assert_in("b_0.1/c_0.1.0", result_paths)
+    assert_in("b_0.1/c_0.1.1", result_paths)
+    assert_in("b_0.0/c_0.0.1", result_paths)
+    assert_in("b_0.0/c_0.0.0", result_paths)
