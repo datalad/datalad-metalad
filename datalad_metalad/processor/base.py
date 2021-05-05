@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Tuple
+from typing import Any, Iterable, List, Tuple
 
 
 class Processor(metaclass=abc.ABCMeta):
@@ -7,12 +7,18 @@ class Processor(metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs):
         pass
 
-    def execute(self, context: Any, *args, **kwargs) -> Tuple[Any, Any]:
-        process_result = self.process(*args, **kwargs)
-        return context, process_result
+    def execute(self, context: Any, *args, **kwargs) -> Tuple[Any, List[Any]]:
+        """
+        Execute the processor. If we want to use process worker pools,
+        we cannot return an iterator or generator as a result.
+        Therefore this method will collect all results from self.process
+        and return them in a list of tuples, which consist of the passed
+        context and .
+        """
+        return context, list(self.process(*args, **kwargs))
 
     @abc.abstractmethod
-    def process(self, *args, **kwargs) -> Any:
+    def process(self, *args, **kwargs) -> Iterable:
         """
         Overwrite this method in derived classes to implement
         the functionality of the processor. Return-values are

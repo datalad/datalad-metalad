@@ -11,10 +11,9 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
-import sys
+from importlib import import_module
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Tuple, Union
-from uuid import UUID
+from typing import List, Union, Optional
 
 
 from datalad.distribution.dataset import Dataset, datasetmethod
@@ -29,7 +28,6 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
 from .processor.base import Processor
-from .provider.base import Provider
 from .utils import read_json_object
 
 
@@ -97,8 +95,8 @@ class Conduct(Interface):
     @eval_results
     def __call__(
             configuration: Union[str, JSONObject],
-            dataset=None,
-            max_workers=None):
+            dataset: Optional[Dataset] = None,
+            max_workers: Optional[int] = None):
 
         dataset_path = Path(dataset or ".")
 
@@ -130,24 +128,25 @@ class Conduct(Interface):
                 timeout=0)
 
             for future in done:
-                index, result = future.result()
-                lgr.debug(
-                    f"Element[{index}] returned result "
-                    f"{result} [provider not yet exhausted]")
-                next_index = index + 1
-                if next_index >= len(processor_instances):
-                    yield dict(
-                        action="meta_conduct",
-                        status="ok",
-                        logger=lgr,
-                        path=str(result),
-                        result=result)
-                else:
-                    running.add(
-                        executor.submit(
-                            processor_instances[next_index].execute,
-                            next_index,
-                            result))
+                index, result_list = future.result()
+                for result in result_list:
+                    lgr.debug(
+                        f"Element[{index}] returned result "
+                        f"{result} [provider not yet exhausted]")
+                    next_index = index + 1
+                    if next_index >= len(processor_instances):
+                        yield dict(
+                            action="meta_conduct",
+                            status="ok",
+                            logger=lgr,
+                            path=str(result),
+                            result=result)
+                    else:
+                        running.add(
+                            executor.submit(
+                                processor_instances[next_index].execute,
+                                next_index,
+                                result))
 
         while True:
             done, running = concurrent.futures.wait(
@@ -155,24 +154,25 @@ class Conduct(Interface):
                 return_when=concurrent.futures.FIRST_COMPLETED)
 
             for future in done:
-                index, result = future.result()
-                lgr.debug(
-                    f"Element[{index}] returned result "
-                    f"{result} [provider exhausted]")
-                next_index = index + 1
-                if next_index >= len(processor_instances):
-                    yield dict(
-                        action="meta_conduct",
-                        status="ok",
-                        logger=lgr,
-                        path=str(result),
-                        result=result)
-                else:
-                    running.add(
-                        executor.submit(
-                            processor_instances[next_index].execute,
-                            next_index,
-                            result))
+                index, result_list = future.result()
+                for result in result_list:
+                    lgr.debug(
+                        f"Element[{index}] returned result "
+                        f"{result} [provider exhausted]")
+                    next_index = index + 1
+                    if next_index >= len(processor_instances):
+                        yield dict(
+                            action="meta_conduct",
+                            status="ok",
+                            logger=lgr,
+                            path=str(result),
+                            result=result)
+                    else:
+                        running.add(
+                            executor.submit(
+                                processor_instances[next_index].execute,
+                                next_index,
+                                result))
 
             if not running:
                 break
@@ -181,7 +181,7 @@ class Conduct(Interface):
 
 
 def get_class_instance(module_class_spec: dict):
-    module_instance = sys.modules[module_class_spec["module"]]
+    module_instance = import_module(module_class_spec["module"])
     class_instance = getattr(module_instance, module_class_spec["class"])
     return class_instance
 
