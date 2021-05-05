@@ -10,7 +10,7 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Union
 from unittest.mock import patch
 from uuid import UUID
 
@@ -85,10 +85,10 @@ class PathEater(Processor):
     def __init__(self):
         super().__init__()
 
-    def process(self, path: Path) -> Path:
+    def process(self, path: Path) -> List[Path]:
         if path.parts:
-            return Path().joinpath(*(path.parts[1:]))
-        return path
+            return [Path().joinpath(*(path.parts[1:]))]
+        return [path]
 
     @staticmethod
     def input_type() -> str:
