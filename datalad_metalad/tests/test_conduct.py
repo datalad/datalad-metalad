@@ -17,7 +17,6 @@ from datalad.tests.utils import (
     eq_,
 )
 
-from ..conduct import ConductProcessorException
 from ..processor.base import Processor
 from ..provider.base import Provider
 

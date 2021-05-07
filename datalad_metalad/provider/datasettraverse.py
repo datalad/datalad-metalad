@@ -30,7 +30,6 @@ class DatasetTraverser(Provider):
         self.top_level_dir = Path(top_level_dir)
         self.root_dataset_dir = get_dataset_root(self.top_level_dir)
         self.recursive = recursive
-        self.current_dataset = None
         self.traverse_subdatasets = traverse_subdatasets
         self.traverse_subdatasets_limit = traverse_subdatasets_limit
         self.exclude_paths = (
@@ -38,9 +37,11 @@ class DatasetTraverser(Provider):
             if exclude_paths is None
             else exclude_paths)
 
-        self.subdataset_level = 0
         assert self.root_dataset_dir is not None, "No dataset found"
         assert str(self.top_level_dir) == str(self.root_dataset_dir), "Not a dataset root directory"
+
+        self.current_dataset = top_level_dir
+        self.subdataset_level = 0
 
     def _is_git_or_dataset_root(self, path, require_datalad_dir: bool = True) -> bool:
         if path.is_dir():
@@ -58,7 +59,8 @@ class DatasetTraverser(Provider):
     def _create_result(self, path: Path, path_type: str):
         return dict(
             path=path,
-            type=path_type)
+            type=path_type,
+            dataset=self.current_dataset)
 
     def _traverse_recursive(self, current_element: Path):
         # Report the current element
@@ -83,11 +85,17 @@ class DatasetTraverser(Provider):
                         if self.traverse_subdatasets_limit is not None:
                             if self.subdataset_level < self.traverse_subdatasets_limit:
                                 self.subdataset_level += 1
+                                saved_current_dataset = self.current_dataset
+                                self.current_dataset = current_element
                                 for element in current_element.iterdir():
                                     yield from self._traverse_recursive(element)
+                                self.current_dataset = saved_current_dataset
                         else:
+                            saved_current_dataset = self.current_dataset
+                            self.current_dataset = current_element
                             for element in current_element.iterdir():
                                 yield from self._traverse_recursive(element)
+                            self.current_dataset = saved_current_dataset
         else:
             path_type = "File"
             yield self._create_result(current_element, path_type)
