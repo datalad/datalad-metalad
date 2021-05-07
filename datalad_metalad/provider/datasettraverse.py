@@ -1,7 +1,11 @@
 """
 Traversal of datasets.
 
-Relates to datalad_metalad issues #68
+Relates to datalad_metalad issue #68
+
+
+TODO: this is a naive implementation, replace with the proper thing,
+ once the conduct mechanics is fleshed out.
 """
 
 from pathlib import Path
@@ -9,6 +13,9 @@ from typing import Optional, Set, Union
 
 from datalad.utils import get_dataset_root
 from .base import Provider
+
+
+standard_exclude = [".git*", ".datalad", ".noannex"]
 
 
 class DatasetTraverser(Provider):
@@ -22,15 +29,71 @@ class DatasetTraverser(Provider):
         super().__init__()
         self.top_level_dir = Path(top_level_dir)
         self.root_dataset_dir = get_dataset_root(self.top_level_dir)
+        self.recursive = recursive
         self.current_dataset = None
         self.traverse_subdatasets = traverse_subdatasets
-        self.exclude_paths = exclude_paths
+        self.traverse_subdatasets_limit = traverse_subdatasets_limit
+        self.exclude_paths = (
+            standard_exclude
+            if exclude_paths is None
+            else exclude_paths)
 
+        self.subdataset_level = 0
         assert self.root_dataset_dir is not None, "No dataset found"
         assert str(self.top_level_dir) == str(self.root_dataset_dir), "Not a dataset root directory"
 
+    def _is_git_or_dataset_root(self, path, require_datalad_dir: bool = True) -> bool:
+        if path.is_dir():
+            git_dir_path = (tuple(path.glob(".git")) + (None,))[0]
+            if git_dir_path is not None and git_dir_path.is_dir():
+                if require_datalad_dir is True:
+                    datalad_dir_path = (tuple(path.glob(".git")) + (None,))[0]
+                    if datalad_dir_path is not None and datalad_dir_path.is_dir():
+                        return True
+                    else:
+                        return False
+                return True
+        return False
+
+    def _create_result(self, path: Path, path_type: str):
+        return dict(
+            path=path,
+            type=path_type)
+
+    def _traverse_recursive(self, current_element: Path):
+        # Report the current element
+        if any([current_element.match(pattern) for pattern in self.exclude_paths]):
+            return
+        if current_element.is_dir():
+            if self._is_git_or_dataset_root(current_element):
+                path_type = "Dataset"
+            else:
+                path_type = "Directory"
+            yield self._create_result(current_element, path_type)
+            if path_type == "Directory" and self.recursive is True:
+                for element in current_element.iterdir():
+                    yield from self._traverse_recursive(element)
+            elif path_type == "Dataset":
+                if current_element == self.top_level_dir:
+                    # If this is the root-dataset, show its content
+                    for element in current_element.iterdir():
+                        yield from self._traverse_recursive(element)
+                else:
+                    if self.traverse_subdatasets:
+                        if self.traverse_subdatasets_limit is not None:
+                            if self.subdataset_level < self.traverse_subdatasets_limit:
+                                self.subdataset_level += 1
+                                for element in current_element.iterdir():
+                                    yield from self._traverse_recursive(element)
+                        else:
+                            for element in current_element.iterdir():
+                                yield from self._traverse_recursive(element)
+        else:
+            path_type = "File"
+            yield self._create_result(current_element, path_type)
+
     def next_object(self):
-        return
+        yield from self._traverse_recursive(self.top_level_dir)
 
     @staticmethod
     def output_type() -> str:
