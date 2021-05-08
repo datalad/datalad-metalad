@@ -4,6 +4,11 @@ from .base import Processor
 
 
 class AutoGet(Processor):
+    """
+    This processor get a file that is annexed and not locally available.
+    It sets a flag in the element that will allow the AutoDrop-processor
+    to automatically drop the file again.
+    """
     def __init__(self):
         super().__init__()
 

@@ -142,24 +142,25 @@ class Conduct(Interface):
 
             for future in done:
                 try:
-                    index, result_list = future.result()
+                    source_index, result_list = future.result()
+                    this_index = source_index + 1
+                    next_index = this_index + 1
                     for result in result_list:
                         lgr.debug(
-                            f"Element[{index}] returned result "
+                            f"Element[{source_index}] returned result "
                             f"{result} [provider not yet exhausted]")
-                        next_index = index + 1
                         if next_index >= len(processor_instances):
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
                                 logger=lgr,
-                                path=str(result),
+                                path=result["path"],
                                 result=result)
                         else:
                             running.add(
                                 executor.submit(
-                                    processor_instances[next_index].execute,
-                                    next_index,
+                                    processor_instances[this_index].execute,
+                                    this_index,
                                     result))
                 except ConductProcessorException as e:
                     lgr.error(f"Exception {e} in processor {future}")
@@ -176,13 +177,13 @@ class Conduct(Interface):
 
             for future in done:
                 try:
-                    index, result_list = future.result()
+                    source_index, result_list = future.result()
                     for result in result_list:
                         lgr.debug(
-                            f"Element[{index}] returned result "
+                            f"Element[{source_index}] returned result "
                             f"{result} [provider exhausted]")
-                        next_index = index + 1
-                        if next_index >= len(processor_instances):
+                        this_index = source_index + 1
+                        if this_index >= len(processor_instances):
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -192,8 +193,8 @@ class Conduct(Interface):
                         else:
                             running.add(
                                 executor.submit(
-                                    processor_instances[next_index].execute,
-                                    next_index,
+                                    processor_instances[this_index].execute,
+                                    this_index,
                                     result))
                 except ConductProcessorException as e:
                     lgr.error(f"Exception {e} in processor {future}")
