@@ -7,6 +7,8 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+import tempfile
+import uuid
 from pathlib import Path
 from typing import List, Union
 
@@ -17,11 +19,25 @@ from datalad.tests.utils import (
     eq_,
 )
 
+from .utils import create_dataset
 from ..processor.base import Processor
 from ..provider.base import Provider
 
 
-configuration = {
+test_tree = {
+    "a_0": {
+        "b_0.0": {
+            "c_0.0.0": "content",
+            "c_0.0.1": "content"
+        },
+        "b_0.1": {
+            "c_0.1.0": "content",
+            "c_0.1.1": "content"
+        }
+    }
+}
+
+simple_pipeline = {
     "provider": {
         "module": "datalad_metalad.tests.test_conduct",
         "class": "FilesystemTraverser",
@@ -90,25 +106,13 @@ class PathEater(Processor):
         return "pathlib.Path"
 
 
-@with_tree(
-    {
-        "a_0": {
-            "b_0.0": {
-                "c_0.0.0": "content",
-                "c_0.0.1": "content"
-            },
-            "b_0.1": {
-                "c_0.1.0": "content",
-                "c_0.1.1": "content"
-            }
-        }
-    })
+@with_tree(test_tree)
 def test_simple_pipeline(dataset):
 
     pipeline_results = list(
         meta_conduct(
             arguments=[f"p:{dataset}"],
-            configuration=configuration))
+            configuration=simple_pipeline))
 
     eq_(len(pipeline_results), 4)
 
@@ -117,3 +121,52 @@ def test_simple_pipeline(dataset):
     assert_in("b_0.1/c_0.1.1", result_paths)
     assert_in("b_0.0/c_0.0.1", result_paths)
     assert_in("b_0.0/c_0.0.0", result_paths)
+
+
+def test_extract():
+
+    extract_pipeline = {
+        "provider": {
+            "module": "datalad_metalad.provider.datasettraverse",
+            "class": "DatasetTraverser",
+            "arguments": [],
+            "keyword_arguments": {}
+        },
+        "processors": [
+            {
+                "module": "datalad_metalad.processor.extract",
+                "class": "MetadataExtractor",
+                "arguments": [],
+                "keyword_arguments": {}
+            }
+        ]
+    }
+
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
+    with tempfile.TemporaryDirectory() as root_dataset_dir_str:
+        root_dataset_dir = Path(root_dataset_dir_str)
+        subdataset_0_dir = root_dataset_dir / "subdataset_0"
+        subdataset_1_dir = root_dataset_dir / "subdataset_1"
+
+        create_dataset(root_dataset_dir, uuid.uuid4())
+        create_dataset(subdataset_0_dir, uuid.uuid4())
+        create_dataset(subdataset_1_dir, uuid.uuid4())
+
+        pipeline_results = list(
+            meta_conduct(
+                arguments=[
+                    f"p:{root_dataset_dir_str}",
+                    f"0:{root_dataset_dir_str}",
+                    f"0:Dataset",
+                    f"0:metalad_core_dataset"],
+                configuration=extract_pipeline))
+
+        eq_(len(pipeline_results), 4)
+
+        result_paths = [str(result["result"]) for result in pipeline_results]
+        assert_in("b_0.1/c_0.1.0", result_paths)
+        assert_in("b_0.1/c_0.1.1", result_paths)
+        assert_in("b_0.0/c_0.0.1", result_paths)
+        assert_in("b_0.0/c_0.0.0", result_paths)

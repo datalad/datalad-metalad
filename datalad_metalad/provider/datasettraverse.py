@@ -71,11 +71,11 @@ class DatasetTraverser(Provider):
                 path_type = "Dataset"
             else:
                 path_type = "Directory"
-            yield self._create_result(current_element, path_type)
             if path_type == "Directory" and self.recursive is True:
                 for element in current_element.iterdir():
                     yield from self._traverse_recursive(element)
             elif path_type == "Dataset":
+                yield self._create_result(current_element, path_type)
                 if current_element == self.top_level_dir:
                     # If this is the root-dataset, show its content
                     for element in current_element.iterdir():
