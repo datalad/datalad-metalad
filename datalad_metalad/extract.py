@@ -171,6 +171,13 @@ class Extract(Interface):
             is given, the dataset is determined by the current work
             directory.""",
             constraints=EnsureDataset() | EnsureNone()),
+        context=Parameter(
+            args=("-c", "--context"),
+            doc="""Context, a JSON-serialized dictionary that provides
+            constant data which has been gathered before, so meta-extract
+            will not have re-gather this data. Keys and values are strings.
+            meta-extract will look for the following key: 'dataset_version'.""",
+            constraints=EnsureDataset() | EnsureNone()),
         extractorargs=Parameter(
             args=("extractorargs",),
             metavar="EXTRACTOR_ARGUMENTS",
@@ -185,15 +192,25 @@ class Extract(Interface):
             extractorname: str,
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
+            context: Optional[Union[str, Dict[str, str]]] = None,
             extractorargs: Optional[List[str]] = None):
 
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs
         path = None if path == "++" else path
+        context = (
+            {}
+            if context is None
+            else (
+                json.loads(context)
+                if isinstance(context, str)
+                else context))
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
-        source_dataset_version = source_dataset.repo.get_hexsha()
+        source_dataset_version = context.get("dataset_version", None)
+        if source_dataset_version is None:
+            source_dataset_version = source_dataset.repo.get_hexsha()
 
         extractor_class = get_extractor_class(extractor_name)
         dataset_tree_path, file_tree_path = get_path_info(
