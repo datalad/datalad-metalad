@@ -129,34 +129,34 @@ class Conduct(Interface):
             provider_instance.output_type(),
             processor_instances)
 
-        #executor = concurrent.futures.ProcessPoolExecutor(max_workers)
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers)
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers)
         running = set()
 
-        for element in provider_instance.next_object():
-            print(f"got provider result: {element}")
-            print(f"starting instance {processor_instances[0]} on {element}")
-            running.add(executor.submit(processor_instances[0].execute, -1, element))
+        for initial_result in provider_instance.next_object():
+            lgr.debug(f"Provider yielded: {initial_result}")
+            lgr.debug(f"Starting instance {processor_instances[0]} on {initial_result}")
+            running.add(executor.submit(processor_instances[0].execute, -1, initial_result))
+
+            lgr.debug(f"Waiting for first completing from: {running}")
             done, running = concurrent.futures.wait(
                 running,
                 return_when=concurrent.futures.FIRST_COMPLETED,
                 timeout=0)
 
             for future in done:
-                print(f"instance done")
                 try:
                     source_index, result_list = future.result()
                     this_index = source_index + 1
                     next_index = this_index + 1
                     for result in result_list:
-                        print(
-                            f"Element[{source_index}] returned result "
-                            f"{result} [provider not yet exhausted]")
                         lgr.debug(
                             f"Element[{source_index}] returned result "
                             f"{result} [provider not yet exhausted]")
                         if next_index >= len(processor_instances):
-                            print("No more processors")
+                            lgr.debug(
+                                f"No more elements in pipeline, returning "
+                                f"returning {result} [provider not yet "
+                                f"exhausted]")
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -164,7 +164,10 @@ class Conduct(Interface):
                                 path=result["path"],
                                 result=result)
                         else:
-                            print(f"starting instance {processor_instances[next_index]} on: {result}")
+                            lgr.debug(
+                                f"Handing result {result} to element "
+                                f"{next_index} in pipeline [provider not yet "
+                                f"exhausted]")
                             running.add(
                                 executor.submit(
                                     processor_instances[next_index].execute,
@@ -179,12 +182,11 @@ class Conduct(Interface):
                         message=e.args[0])
 
         while running:
-            print("Waiting for running: ", running)
+            lgr.debug(f"Waiting for first completing from: {running}")
             done, running = concurrent.futures.wait(
                 running,
                 return_when=concurrent.futures.FIRST_COMPLETED)
 
-            print("Done: ", running)
             for future in done:
                 try:
                     source_index, result_list = future.result()
@@ -192,10 +194,11 @@ class Conduct(Interface):
                     next_index = this_index + 1
                     for result in result_list:
                         lgr.debug(
-                            f"Element[{source_index}] returned result "
-                            f"{result} [provider exhausted]")
+                            f"Element[{source_index}] returned result {result}")
                         if next_index >= len(processor_instances):
-                            print("No more processors")
+                            lgr.debug(
+                                f"No more elements in pipeline, returning "
+                                f"returning {result}")
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -203,6 +206,9 @@ class Conduct(Interface):
                                 path=str(result),
                                 result=result)
                         else:
+                            lgr.debug(
+                                f"Handing result {result} to element "
+                                f"{next_index} in pipeline")
                             running.add(
                                 executor.submit(
                                     processor_instances[next_index].execute,
