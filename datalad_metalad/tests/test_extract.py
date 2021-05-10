@@ -403,3 +403,53 @@ def test_path_and_extra_parameter_recognition(ds_path):
                 "k2": "v2",
                 "k3": "v3"
             })
+
+
+@with_tree(meta_tree)
+def test_context_dict_parameter_handling(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            context={"dataset_version": "xyz"},
+            path="sub/one"
+        )
+        eq_(fe.call_count, 1)
+        eq_(fe.call_args[0][0].source_dataset_version, "xyz")
+        eq_(de.call_count, 0)
+
+
+@with_tree(meta_tree)
+def test_context_str_parameter_handling(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            context='{"dataset_version": "rst"}',
+            path="sub/one"
+        )
+        eq_(fe.call_count, 1)
+        eq_(fe.call_args[0][0].source_dataset_version, "rst")
+        eq_(de.call_count, 0)
