@@ -29,8 +29,19 @@ class MetadataExtractor(Processor):
         self.metadata_repository = Path(metadata_repository)
         self.extractor_type = extractor_type
         self.extractor_name = extractor_name
+        print("MetadataExtractor.__init__:", metadata_repository, extractor_type, extractor_name)
 
     def process(self, element: dict) -> Iterable:
+
+        print(f"MetadataExtractor.process({element}")
+        #return [
+        #    dict(
+        #        path=str(self.metadata_repository),
+        #        processor_result=dict(
+        #            input_was=element
+        #        )
+        #    )]
+
         # TODO: use dataset-entry from element to determine the dataset
         #  that contains the element and to enable aggregation or saving
         if element["type"] != self.extractor_type:
@@ -56,6 +67,7 @@ class MetadataExtractor(Processor):
             if extract_result["status"] == "ok":
                 element["metadata_record"] = extract_result["metadata_record"]
             result.append(extract_result)
+        print(f"Metadata.process: result from meta_extract: {result}")
         return result
 
     @staticmethod

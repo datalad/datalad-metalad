@@ -187,6 +187,7 @@ class Extract(Interface):
             dataset: Optional[Union[Dataset, str]] = None,
             extractorargs: Optional[List[str]] = None):
 
+        print("DDDDD  meta_extract(", extractorname, path, dataset, extractorargs, ")")
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs

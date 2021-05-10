@@ -28,7 +28,6 @@ from dataladmetadatamodel import JSONObject
 from .processor.base import Processor
 from .utils import read_json_object
 
-
 __docformat__ = 'restructuredtext'
 
 default_metadata_backend = "git"
@@ -117,8 +116,8 @@ class Conduct(Interface):
 
         provider_instance = get_class_instance(
             conduct_configuration["provider"])(
-                *(conduct_configuration["provider"]["arguments"] + additional_arguments["provider"]),
-                **conduct_configuration["provider"]["keyword_arguments"])
+            *(conduct_configuration["provider"]["arguments"] + additional_arguments["provider"]),
+            **conduct_configuration["provider"]["keyword_arguments"])
 
         processor_instances = [
             get_class_instance(spec)(
@@ -130,10 +129,13 @@ class Conduct(Interface):
             provider_instance.output_type(),
             processor_instances)
 
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers)
+        #executor = concurrent.futures.ProcessPoolExecutor(max_workers)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers)
         running = set()
 
         for element in provider_instance.next_object():
+            print(f"got provider result: {element}")
+            print(f"starting instance {processor_instances[0]} on {element}")
             running.add(executor.submit(processor_instances[0].execute, -1, element))
             done, running = concurrent.futures.wait(
                 running,
@@ -141,15 +143,20 @@ class Conduct(Interface):
                 timeout=0)
 
             for future in done:
+                print(f"instance done")
                 try:
                     source_index, result_list = future.result()
                     this_index = source_index + 1
                     next_index = this_index + 1
                     for result in result_list:
+                        print(
+                            f"Element[{source_index}] returned result "
+                            f"{result} [provider not yet exhausted]")
                         lgr.debug(
                             f"Element[{source_index}] returned result "
                             f"{result} [provider not yet exhausted]")
                         if next_index >= len(processor_instances):
+                            print("No more processors")
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -157,9 +164,10 @@ class Conduct(Interface):
                                 path=result["path"],
                                 result=result)
                         else:
+                            print(f"starting instance {processor_instances[next_index]} on: {result}")
                             running.add(
                                 executor.submit(
-                                    processor_instances[this_index].execute,
+                                    processor_instances[next_index].execute,
                                     this_index,
                                     result))
                 except ConductProcessorException as e:
@@ -170,20 +178,24 @@ class Conduct(Interface):
                         logger=lgr,
                         message=e.args[0])
 
-        while True:
+        while running:
+            print("Waiting for running: ", running)
             done, running = concurrent.futures.wait(
                 running,
                 return_when=concurrent.futures.FIRST_COMPLETED)
 
+            print("Done: ", running)
             for future in done:
                 try:
                     source_index, result_list = future.result()
+                    this_index = source_index + 1
+                    next_index = this_index + 1
                     for result in result_list:
                         lgr.debug(
                             f"Element[{source_index}] returned result "
                             f"{result} [provider exhausted]")
-                        this_index = source_index + 1
-                        if this_index >= len(processor_instances):
+                        if next_index >= len(processor_instances):
+                            print("No more processors")
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -193,7 +205,7 @@ class Conduct(Interface):
                         else:
                             running.add(
                                 executor.submit(
-                                    processor_instances[this_index].execute,
+                                    processor_instances[next_index].execute,
                                     this_index,
                                     result))
                 except ConductProcessorException as e:
@@ -203,9 +215,6 @@ class Conduct(Interface):
                         status="error",
                         logger=lgr,
                         message=e.args[0])
-
-            if not running:
-                break
 
         return
 
@@ -228,7 +237,6 @@ def assert_pipeline_validity(current_output_type: str, processors: List[Processo
 
 def get_additional_arguments(arguments: List[str],
                              conduct_configuration: JSONObject) -> dict:
-
     result = dict(
         provider=[],
         processors={
