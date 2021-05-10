@@ -203,6 +203,7 @@ class Extract(Interface):
             get_context: bool = False,
             extractorargs: Optional[List[str]] = None):
 
+        print("DDDDD  meta_extract(", extractorname, path, dataset, extractorargs, ")")
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs
