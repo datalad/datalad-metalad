@@ -178,6 +178,13 @@ class Extract(Interface):
             will not have re-gather this data. Keys and values are strings.
             meta-extract will look for the following key: 'dataset_version'.""",
             constraints=EnsureDataset() | EnsureNone()),
+        get_context=Parameter(
+            args=("--get-context",),
+            action="store_true",
+            doc="""Show the context that meta-extract determines with the
+            given parameters and exit. The context can be used in subsequent
+            calls to meta-extract with identical parameter, except from
+            --get-context, to speed up the execution of meta-extract."""),
         extractorargs=Parameter(
             args=("extractorargs",),
             metavar="EXTRACTOR_ARGUMENTS",
@@ -193,6 +200,7 @@ class Extract(Interface):
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
+            get_context: bool = False,
             extractorargs: Optional[List[str]] = None):
 
         # Get basic arguments
@@ -211,6 +219,18 @@ class Extract(Interface):
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()
+
+        if get_context is True:
+            yield dict(
+                status="ok",
+                action="meta_extract",
+                path=source_dataset.path,
+                logger=lgr,
+                context=dict(
+                    dataset_version=source_dataset_version
+                )
+            )
+            return
 
         extractor_class = get_extractor_class(extractor_name)
         dataset_tree_path, file_tree_path = get_path_info(
@@ -253,25 +273,30 @@ class Extract(Interface):
             # logging complained about this already
             return
 
-        metadata_record = res["metadata_record"]
-        path = (
-            {"path": str(metadata_record["path"])}
-            if "path" in metadata_record
-            else {}
-        )
+        metadata_record = res.get("metadata_record", None)
+        if metadata_record is not None:
+            path = (
+                {"path": str(metadata_record["path"])}
+                if "path" in metadata_record
+                else {}
+            )
 
-        dataset_path = (
-            {"dataset_path": str(metadata_record["dataset_path"])}
-            if "dataset_path" in metadata_record
-            else {}
-        )
+            dataset_path = (
+                {"dataset_path": str(metadata_record["dataset_path"])}
+                if "dataset_path" in metadata_record
+                else {}
+            )
 
-        ui.message(json.dumps({
-            **metadata_record,
-            **path,
-            **dataset_path,
-            "dataset_id": str(metadata_record["dataset_id"])
-        }))
+            ui.message(json.dumps({
+                **metadata_record,
+                **path,
+                **dataset_path,
+                "dataset_id": str(metadata_record["dataset_id"])
+            }))
+
+        context = res.get("context")
+        if context is not None:
+            ui.message(json.dumps(context))
 
 
 def do_dataset_extraction(ep: ExtractionParameter):
