@@ -8,6 +8,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
+import subprocess
 from uuid import UUID
 from typing import Optional
 from unittest.mock import patch
@@ -453,3 +454,35 @@ def test_context_str_parameter_handling(ds_path):
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].source_dataset_version, "rst")
         eq_(de.call_count, 0)
+
+
+@with_tree(meta_tree)
+def test_get_context(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    result = tuple(
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            get_context=True,
+            path="sub/one"))
+
+    version = subprocess.run(
+        [
+            "git",
+             "--git-dir", str(ds.pathobj / ".git"),
+             "log",
+             "--oneline",
+             "--format=%H",
+             "-n", "1"
+        ],
+        stdout=subprocess.PIPE).stdout.decode().strip()
+    eq_(len(result), 1)
+    eq_(result[0]["context"]["dataset_version"], version)
