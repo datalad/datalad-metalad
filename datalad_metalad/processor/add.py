@@ -1,7 +1,8 @@
 """
 Add a metadata record to a dataset.
 """
-from typing import Iterable
+from pathlib import Path
+from typing import Iterable, Union
 
 from .base import Processor
 
@@ -9,7 +10,7 @@ from .base import Processor
 class MetadataAdder(Processor):
     def __init__(self,
                  metadata_repository: Union[str, Path]
-                ):
+                 ):
 
         super().__init__()
         self.metadata_repository = Path(metadata_repository)

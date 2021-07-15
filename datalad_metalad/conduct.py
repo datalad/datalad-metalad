@@ -155,8 +155,7 @@ class Conduct(Interface):
                         if next_index >= len(processor_instances):
                             lgr.debug(
                                 f"No more elements in pipeline, returning "
-                                f"returning {result} [provider not yet "
-                                f"exhausted]")
+                                f"{result} [provider not yet exhausted]")
                             yield dict(
                                 action="meta_conduct",
                                 status="ok",
@@ -203,7 +202,7 @@ class Conduct(Interface):
                                 action="meta_conduct",
                                 status="ok",
                                 logger=lgr,
-                                path=str(result),
+                                path=result["path"],
                                 result=result)
                         else:
                             lgr.debug(
@@ -221,7 +220,6 @@ class Conduct(Interface):
                         status="error",
                         logger=lgr,
                         message=e.args[0])
-
         return
 
 
@@ -254,6 +252,11 @@ def get_additional_arguments(arguments: List[str],
             result["provider"].append(argument[2:])
         else:
             prefix, argument = argument.split(":", 1)
+            if int(prefix) >= len(result["processors"]):
+                lgr.warning(
+                    f"ignoring argument {argument} for non-existing processor "
+                    f"#{prefix}")
+                continue
             result["processors"][int(prefix)].append(argument)
 
     return result
