@@ -299,11 +299,10 @@ def should_be_ignored(name: str) -> bool:
 
 
 def is_dataset(parent_path: Path) -> Tuple[Optional[str], Optional[str]]:
-    try:
-        child_entries = tuple(os.scandir(str(parent_path)))
-    except FileNotFoundError:
+    if not parent_path.is_dir():
         return None, None
 
+    child_entries = tuple(os.scandir(str(parent_path)))
     datalad_dir_entry = (tuple(filter(
         lambda entry: entry.name == ".datalad", child_entries)) + (None,))[0]
 
