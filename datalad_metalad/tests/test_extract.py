@@ -111,7 +111,6 @@ def test_dataset_extraction_result(path):
     extracted_metadata = metadata_record["extracted_metadata"]
     eq_(extracted_metadata["id"], ds.id)
     eq_(extracted_metadata["refcommit"], ds.repo.get_hexsha())
-    eq_(extracted_metadata["dataset_path"], "")
     eq_(extracted_metadata["comment"], "test-implementation of core_dataset")
 
 
