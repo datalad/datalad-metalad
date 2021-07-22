@@ -96,11 +96,16 @@ arguments: Namespace = argument_parser.parse_args(sys.argv[1:])
 print(arguments, file=sys.stderr)
 
 
+PROCESS_TYPE_EXTRACT = 0
+PROCESS_TYPE_ADD = 1
+
+
 @dataclass
 class ExtractorInfo:
     popen: Optional[subprocess.Popen]
     context_info: Optional[Dict]
     metadata_store: Optional[Path]
+    process_type: int
 
 
 running_processes: List[ExtractorInfo] = list()
@@ -118,12 +123,14 @@ def encapsulate(metadata_object: dict, context: dict) -> dict:
 
 
 def get_add_cmdline(metadata_store: Path,
+                    metadata_object: Optional[Dict],
                     context: Dict) -> List[str]:
 
+    metadata_string = json.dumps(metadata_object)
     command_line = ["datalad"]
     if arguments.log_level:
         command_line.extend(["-l", arguments.log_level])
-    command_line.extend(["meta-add", "-d", str(metadata_store), "-"])
+    command_line.extend(["meta-add", "-d", str(metadata_store), metadata_string])
 
     if "root_dataset_id" in context:
         additional_values = {
@@ -140,17 +147,17 @@ def get_add_cmdline(metadata_store: Path,
 
 def add_metadata(metadata_store: Path,
                  metadata_object: Optional[Dict],
-                 context: Dict):
+                 context_info: Dict):
 
-    command_line = get_add_cmdline(metadata_store, context)
-
-    if arguments.dry_run is True:
-        print(f"[DRY]: {' '.join(command_line)}")
-        return
-
-    stdin_content = json.dumps(metadata_object).encode()
-    logger.info(f"running: {' '.join(command_line)}")
-    subprocess.run(command_line, input=stdin_content, check=True)
+    print(f"adding metadata: {metadata_object}")
+    purpose = f"add_metadata: {metadata_object}"
+    command_line = get_add_cmdline(metadata_store, metadata_object, context_info)
+    execute_command_line(
+        purpose,
+        command_line,
+        context_info,
+        None,
+        PROCESS_TYPE_ADD)
 
 
 # TODO: use coroutines
@@ -170,22 +177,29 @@ def handle_process_termination():
         return_code = extractor_info.popen.poll()
         if return_code is not None:
 
-            logger.debug(f"process {extractor_info.popen.pid} exited with {return_code}")
+            logger.debug(f"process {extractor_info.popen.pid}[{extractor_info.process_type}] exited with {return_code}")
             terminated_info.append(extractor_info)
             if return_code != 0:
                 continue
 
-            output, _ = extractor_info.popen.communicate()
-            metadata_object = json.loads(output.decode())
-            if extractor_info.metadata_store is None:
-                json.dump(
-                    encapsulate(metadata_object, extractor_info.context_info),
-                    sys.stdout)
+            if extractor_info.process_type == PROCESS_TYPE_EXTRACT:
+                output, _ = extractor_info.popen.communicate()
+                metadata_object = json.loads(output.decode())
+                if extractor_info.metadata_store is None:
+                    json.dump(
+                        encapsulate(metadata_object, extractor_info.context_info),
+                        sys.stdout)
+                else:
+                    add_metadata(
+                        extractor_info.metadata_store,
+                        metadata_object,
+                        extractor_info.context_info)
+
+            elif extractor_info.process_type == PROCESS_TYPE_ADD:
+                pass
+
             else:
-                add_metadata(
-                    extractor_info.metadata_store,
-                    metadata_object,
-                    extractor_info.context_info)
+                raise ValueError(f"Unknown process type {extractor_info.process_type}")
 
     for extractor_info in terminated_info:
         running_processes.remove(extractor_info)
@@ -199,16 +213,17 @@ def ensure_less_processes_than(process_limit: int):
 def execute_command_line(purpose: str,
                          command_line: List[str],
                          context_info: Dict,
-                         metadata_store: Optional[Path] = None):
+                         metadata_store: Optional[Path] = None,
+                         process_type: int = -1):
 
     if arguments.dry_run is True:
         print(f"[DRY]: {' '.join(command_line)}")
-        running_processes.append(ExtractorInfo(None, context_info, metadata_store))
+        running_processes.append(ExtractorInfo(None, context_info, metadata_store, process_type))
         return
 
     ensure_less_processes_than(arguments.process_limit)
     p = subprocess.Popen(command_line, stdout=subprocess.PIPE)
-    running_processes.append(ExtractorInfo(p, context_info, metadata_store))
+    running_processes.append(ExtractorInfo(p, context_info, metadata_store, process_type))
     logger.info(
         f"started process {p.pid} [{purpose}]: {' '.join(command_line)}")
 
@@ -253,7 +268,8 @@ def extract_dataset_level_metadata(dataset_path: Path,
         purpose,
         command_line,
         context_info,
-        get_metadata_store(dataset_path))
+        get_metadata_store(dataset_path),
+        PROCESS_TYPE_EXTRACT)
 
 
 def get_file_level_extract_cmdline(dataset_path: Path,
@@ -287,7 +303,8 @@ def extract_file_level_metadata(dataset_path: Path,
         purpose,
         command_line,
         context_info,
-        get_metadata_store(dataset_path))
+        get_metadata_store(dataset_path),
+        PROCESS_TYPE_EXTRACT)
 
 
 def should_be_ignored(name: str) -> bool:
