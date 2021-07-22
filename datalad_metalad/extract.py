@@ -12,6 +12,7 @@ or run a file-level metadata extractor on a file
 """
 import json
 import logging
+import re
 import time
 from os import curdir
 from pathlib import Path, PurePath
@@ -29,7 +30,6 @@ from datalad.distribution.dataset import (
     EnsureDataset,
 )
 from datalad.metadata.extractors.base import BaseMetadataExtractor
-from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
@@ -475,10 +475,15 @@ def get_file_info(dataset: Dataset,
             list(dataset.status(path, result_renderer="disabled")) or [None])[0]
 
     if path_status is None:
-        raise FileNotFoundError("file not found: {}".format(path))
+        raise FileNotFoundError(
+            "no dataset status for dataset: {] file: {}".format(
+                dataset.path, path))
 
     if path_status["state"] == "untracked":
         raise ValueError("file not tracked: {}".format(path))
+
+    path_relative_to_dataset = PurePath(
+        path_status["path"]).relative_to(dataset.pathobj)
 
     # noinspection PyUnresolvedReferences
     return FileInfo(
@@ -486,11 +491,9 @@ def get_file_info(dataset: Dataset,
         git_sha_sum=path_status["gitshasum"],
         byte_size=path_status.get("bytesize", 0),
         state=path_status["state"],
-        path=path_status["path"],  # TODO: use the dataset-tree path here?
+        path=path_status["path"],   # Absolute path, used by extractors
         intra_dataset_path=str(
-            MetadataPath(
-                *PurePath(
-                    path_status["path"]).relative_to(dataset.pathobj).parts)))
+            MetadataPath(*path_relative_to_dataset.parts)))
 
 
 def get_path_info(dataset: Dataset,
@@ -655,13 +658,44 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
             f"unknown extractor class: {type(ep.extractor_class).__name__}")
 
 
+def legacy_get_file_info(path: Path) -> Tuple[str, int]:
+    if path.is_symlink():
+        if path.exists():
+            file_type = "file"
+            file_size = path.stat().st_size
+        else:
+            file_type = "symlink"
+            target_path = path.resolve().absolute()
+            try:
+                file_size = int(re.match(
+                    ".*/[^/]*-s([0-9]*)-",
+                    str(target_path)).group(1))
+            except (IndexError, ValueError):
+                file_size = 0
+    elif path.is_dir():
+        file_type = "dir"
+        file_size = path.stat().st_size
+    elif path.is_file():
+        file_type = "file"
+        file_size = path.stat().st_size
+    else:
+        raise ValueError(f"cannot determine type and size of: {path}")
+    return file_type, file_size
+
+
 def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
 
     if issubclass(ep.extractor_class, MetadataExtractor):
 
-        # Metalad legacy extractor
+        # Call metalad legacy extractor with a single status record.
+
+        # Determine the file type:
+        file_type, file_size = legacy_get_file_info(
+            ep.source_dataset.pathobj / ep.file_tree_path)
+
         status = [{
-            "type": "file",
+            "type": file_type,
+            "bytesize": file_size,
             "path": str(
                 (ep.source_dataset.pathobj / ep.file_tree_path).absolute()),
             "state": "clean",
