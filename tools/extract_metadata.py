@@ -301,7 +301,7 @@ def is_dataset(parent_path: Path) -> Tuple[Optional[str], Optional[str]]:
     try:
         child_entries = tuple(os.scandir(str(parent_path)))
     except FileNotFoundError:
-        return False
+        return None, None
 
     datalad_dir_entry = (tuple(filter(
         lambda entry: entry.name == ".datalad", child_entries)) + (None,))[0]
