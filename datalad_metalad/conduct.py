@@ -14,7 +14,7 @@ import logging
 from importlib import import_module
 from typing import List, Union, Optional
 
-from datalad.distribution.dataset import Dataset, datasetmethod
+from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
 from datalad.interface.base import Interface
 from datalad.interface.utils import eval_results
