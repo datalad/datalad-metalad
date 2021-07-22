@@ -476,7 +476,7 @@ def get_file_info(dataset: Dataset,
 
     if path_status is None:
         raise FileNotFoundError(
-            "no dataset status for dataset: {] file: {}".format(
+            "no dataset status for dataset: {} file: {}".format(
                 dataset.path, path))
 
     if path_status["state"] == "untracked":
