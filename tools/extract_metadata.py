@@ -26,7 +26,7 @@ ignore_patterns = [
 ]
 
 
-logger = logging.getLogger("extract_core_metadata")
+logger = logging.getLogger("extract_metadata")
 
 
 argument_parser = ArgumentParser(
@@ -176,16 +176,17 @@ def handle_process_termination():
                 continue
 
             output, _ = extractor_info.popen.communicate()
-            metadata_object = json.loads(output.decode())
-            if extractor_info.metadata_store is None:
-                json.dump(
-                    encapsulate(metadata_object, extractor_info.context_info),
-                    sys.stdout)
-            else:
-                add_metadata(
-                    extractor_info.metadata_store,
-                    metadata_object,
-                    extractor_info.context_info)
+            if output != b'':
+                metadata_object = json.loads(output.decode())
+                if extractor_info.metadata_store is None:
+                    json.dump(
+                        encapsulate(metadata_object, extractor_info.context_info),
+                        sys.stdout)
+                else:
+                    add_metadata(
+                        extractor_info.metadata_store,
+                        metadata_object,
+                        extractor_info.context_info)
 
     for extractor_info in terminated_info:
         running_processes.remove(extractor_info)
