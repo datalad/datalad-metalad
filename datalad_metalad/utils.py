@@ -251,10 +251,3 @@ def check_dataset(dataset_or_path: Union[Dataset, str], purpose: str) -> Dataset
             f"{dataset.path}")
 
     return dataset
-
-
-def get_lock_dir(dataset: Dataset) -> Path:
-    lock_dir = dataset.pathobj / ".datalad" / "locks"
-    if not lock_dir.exists():
-        os.makedirs(lock_dir)
-    return lock_dir
