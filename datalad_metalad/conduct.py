@@ -196,7 +196,7 @@ class Conduct(Interface):
                             f"Element[{source_index}] returned result {result}")
                         if next_index >= len(processor_instances):
                             lgr.debug(
-                                f"No more elements in pipeline, returning "
+                                f"No more elements in pipeline, "
                                 f"returning {result}")
                             yield dict(
                                 action="meta_conduct",
