@@ -16,7 +16,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     setup_requires=SETUP_REQUIRES,
-    entry_points = {
+    entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
         ],
