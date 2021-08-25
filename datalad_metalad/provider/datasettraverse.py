@@ -7,15 +7,24 @@ Relates to datalad_metalad issue #68
 TODO: this is a naive implementation, replace with the proper thing,
  once the conduct mechanics is fleshed out.
 """
-
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Set, Union
 
 from datalad.utils import get_dataset_root
+
 from .base import Provider
+from ..pipelineelement import PipelineResult
 
 
 standard_exclude = [".git*", ".datalad", ".noannex"]
+
+
+@dataclass
+class DatasetTraverseResult(PipelineResult):
+    path: Path
+    type: str
+    dataset: str
 
 
 class DatasetTraverser(Provider):
@@ -56,11 +65,12 @@ class DatasetTraverser(Provider):
                 return True
         return False
 
-    def _create_result(self, path: Path, path_type: str):
-        return dict(
+    def _create_result(self, path: Path, path_type: str) -> DatasetTraverseResult:
+        return DatasetTraverseResult(
+            True,
             path=path,
             type=path_type,
-            dataset=self.current_dataset)
+            dataset=str(self.current_dataset))
 
     def _traverse_recursive(self, current_element: Path):
         # Report the current element

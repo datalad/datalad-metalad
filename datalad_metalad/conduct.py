@@ -12,21 +12,26 @@ Conduct the execution of a processing pipeline
 import concurrent.futures
 import logging
 from importlib import import_module
-from typing import List, Union, Optional
+from typing import Iterable, List, Union, Optional
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
 from datalad.interface.base import Interface
 from datalad.interface.utils import eval_results
 from datalad.support.constraints import (
-    EnsureNone,
+    EnsureChoice,
     EnsureInt,
+    EnsureNone
 )
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
+from .pipelineelement import PipelineElement, PipelineResult
 from .processor.base import Processor
+from .provider.base import Provider
+
 from .utils import read_json_object
+
 
 __docformat__ = 'restructuredtext'
 
@@ -68,8 +73,82 @@ class Conduct(Interface):
 
     _examples_ = [
         dict(
-            text='[DOES NOT WORK YET] Perform the "old" aggregate',
-            code_cmd="datalad meta-conduct dataset_traversal extract add"),
+            text="""
+                Run metalad_core_dataset extractor on the top dataset and all
+                subdatasets. "pipeline-spec.json" looks like this::
+        
+                  {
+                      "provider": {
+                        "module": "datalad_metalad.provider.datasettraverse",
+                        "class": "DatasetTraverser",
+                        "arguments": [],
+                        "keyword_arguments": {}
+                      },
+                      "processors": [
+                        {
+                          "module": "datalad_metalad.processor.extract",
+                          "class": "MetadataExtractor",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        },
+                        {
+                          "module": "datalad_metalad.processor.add",
+                          "class": "MetadataAdder",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        }
+                      ]
+                    }
+            """,
+            code_cmd="datalad meta-conduct pipeline2_conf.json p:<dataset path>"
+                     " 0:Dataset 0:metalad_core_dataset 1:<metadata-repo path>"
+        ),
+        dict(
+            text="""
+                Run metalad_core_file extractor on all files of the root dataset
+                and the subdatasets. Automatically get the content, if it is
+                not present. Drop everything that was automatically fetched.
+                The pipeline specification looks like this::
+        
+                  {
+                      "provider": {
+                        "module": "datalad_metalad.provider.datasettraverse",
+                        "class": "DatasetTraverser",
+                        "arguments": [],
+                        "keyword_arguments": {}
+                      },
+                      "processors": [
+                        {
+                          "module": "datalad_metalad.processor.autoget",
+                          "class": "AutoGet",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        },
+                        {
+                          "module": "datalad_metalad.processor.extract",
+                          "class": "MetadataExtractor",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        },
+                        {
+                          "module": "datalad_metalad.processor.add",
+                          "class": "MetadataAdder",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        },
+                        {
+                          "module": "datalad_metalad.processor.autodrop",
+                          "class": "AutoDrop",
+                          "arguments": [],
+                          "keyword_arguments": {}
+                        }
+                      ]
+                    }
+            """,
+            code_cmd="datalad meta-conduct pipeline-spec_conf.json "
+                     "p:<dataset path> 1:Dataset 1:metalad_core_dataset "
+                     "2:<metadata-repo path>"
+        )
     ]
 
     _params_ = dict(
@@ -79,6 +158,14 @@ class Conduct(Interface):
             doc="maximum number of workers",
             default=None,
             constraints=EnsureInt() | EnsureNone()),
+        processing_mode=Parameter(
+            args=("-p", "--processing-mode",),
+            doc="""Specify how elements are executed, either in subprocesses,
+                   in threads, or sequentially in the main thread. The
+                   respective values are "process", "thread", and "sequential",
+                   (default: "process").""",
+            constraints=EnsureChoice("process", "thread", "sequential"),
+            default="process"),
         configuration=Parameter(
             args=("configuration",),
             metavar="CONFIGURATION",
@@ -90,14 +177,14 @@ class Conduct(Interface):
             metavar="ARGUMENTS",
             nargs="*",
             doc="""Additional constructor arguments for provider or processors.
-            The arguments have to be prefixed with either "p:" for provider,
-            or an integer for a processor. The integer is the index of the
-            processor in the processor list of the configuration, e.g.
-            "0:" for the first processor, "1:" for the second processor
-            etc.
+                   The arguments have to be prefixed with either "p:" for
+                   provider, or an integer for a processor. The integer is the
+                   index of the processor in the processor list of the
+                   configuration, e.g. "0:" for the first processor, "1:" for
+                   the second processor etc.
     
-            The arguments will be appended to the respective argument list
-            that is given in the configuration.""")
+                   The arguments will be appended to the respective argument
+                   list that is given in the configuration.""")
     )
 
     @staticmethod
@@ -106,7 +193,8 @@ class Conduct(Interface):
     def __call__(
             configuration: Union[str, JSONObject],
             arguments: List[str],
-            max_workers: Optional[int] = None):
+            max_workers: Optional[int] = None,
+            processing_mode: str = "process"):
 
         conduct_configuration = read_json_object(configuration)
 
@@ -129,11 +217,26 @@ class Conduct(Interface):
             provider_instance.output_type(),
             processor_instances)
 
-        executor = concurrent.futures.ProcessPoolExecutor(max_workers)
+        if processing_mode == "sequential":
+            yield from process_sequential(
+                provider_instance,
+                processor_instances)
+            return
+        elif processing_mode == "thread":
+            executor = concurrent.futures.ThreadPoolExecutor(max_workers)
+        elif processing_mode == "process":
+            executor = concurrent.futures.ProcessPoolExecutor(max_workers)
+        else:
+            raise ValueError(f"unsupported processing mode: {processing_mode}")
+
         running = set()
 
+        # This process/thread iterates over the provider result and
+        # starts a new pipeline element to process the result
         for initial_result in provider_instance.next_object():
+
             lgr.debug(f"Provider yielded: {initial_result}")
+
             lgr.debug(f"Starting instance {processor_instances[0]} on {initial_result}")
             running.add(executor.submit(processor_instances[0].execute, -1, initial_result))
 
@@ -221,6 +324,77 @@ class Conduct(Interface):
                         logger=lgr,
                         message=e.args[0])
         return
+
+
+def process_sequential(provider_instance: Provider,
+                       processor_instances: List[Processor]) -> Iterable:
+
+    for result in provider_instance.next_object():
+
+        lgr.debug(f"Provider yielded: {result}")
+
+        pipeline_element = PipelineElement()
+        pipeline_element.set_input(result)
+        yield from process_downstream(pipeline_element, processor_instances)
+    return
+
+
+def process_downstream(upstream_element: PipelineElement,
+                       processor_instances: List[Processor]):
+
+    if not processor_instances:
+        # If no next processor is found, the result is the
+        # output of the last processor, which is the input to
+        # the (non-existing) next processor.
+        result = upstream_element.get_input()
+        if result.success:
+            datalad_result = dict(
+                action="meta_conduct",
+                status="ok",
+                logger=lgr,
+                result=result)
+        else:
+            datalad_result = dict(
+                action="meta_conduct",
+                status="error",
+                logger=lgr,
+                base_error=result.base_error)
+
+        lgr.debug(
+            f"Returning datalad result from last element {datalad_result}")
+
+        yield datalad_result
+        return
+
+    try:
+        _, upstream_pipeline_element = processor_instances[0].execute(None, upstream_element)
+    except Exception as e:
+        datalad_result = dict(
+            action="meta_conduct",
+            status="error",
+            logger=lgr,
+            message=f"processor exception in {processor_instances[0]}",
+            base_error=str(e))
+        yield datalad_result
+        return
+
+    for result in upstream_pipeline_element.get_results():
+
+        lgr.debug(
+            f"Element[{processor_instances[0]}] returned "
+            f"result {result}")
+
+        if result.success is False:
+            yield dict(
+                action="meta_conduct",
+                status="error",
+                logger=lgr,
+                base_error=result.base_error)
+        else:
+            pipeline_element = upstream_element.copy()
+            pipeline_element.set_input(result)
+            yield from process_downstream(pipeline_element, processor_instances[1:])
+    return
 
 
 def get_class_instance(module_class_spec: dict):

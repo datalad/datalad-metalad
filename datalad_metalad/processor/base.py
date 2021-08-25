@@ -1,5 +1,7 @@
 import abc
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, Tuple
+
+from ..pipelineelement import PipelineElement
 
 
 class Processor(metaclass=abc.ABCMeta):
@@ -7,7 +9,10 @@ class Processor(metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs):
         pass
 
-    def execute(self, context: Any, *args, **kwargs) -> Tuple[Any, List[Any]]:
+    def execute(self,
+                context: Any,
+                pipeline_element: PipelineElement
+                ) -> Tuple[Any, PipelineElement]:
         """
         Execute the processor. If we want to use process worker pools,
         we cannot return an iterator or generator as a result.
@@ -15,10 +20,11 @@ class Processor(metaclass=abc.ABCMeta):
         and return them in a list of tuples, which consist of the passed
         context and .
         """
-        return context, list(self.process(*args, **kwargs))
+        pipeline_element.set_results(list(self.process(pipeline_element)))
+        return context, pipeline_element
 
     @abc.abstractmethod
-    def process(self, *args, **kwargs) -> Iterable:
+    def process(self, pipeline_element: PipelineElement) -> Iterable:
         """
         Overwrite this method in derived classes to implement
         the functionality of the processor. Return-values are
