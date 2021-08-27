@@ -4,6 +4,7 @@ Traversal of datasets.
 Relates to datalad_metalad issue #68
 """
 import logging
+import re
 from dataclasses import dataclass
 from os.path import isdir
 from pathlib import Path
@@ -23,6 +24,9 @@ from ..pipelineelement import (
 
 
 lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
+
+
+_standard_exclude = [".git*", ".datalad", ".noannex"]
 
 
 @dataclass
@@ -58,6 +62,9 @@ class DatasetTraverser(Provider):
 
         repo = dataset.repo
         for element_path in repo.get_files():
+            if any(map(lambda pattern: re.match(pattern, element_path), _standard_exclude)):
+                lgr.debug(f"Ignoring excluded element {element_path}")
+                continue
             element_path = resolve_path(element_path, dataset)
             if not isdir(element_path):
                 yield DatasetTraverseResult(
