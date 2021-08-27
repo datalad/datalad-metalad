@@ -539,7 +539,7 @@ def ensure_path_validity(dataset: Dataset, file_tree_path: MetadataPath):
 
     full_path = dataset.pathobj / file_tree_path
     if full_path.is_dir():
-        raise ValueError("FILE must not point to a directory")
+        raise ValueError(f"FILE must not point to a directory ({full_path})")
 
 
 def ensure_content_availability(extractor: FileMetadataExtractor,

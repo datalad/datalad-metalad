@@ -16,6 +16,7 @@ class PipelineResult:
     base_error: Optional[Dict] = field(init=False)
 
     def __post_init__(self):
+        self.message = ""
         self.base_error = None
 
 
