@@ -2,21 +2,15 @@
 Traversal of datasets.
 
 Relates to datalad_metalad issue #68
-
-
-TODO: this is a naive implementation, replace with the proper thing,
- once the conduct mechanics is fleshed out.
 """
 import logging
 from dataclasses import dataclass
 from os.path import isdir
 from pathlib import Path
-from typing import Iterable, Optional, Set, Union
+from typing import Iterable, Optional, Union
 
-from datalad.utils import get_dataset_root
 from datalad.distribution.dataset import (
     Dataset,
-    get_dataset_root,
     require_dataset,
     resolve_path
 )
@@ -26,9 +20,6 @@ from ..pipelineelement import (
     PipelineResult,
     ResultState
 )
-
-
-standard_exclude = [".git*", ".datalad", ".noannex"]
 
 
 lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
@@ -47,11 +38,11 @@ class DatasetTraverseResult(PipelineResult):
 class DatasetTraverser(Provider):
     def __init__(self,
                  top_level_dir: Union[str, Path],
-                 traverse_subdatasets: bool = False):
+                 traverse_sub_datasets: bool = False):
 
         super().__init__()
         self.top_level_dir = Path(top_level_dir)
-        self.traverse_subdatasets = traverse_subdatasets
+        self.traverse_subdatasets = traverse_sub_datasets
         self.root_dataset = require_dataset(self.top_level_dir, purpose="dataset_traversal")
         self.root_dataset_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
 
@@ -63,7 +54,7 @@ class DatasetTraverser(Provider):
                 type="Dataset",
                 dataset=dataset.path,
                 root_dataset=str(self.root_dataset_path),
-                dataset_path=str(dataset_path.relative_to(self.root_dataset_path)))
+                dataset_path=str(dataset.pathobj.relative_to(self.root_dataset_path)))
 
         repo = dataset.repo
         for element_path in repo.get_files():
@@ -75,7 +66,7 @@ class DatasetTraverser(Provider):
                     type="File",
                     dataset=dataset.path,
                     root_dataset=str(self.root_dataset_path),
-                    dataset_path=str(dataset_path.relative_to(self.root_dataset_path)))
+                    dataset_path=str(dataset.pathobj.relative_to(self.root_dataset_path)))
 
         if self.traverse_subdatasets:
             for submodule_info in repo.get_submodules():
