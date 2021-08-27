@@ -1,11 +1,18 @@
 from copy import deepcopy
+from enum import Enum
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
+class ResultState(Enum):
+    SUCCESS = "success"
+    FAILURE = "error"
+    STOP = "stop"
+
+
 @dataclass
 class PipelineResult:
-    success: bool
+    state: ResultState
     base_error: Optional[Dict] = field(init=False)
 
     def __post_init__(self):

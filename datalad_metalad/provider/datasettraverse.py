@@ -14,7 +14,10 @@ from typing import Optional, Set, Union
 from datalad.utils import get_dataset_root
 
 from .base import Provider
-from ..pipelineelement import PipelineResult
+from ..pipelineelement import (
+    PipelineResult,
+    ResultState
+)
 
 
 standard_exclude = [".git*", ".datalad", ".noannex"]
@@ -67,7 +70,7 @@ class DatasetTraverser(Provider):
 
     def _create_result(self, path: Path, path_type: str) -> DatasetTraverseResult:
         return DatasetTraverseResult(
-            True,
+            ResultState.SUCCESS,
             path=path,
             type=path_type,
             dataset=str(self.current_dataset))

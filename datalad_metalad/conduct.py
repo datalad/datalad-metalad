@@ -26,7 +26,7 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
-from .pipelineelement import PipelineElement, PipelineResult
+from .pipelineelement import PipelineElement, PipelineResult, ResultState
 from .processor.base import Processor
 from .provider.base import Provider
 
@@ -339,15 +339,15 @@ def process_sequential(provider_instance: Provider,
     return
 
 
-def process_downstream(upstream_element: PipelineElement,
+def process_downstream(upstream_pipeline_element: PipelineElement,
                        processor_instances: List[Processor]):
 
-    if not processor_instances:
+    result = upstream_pipeline_element.get_input()
+    if not processor_instances or result.state == ResultState.STOP:
         # If no next processor is found, the result is the
         # output of the last processor, which is the input to
         # the (non-existing) next processor.
-        result = upstream_element.get_input()
-        if result.success:
+        if result.state in (ResultState.SUCCESS, ResultState.STOP):
             datalad_result = dict(
                 action="meta_conduct",
                 status="ok",
@@ -367,7 +367,7 @@ def process_downstream(upstream_element: PipelineElement,
         return
 
     try:
-        _, upstream_pipeline_element = processor_instances[0].execute(None, upstream_element)
+        _, pipeline_element = processor_instances[0].execute(None, upstream_pipeline_element)
     except Exception as e:
         datalad_result = dict(
             action="meta_conduct",
@@ -378,22 +378,22 @@ def process_downstream(upstream_element: PipelineElement,
         yield datalad_result
         return
 
-    for result in upstream_pipeline_element.get_results():
+    for result in pipeline_element.get_results():
 
         lgr.debug(
             f"Element[{processor_instances[0]}] returned "
             f"result {result}")
 
-        if result.success is False:
+        if result.state == ResultState.FAILURE:
             yield dict(
                 action="meta_conduct",
                 status="error",
                 logger=lgr,
                 base_error=result.base_error)
         else:
-            pipeline_element = upstream_element.copy()
-            pipeline_element.set_input(result)
-            yield from process_downstream(pipeline_element, processor_instances[1:])
+            downstream_pipeline_element = pipeline_element.copy()
+            downstream_pipeline_element.set_input(result)
+            yield from process_downstream(downstream_pipeline_element, processor_instances[1:])
     return
 
 

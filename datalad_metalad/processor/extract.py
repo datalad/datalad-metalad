@@ -12,7 +12,8 @@ from datalad.api import meta_extract
 from .base import Processor
 from ..pipelineelement import (
     PipelineElement,
-    PipelineResult
+    PipelineResult,
+    ResultState
 )
 from ..provider.datasettraverse import DatasetTraverseResult
 
@@ -47,6 +48,7 @@ class MetadataExtractor(Processor):
 
         # TODO: make dataset traversal entitiy a PipelineResult
         dataset_traverse_result: DatasetTraverseResult = pipeline_element.get_input()
+        logger.debug(f"MetadataExtractor called with: {dataset_traverse_result}")
 
         if dataset_traverse_result.type != self.extractor_type:
             logger.debug(
@@ -66,7 +68,7 @@ class MetadataExtractor(Processor):
         elif object_type == "Dataset":
             kwargs = dict(
                 extractorname=self.extractor_name,
-                dataset=dataset_path)
+                dataset=object_path)
         else:
             logger.warning(
                 f"ignoring element {object_path} "
@@ -77,12 +79,12 @@ class MetadataExtractor(Processor):
         for extract_result in meta_extract(**kwargs):
             if extract_result["status"] == "ok":
                 md_extractor_result = MetadataExtractorResult(
-                    True, extract_result["path"])
+                    ResultState.SUCCESS, extract_result["path"])
                 md_extractor_result.metadata_record = extract_result["metadata_record"]
                 md_extractor_result.context = None
             else:
                 md_extractor_result = MetadataExtractorResult(
-                    False, extract_result["path"])
+                    ResultState.FAILURE, extract_result["path"])
                 md_extractor_result.base_error = extract_result
             result.append(md_extractor_result)
         return result
