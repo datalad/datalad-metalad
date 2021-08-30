@@ -26,7 +26,7 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
-from .pipelineelement import PipelineElement, PipelineResult, ResultState
+from .pipelineelement import PipelineElement, PipelineElementState
 from .processor.base import Processor
 from .provider.base import Provider
 
@@ -329,71 +329,51 @@ class Conduct(Interface):
 def process_sequential(provider_instance: Provider,
                        processor_instances: List[Processor]) -> Iterable:
 
-    for result in provider_instance.next_object():
+    for pipeline_element in provider_instance.next_object():
 
-        lgr.debug(f"Provider yielded: {result}")
-
-        pipeline_element = PipelineElement()
-        pipeline_element.set_input(result)
+        lgr.debug(f"Provider yielded: {pipeline_element}")
         yield from process_downstream(pipeline_element, processor_instances)
     return
 
 
-def process_downstream(upstream_pipeline_element: PipelineElement,
-                       processor_instances: List[Processor]):
+def process_downstream(pipeline_element: PipelineElement,
+                       processor_instances: List[Processor]) -> Iterable:
 
-    result = upstream_pipeline_element.get_input()
-    if not processor_instances or result.state == ResultState.STOP:
-        # If no next processor is found, the result is the
-        # output of the last processor, which is the input to
-        # the (non-existing) next processor.
-        if result.state in (ResultState.SUCCESS, ResultState.STOP):
-            datalad_result = dict(
-                action="meta_conduct",
-                status="ok",
-                logger=lgr,
-                result=result)
-        else:
-            datalad_result = dict(
-                action="meta_conduct",
-                status="error",
-                logger=lgr,
-                base_error=result.base_error)
-
-        lgr.debug(
-            f"Returning datalad result from last element {datalad_result}")
-
-        yield datalad_result
-        return
-
-    try:
-        _, pipeline_element = processor_instances[0].execute(None, upstream_pipeline_element)
-    except Exception as e:
+    if pipeline_element.state == PipelineElementState.STOP:
         datalad_result = dict(
             action="meta_conduct",
-            status="error",
+            status="stopped",
             logger=lgr,
-            message=f"processor exception in {processor_instances[0]}",
-            base_error=str(e))
+            result=pipeline_element)
+
+        lgr.debug(
+            f"Pipeline stop was requested, returning datalad result {datalad_result}")
+
         yield datalad_result
         return
 
-    for result in pipeline_element.get_results():
-
-        lgr.debug(
-            f"Element[{processor_instances[0]}] returned "
-            f"result {result}")
-
-        if result.state == ResultState.FAILURE:
+    for processor in processor_instances:
+        try:
+            _, pipeline_element = processor.execute(None, pipeline_element)
+        except Exception as e:
             yield dict(
                 action="meta_conduct",
                 status="error",
                 logger=lgr,
-                base_error=result.base_error)
-        else:
-            downstream_pipeline_element = pipeline_element.copy()
-            downstream_pipeline_element.set_input(result)
-            yield from process_downstream(downstream_pipeline_element, processor_instances[1:])
+                message=f"processor exception in {processor}",
+                base_error=str(e))
+            return
+
+    datalad_result = dict(
+        action="meta_conduct",
+        status="ended",
+        logger=lgr,
+        result=pipeline_element)
+
+    lgr.debug(
+        f"Pipeline finished, returning datalad result {datalad_result}")
+
+    yield datalad_result
     return
 
 

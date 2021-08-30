@@ -5,7 +5,7 @@ import enum
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Dict, Optional
 
 from datalad.api import meta_extract
 
@@ -42,25 +42,22 @@ class MetadataExtractor(Processor):
         self.extractor_type = extractor_type
         self.extractor_name = extractor_name
 
-    def process(self, pipeline_element: PipelineElement) -> Iterable:
-        # TODO: use dataset-entry from element to determine the dataset
-        #  that contains the element and to enable aggregation or saving
+    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
 
-        # TODO: make dataset traversal entitiy a PipelineResult
-        dataset_traverse_result: DatasetTraverseResult = pipeline_element.get_input()
-        logger.debug(f"MetadataExtractor called with: {dataset_traverse_result}")
+        dataset_traverse_record: DatasetTraverseResult = pipeline_element.get_result("dataset-traversal-record")[0]
+        logger.debug(f"MetadataExtractor called with: {dataset_traverse_record}")
 
-        if dataset_traverse_result.type != self.extractor_type:
+        if dataset_traverse_record.type != self.extractor_type:
             logger.debug(
                 f"ignoring un-configured type "
-                f"{dataset_traverse_result.type}")
-            return []
+                f"{dataset_traverse_record.type}")
+            return pipeline_element
 
-        dataset_path = Path(dataset_traverse_result.dataset)
-        object_path = Path(dataset_traverse_result.path)
-        object_type = dataset_traverse_result.type
+        dataset_path = dataset_traverse_record.fs_base_path / dataset_traverse_record.dataset_path
+        object_type = dataset_traverse_record.type
 
         if object_type == "File":
+            object_path = Path(dataset_traverse_record.path)
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
@@ -68,12 +65,10 @@ class MetadataExtractor(Processor):
         elif object_type == "Dataset":
             kwargs = dict(
                 extractorname=self.extractor_name,
-                dataset=object_path)
+                dataset=dataset_path)
         else:
-            logger.warning(
-                f"ignoring element {object_path} "
-                f"with unknown type {object_type}")
-            return []
+            logger.warning(f"ignoring unknown type {object_type}")
+            return pipeline_element
 
         result = []
         for extract_result in meta_extract(**kwargs):
@@ -87,7 +82,9 @@ class MetadataExtractor(Processor):
                     ResultState.FAILURE, extract_result["path"])
                 md_extractor_result.base_error = extract_result
             result.append(md_extractor_result)
-        return result
+
+        pipeline_element.set_result("metadata", result)
+        return pipeline_element
 
     @staticmethod
     def input_type() -> str:

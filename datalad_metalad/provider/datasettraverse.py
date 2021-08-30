@@ -18,6 +18,7 @@ from datalad.distribution.dataset import (
 
 from .base import Provider
 from ..pipelineelement import (
+    PipelineElement,
     PipelineResult,
     ResultState
 )
@@ -31,11 +32,15 @@ _standard_exclude = [".git*", ".datalad", ".noannex"]
 
 @dataclass
 class DatasetTraverseResult(PipelineResult):
-    path: Path
+    fs_base_path: Path
     type: str
-    dataset: str
-    root_dataset: str
-    dataset_path: str
+    dataset_path: Path
+    dataset_id: str
+    dataset_version: str
+    path: Optional[Path] = None
+    root_dataset_id: Optional[str] = None
+    root_dataset_version: Optional[str] = None
+
     message: Optional[str] = ""
 
 
@@ -46,19 +51,46 @@ class DatasetTraverser(Provider):
 
         super().__init__()
         self.top_level_dir = Path(top_level_dir)
-        self.traverse_subdatasets = traverse_sub_datasets
+        self.traverse_sub_datasets = traverse_sub_datasets
         self.root_dataset = require_dataset(self.top_level_dir, purpose="dataset_traversal")
-        self.root_dataset_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
+        self.fs_base_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
+
+    def _get_base_dataset_result(self,
+                                 dataset: Dataset,
+                                 id_key: str,
+                                 version_key: str):
+
+        return {
+            id_key: str(dataset.id),
+            version_key: str(dataset.repo.repository_versions)
+        }
+
+    def _get_dataset_result_part(self, dataset: Dataset):
+        if dataset.pathobj == self.fs_base_path:
+            return {
+                "dataset_path": Path("."),
+                **self._get_base_dataset_result(dataset, "dataset_id", "dataset_version")
+            }
+        else:
+            return {
+                "dataset_path": dataset.pathobj.relative_to(self.fs_base_path),
+                **self._get_base_dataset_result(dataset, "dataset_id", "dataset_version"),
+                **self._get_base_dataset_result(dataset, "root_dataset_id", "root_dataset_version"),
+            }
 
     def _traverse_dataset(self, dataset_path: Path) -> Iterable:
         dataset = require_dataset(dataset_path, purpose="dataset_traversal")
-        yield DatasetTraverseResult(
-                ResultState.SUCCESS,
-                path=dataset.path,
-                type="Dataset",
-                dataset=dataset.path,
-                root_dataset=str(self.root_dataset_path),
-                dataset_path=str(dataset.pathobj.relative_to(self.root_dataset_path)))
+        yield PipelineElement(((
+            "dataset-traversal-record",
+            [
+                DatasetTraverseResult(**{
+                    "state": ResultState.SUCCESS,
+                    "fs_base_path": self.fs_base_path,
+                    "type": "Dataset",
+                    **self._get_dataset_result_part(dataset)
+                })
+            ]
+        ),))
 
         repo = dataset.repo
         for element_path in repo.get_files():
@@ -67,15 +99,20 @@ class DatasetTraverser(Provider):
                 continue
             element_path = resolve_path(element_path, dataset)
             if not isdir(element_path):
-                yield DatasetTraverseResult(
-                    ResultState.SUCCESS,
-                    path=resolve_path(element_path, dataset),
-                    type="File",
-                    dataset=dataset.path,
-                    root_dataset=str(self.root_dataset_path),
-                    dataset_path=str(dataset.pathobj.relative_to(self.root_dataset_path)))
+                yield PipelineElement(((
+                    "dataset-traversal-record",
+                    [
+                        DatasetTraverseResult(**{
+                            "state": ResultState.SUCCESS,
+                            "fs_base_path": self.fs_base_path,
+                            "type": "File",
+                            "path": resolve_path(element_path, dataset),
+                            **self._get_dataset_result_part(dataset)
+                        })
+                    ]
+                ),))
 
-        if self.traverse_subdatasets:
+        if self.traverse_sub_datasets:
             for submodule_info in repo.get_submodules():
                 submodule_path = submodule_info["path"]
                 sub_dataset = Dataset(submodule_path)
@@ -86,7 +123,7 @@ class DatasetTraverser(Provider):
         return
 
     def next_object(self):
-        yield from self._traverse_dataset(self.root_dataset_path)
+        yield from self._traverse_dataset(self.fs_base_path)
 
     @staticmethod
     def output_type() -> str:

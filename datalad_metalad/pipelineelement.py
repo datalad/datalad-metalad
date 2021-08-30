@@ -1,12 +1,17 @@
 from copy import deepcopy
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 class ResultState(Enum):
     SUCCESS = "success"
     FAILURE = "error"
+    STOP = "stop"
+
+
+class PipelineElementState(Enum):
+    CONTINUE = "continue"
     STOP = "stop"
 
 
@@ -21,10 +26,12 @@ class PipelineResult:
 
 
 class PipelineElement:
-    def __init__(self):
+    def __init__(self,
+                 initial_result: Optional[Iterable[Tuple[str, List[PipelineResult]]]] = None):
+
+        self._result: Dict[str, List[PipelineResult]] = dict(initial_result or ())
         self._dynamic = dict()
-        self._input: Optional[PipelineResult] = None
-        self._result: List[PipelineResult] = []
+        self.state = PipelineElementState.CONTINUE
 
     def get_dynamic_data(self, key: str, default=None) -> Any:
         return self._dynamic.get(key, default)
@@ -32,19 +39,21 @@ class PipelineElement:
     def set_dynamic_data(self, key: str, data: Any):
         self._dynamic[key] = data
 
-    def set_input(self, pipeline_result: PipelineResult):
-        self._input = pipeline_result
+    def set_result(self, result_type: str, result: List[PipelineResult]):
+        self._result[result_type] = result
 
-    def get_input(self) -> PipelineResult:
-        return self._input
-
-    def get_results(self) -> List[PipelineResult]:
-        return self._result
-
-    def set_results(self, result: List[PipelineResult]):
-        self._result = result
+    def get_result(self, result_type: str) -> List[PipelineResult]:
+        return self._result[result_type]
 
     def copy(self) -> "PipelineElement":
         new_pipeline_element = PipelineElement()
         new_pipeline_element._dynamic = deepcopy(self._dynamic)
+        new_pipeline_element._result = deepcopy(self._result)
         return new_pipeline_element
+
+    def __str__(self):
+        return str({
+            "type": "PipelineElement",
+            "state": self.state.name,
+            "result": self._result
+        })

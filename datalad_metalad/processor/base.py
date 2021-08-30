@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Iterable, Tuple
+from typing import Any, Tuple
 
 from ..pipelineelement import PipelineElement
 
@@ -20,11 +20,10 @@ class Processor(metaclass=abc.ABCMeta):
         and return them in a list of tuples, which consist of the passed
         context and .
         """
-        pipeline_element.set_results(list(self.process(pipeline_element)))
-        return context, pipeline_element
+        return context, self.process(pipeline_element)
 
     @abc.abstractmethod
-    def process(self, pipeline_element: PipelineElement) -> Iterable:
+    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
         """
         Overwrite this method in derived classes to implement
         the functionality of the processor. Return-values are
