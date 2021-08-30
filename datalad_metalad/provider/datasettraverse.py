@@ -62,7 +62,7 @@ class DatasetTraverser(Provider):
 
         return {
             id_key: str(dataset.id),
-            version_key: str(dataset.repo.repository_versions)
+            version_key: str(dataset.repo.get_hexsha())
         }
 
     def _get_dataset_result_part(self, dataset: Dataset):
