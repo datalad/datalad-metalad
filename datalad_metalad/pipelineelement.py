@@ -42,8 +42,8 @@ class PipelineElement:
     def set_result(self, result_type: str, result: List[PipelineResult]):
         self._result[result_type] = result
 
-    def get_result(self, result_type: str) -> List[PipelineResult]:
-        return self._result[result_type]
+    def get_result(self, result_type: str) -> Optional[List[PipelineResult]]:
+        return self._result.get(result_type, None)
 
     def copy(self) -> "PipelineElement":
         new_pipeline_element = PipelineElement()

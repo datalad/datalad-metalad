@@ -1,18 +1,23 @@
 """
 Add a metadata record to a dataset.
 """
+import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Union
 
 from datalad.api import meta_add
 
 from .base import Processor
+from ..provider.datasettraverse import DatasetTraverseResult
 from ..pipelineelement import (
     PipelineElement,
     PipelineResult,
     ResultState
 )
+
+
+logger = logging.getLogger("datalad.metadata.processor.add")
 
 
 @dataclass
@@ -22,31 +27,60 @@ class MetadataAddResult(PipelineResult):
 
 class MetadataAdder(Processor):
     def __init__(self,
-                 metadata_repository: Union[str, Path]
+                 aggregate: bool = False
                  ):
 
         super().__init__()
-        self.metadata_repository = Path(metadata_repository)
+        self.aggregate = aggregate
 
-    def process(self, pipeline_element: PipelineElement) -> Iterable:
-        metadata_record = pipeline_element.get_input().metadata_record
+    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+
+        metadata_result_list = pipeline_element.get_result("metadata")
+        if metadata_result_list is None:
+            logger.debug(f"Ignoring pipeline element without metadata: {pipeline_element}")
+            return pipeline_element
+
+        assert len(metadata_result_list) == 1, "metadata result list has not length one"
+        metadata_record = metadata_result_list[0].metadata_record
+
+        logger.debug(f"Adding metadata from pipeline element: {pipeline_element}")
+
+        # Determine the destination metadata store. This is either the root
+        # level dataset (if aggregate is True), or the containing dataset (if
+        # aggregate is False).
+        dataset_traversal_record: DatasetTraverseResult = pipeline_element.get_result("dataset-traversal-record")[0]
+        if dataset_traversal_record.dataset_path == Path("."):
+            metadata_repository = dataset_traversal_record.fs_base_path
+            additional_values = None
+        else:
+            if self.aggregate:
+                metadata_repository = dataset_traversal_record.fs_base_path
+                additional_values = json.dumps({
+                    "dataset_path": str(dataset_traversal_record.dataset_path),
+                    "root_dataset_id": str(dataset_traversal_record.root_dataset_id),
+                    "root_dataset_version": str(dataset_traversal_record.root_dataset_version)
+                })
+            else:
+                metadata_repository = dataset_traversal_record.fs_base_path / dataset_traversal_record.dataset_path
+                additional_values = None
+
         metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
         if "path" in metadata_record:
             metadata_record["path"] = str(metadata_record["path"])
 
-        if True:
-            print(f"[DRY] meta-add: {metadata_record} to {self.metadata_repository}")
-            return [MetadataAddResult(ResultState.SUCCESS, str(self.metadata_repository))]
-
         result = []
-        for add_result in meta_add(metadata=metadata_record, dataset=str(self.metadata_repository)):
+        for add_result in meta_add(metadata=metadata_record,
+                                   dataset=str(metadata_repository),
+                                   additionalvalues=additional_values):
             if add_result["status"] == "ok":
                 md_add_result = MetadataAddResult(ResultState.SUCCESS, add_result["path"])
             else:
                 md_add_result = MetadataAddResult(ResultState.FAILURE, add_result["path"])
                 md_add_result.base_error = add_result
             result.append(md_add_result)
-        return result
+
+        pipeline_element.set_result("add", result)
+        return pipeline_element
 
     @staticmethod
     def input_type() -> str:

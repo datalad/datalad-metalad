@@ -369,7 +369,7 @@ def process_downstream(pipeline_element: PipelineElement,
                 action="meta_conduct",
                 status="error",
                 logger=lgr,
-                message=f"processor exception in {processor}",
+                message=f"Exception in processor {processor}",
                 base_error=str(e))
             return
 

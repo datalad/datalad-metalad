@@ -75,7 +75,7 @@ class DatasetTraverser(Provider):
             return {
                 "dataset_path": dataset.pathobj.relative_to(self.fs_base_path),
                 **self._get_base_dataset_result(dataset, "dataset_id", "dataset_version"),
-                **self._get_base_dataset_result(dataset, "root_dataset_id", "root_dataset_version"),
+                **self._get_base_dataset_result(self.root_dataset, "root_dataset_id", "root_dataset_version"),
             }
 
     def _traverse_dataset(self, dataset_path: Path) -> Iterable:
