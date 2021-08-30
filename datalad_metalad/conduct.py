@@ -229,101 +229,110 @@ class Conduct(Interface):
         else:
             raise ValueError(f"unsupported processing mode: {processing_mode}")
 
-        running = set()
-
-        # This process/thread iterates over the provider result and
-        # starts a new pipeline element to process the result
-        for initial_result in provider_instance.next_object():
-
-            lgr.debug(f"Provider yielded: {initial_result}")
-
-            lgr.debug(f"Starting instance {processor_instances[0]} on {initial_result}")
-            running.add(executor.submit(processor_instances[0].execute, -1, initial_result))
-
-            lgr.debug(f"Waiting for first completing from: {running}")
-            done, running = concurrent.futures.wait(
-                running,
-                return_when=concurrent.futures.FIRST_COMPLETED,
-                timeout=0)
-
-            for future in done:
-                try:
-                    source_index, result_list = future.result()
-                    this_index = source_index + 1
-                    next_index = this_index + 1
-                    for result in result_list:
-                        lgr.debug(
-                            f"Element[{source_index}] returned result "
-                            f"{result} [provider not yet exhausted]")
-                        if next_index >= len(processor_instances):
-                            lgr.debug(
-                                f"No more elements in pipeline, returning "
-                                f"{result} [provider not yet exhausted]")
-                            yield dict(
-                                action="meta_conduct",
-                                status="ok",
-                                logger=lgr,
-                                path=result["path"],
-                                result=result)
-                        else:
-                            lgr.debug(
-                                f"Handing result {result} to element "
-                                f"{next_index} in pipeline [provider not yet "
-                                f"exhausted]")
-                            running.add(
-                                executor.submit(
-                                    processor_instances[next_index].execute,
-                                    this_index,
-                                    result))
-                except ConductProcessorException as e:
-                    lgr.error(f"Exception {e} in processor {future}")
-                    yield dict(
-                        action="meta_conduct",
-                        status="error",
-                        logger=lgr,
-                        message=e.args[0])
-
-        while running:
-            lgr.debug(f"Waiting for first completing from: {running}")
-            done, running = concurrent.futures.wait(
-                running,
-                return_when=concurrent.futures.FIRST_COMPLETED)
-
-            for future in done:
-                try:
-                    source_index, result_list = future.result()
-                    this_index = source_index + 1
-                    next_index = this_index + 1
-                    for result in result_list:
-                        lgr.debug(
-                            f"Element[{source_index}] returned result {result}")
-                        if next_index >= len(processor_instances):
-                            lgr.debug(
-                                f"No more elements in pipeline, "
-                                f"returning {result}")
-                            yield dict(
-                                action="meta_conduct",
-                                status="ok",
-                                logger=lgr,
-                                path=result["path"],
-                                result=result)
-                        else:
-                            lgr.debug(
-                                f"Handing result {result} to element "
-                                f"{next_index} in pipeline")
-                            running.add(
-                                executor.submit(
-                                    processor_instances[next_index].execute,
-                                    this_index,
-                                    result))
-                except ConductProcessorException as e:
-                    lgr.error(f"Exception {e} in processor {future}")
-                    yield dict(
-                        action="meta_conduct",
-                        status="error",
-                        logger=lgr,
-                        message=e.args[0])
+        yield from process_parallel(
+            executor,
+            provider_instance,
+            processor_instances)
         return
+
+
+def process_parallel(executor,
+                     provider_instance,
+                     processor_instances) -> Iterable:
+
+    running = set()
+
+    # This thread iterates over the provider result and
+    # starts a new pipeline element to process the result
+    for pipeline_element in provider_instance.next_object():
+
+        lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_element}")
+        running.add(executor.submit(processor_instances[0].execute, -1, pipeline_element))
+
+        # During provider result fetching, check for already finished processors
+        done, running = concurrent.futures.wait(
+            running,
+            return_when=concurrent.futures.FIRST_COMPLETED,
+            timeout=0)
+
+        for future in done:
+            try:
+
+                source_index, pipeline_element = future.result()
+                this_index = source_index + 1
+                next_index = this_index + 1
+
+                lgr.debug(
+                    f"Processor[{source_index}] returned {pipeline_element} "
+                    f"[provider not yet exhausted]")
+                if next_index >= len(processor_instances):
+                    yield dict(
+                        action="meta_conduct",
+                        status="ended",
+                        logger=lgr,
+                        result=pipeline_element)
+                else:
+                    lgr.debug(
+                        f"Starting processor[{next_index}]"
+                        f"[provider not yet exhausted]")
+                    running.add(
+                        executor.submit(
+                            processor_instances[next_index].execute,
+                            this_index,
+                            pipeline_element))
+
+            except Exception as e:
+                lgr.error(f"Exception {e} in processor {future}")
+                yield dict(
+                    action="meta_conduct",
+                    status="error",
+                    logger=lgr,
+                    message=e.args[0])
+
+    # Provider exhausted, process the running pipelines
+    while running:
+        lgr.debug(f"Waiting for next completing from {running}")
+        done, running = concurrent.futures.wait(
+            running,
+            return_when=concurrent.futures.FIRST_COMPLETED)
+
+        for future in done:
+            try:
+
+                source_index, pipeline_element = future.result()
+                this_index = source_index + 1
+                next_index = this_index + 1
+
+                lgr.debug(
+                    f"Processor[{source_index}] returned {pipeline_element}")
+
+                if next_index >= len(processor_instances):
+                    lgr.debug(
+                        f"No more elements in pipeline, "
+                        f"returning {pipeline_element}")
+                    yield dict(
+                        action="meta_conduct",
+                        status="ended",
+                        logger=lgr,
+                        result=pipeline_element)
+                else:
+                    lgr.debug(
+                        f"Handing pipeline element {pipeline_element} to"
+                        f"processor[{next_index}]")
+                    running.add(
+                        executor.submit(
+                            processor_instances[next_index].execute,
+                            this_index,
+                            pipeline_element))
+
+            except Exception as e:
+                lgr.error(f"Exception {e} in processor {future}")
+                yield dict(
+                    action="meta_conduct",
+                    status="error",
+                    logger=lgr,
+                    message=e.args[0])
+    return
 
 
 def process_sequential(provider_instance: Provider,
