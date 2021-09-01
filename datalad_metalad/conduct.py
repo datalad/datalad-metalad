@@ -282,15 +282,14 @@ def process_parallel(executor,
                     f"Processor[{source_index}] returned {pipeline_element} "
                     f"[provider not yet exhausted]")
                 if next_index >= len(processor_instances):
-                    yield dict(
-                        action="meta_conduct",
-                        status="ok",
-                        **{
-                            "path": str(pipeline_element.get_result("path"))
-                            for _ in [1] if pipeline_element.get_result("path") is not None
-                        },
-                        logger=lgr,
-                        pipeline_element=pipeline_element)
+                    path = pipeline_element.get_result("path")
+                    if path is not None:
+                        yield dict(
+                            action="meta_conduct",
+                            status="ok",
+                            path=str(path),
+                            logger=lgr,
+                            pipeline_element=pipeline_element)
                 else:
                     lgr.debug(
                         f"Starting processor[{next_index}]"
@@ -330,15 +329,14 @@ def process_parallel(executor,
                     lgr.debug(
                         f"No more elements in pipeline, "
                         f"returning {pipeline_element}")
-                    yield dict(
-                        action="meta_conduct",
-                        status="ok",
-                        **{
-                            "path": str(pipeline_element.get_result("path"))
-                            for _ in [1] if pipeline_element.get_result("path") is not None
-                        },
-                        logger=lgr,
-                        pipeline_element=pipeline_element)
+                    path = pipeline_element.get_result("path")
+                    if path is not None:
+                        yield dict(
+                            action="meta_conduct",
+                            status="ok",
+                            path=str(path),
+                            logger=lgr,
+                            pipeline_element=pipeline_element)
                 else:
                     lgr.debug(
                         f"Handing pipeline element {pipeline_element} to"
@@ -373,20 +371,19 @@ def process_downstream(pipeline_element: PipelineElement,
                        processor_instances: List[Processor]) -> Iterable:
 
     if pipeline_element.state == PipelineElementState.STOP:
-        datalad_result = dict(
-            action="meta_conduct",
-            status="stopped",
-            **{
-                "path": str(pipeline_element.get_result("path"))
-                for _ in [1] if pipeline_element.get_result("path") is not None
-            },
-            logger=lgr,
-            pipeline_element=pipeline_element)
+        path = pipeline_element.get_result("path")
+        if path is not None:
+            datalad_result = dict(
+                action="meta_conduct",
+                status="stopped",
+                path=str(path),
+                logger=lgr,
+                pipeline_element=pipeline_element)
 
-        lgr.debug(
-            f"Pipeline stop was requested, returning datalad result {datalad_result}")
+            lgr.debug(
+                f"Pipeline stop was requested, returning datalad result {datalad_result}")
 
-        yield datalad_result
+            yield datalad_result
         return
 
     for processor in processor_instances:
@@ -401,20 +398,19 @@ def process_downstream(pipeline_element: PipelineElement,
                 base_error=str(e))
             return
 
-    datalad_result = dict(
-        action="meta_conduct",
-        status="ok",
-        **{
-            "path": str(pipeline_element.get_result("path"))
-            for _ in [1] if pipeline_element.get_result("path") is not None
-        },
-        logger=lgr,
-        pipeline_element=pipeline_element)
+    path = pipeline_element.get_result("path")
+    if path is not None:
+        datalad_result = dict(
+            action="meta_conduct",
+            status="ok",
+            path=str(path),
+            logger=lgr,
+            pipeline_element=pipeline_element)
 
-    lgr.debug(
-        f"Pipeline finished, returning datalad result {datalad_result}")
+        lgr.debug(
+            f"Pipeline finished, returning datalad result {datalad_result}")
 
-    yield datalad_result
+        yield datalad_result
     return
 
 
