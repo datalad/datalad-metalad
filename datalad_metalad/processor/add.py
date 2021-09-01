@@ -73,10 +73,12 @@ class MetadataAdder(Processor):
                                    dataset=str(metadata_repository),
                                    additionalvalues=additional_values,
                                    result_renderer="disabled"):
+            path = add_result["path"]
             if add_result["status"] == "ok":
-                md_add_result = MetadataAddResult(ResultState.SUCCESS, add_result["path"])
+                md_add_result = MetadataAddResult(ResultState.SUCCESS, path)
+                pipeline_element.set_result("path", path)
             else:
-                md_add_result = MetadataAddResult(ResultState.FAILURE, add_result["path"])
+                md_add_result = MetadataAddResult(ResultState.FAILURE, path)
                 md_add_result.base_error = add_result
             result.append(md_add_result)
 

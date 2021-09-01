@@ -284,9 +284,13 @@ def process_parallel(executor,
                 if next_index >= len(processor_instances):
                     yield dict(
                         action="meta_conduct",
-                        status="ended",
+                        status="ok",
+                        **{
+                            "path": str(pipeline_element.get_result("path"))
+                            for _ in [1] if pipeline_element.get_result("path") is not None
+                        },
                         logger=lgr,
-                        result=pipeline_element)
+                        pipeline_element=pipeline_element)
                 else:
                     lgr.debug(
                         f"Starting processor[{next_index}]"
@@ -328,9 +332,13 @@ def process_parallel(executor,
                         f"returning {pipeline_element}")
                     yield dict(
                         action="meta_conduct",
-                        status="ended",
+                        status="ok",
+                        **{
+                            "path": str(pipeline_element.get_result("path"))
+                            for _ in [1] if pipeline_element.get_result("path") is not None
+                        },
                         logger=lgr,
-                        result=pipeline_element)
+                        pipeline_element=pipeline_element)
                 else:
                     lgr.debug(
                         f"Handing pipeline element {pipeline_element} to"
@@ -368,8 +376,12 @@ def process_downstream(pipeline_element: PipelineElement,
         datalad_result = dict(
             action="meta_conduct",
             status="stopped",
+            **{
+                "path": str(pipeline_element.get_result("path"))
+                for _ in [1] if pipeline_element.get_result("path") is not None
+            },
             logger=lgr,
-            result=pipeline_element)
+            pipeline_element=pipeline_element)
 
         lgr.debug(
             f"Pipeline stop was requested, returning datalad result {datalad_result}")
@@ -391,9 +403,13 @@ def process_downstream(pipeline_element: PipelineElement,
 
     datalad_result = dict(
         action="meta_conduct",
-        status="ended",
+        status="ok",
+        **{
+            "path": str(pipeline_element.get_result("path"))
+            for _ in [1] if pipeline_element.get_result("path") is not None
+        },
         logger=lgr,
-        result=pipeline_element)
+        pipeline_element=pipeline_element)
 
     lgr.debug(
         f"Pipeline finished, returning datalad result {datalad_result}")
