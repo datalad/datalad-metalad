@@ -86,7 +86,7 @@ class FilesystemTraverser(Provider):
                 self.file_system_objects.extend(
                     list(file_system_object.glob("*")))
             else:
-                yield file_system_object
+                yield [file_system_object]
 
     @staticmethod
     def output_type() -> str:
@@ -97,7 +97,8 @@ class PathEater(Processor):
     def __init__(self):
         super().__init__()
 
-    def process(self, path: Path) -> List[Path]:
+    def process(self, pathes: List[Path]) -> List[Path]:
+        path = pathes[0]
         if path.parts:
             return [Path().joinpath(*(path.parts[1:]))]
         return [path]
@@ -119,8 +120,7 @@ def test_simple_pipeline(dataset):
             arguments=[f"testprovider:{dataset}"],
             configuration=simple_pipeline))
 
-    eq_(len(pipeline_results), 1)
-    assert_equal(pipeline_results[0]["status"], "ended")
+    eq_(len(pipeline_results), 4)
 
 
 def test_extract():
