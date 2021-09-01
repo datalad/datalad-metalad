@@ -14,6 +14,7 @@ from typing import List, Union
 
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
+    assert_equal,
     assert_in,
     with_tree,
     eq_,
@@ -39,6 +40,7 @@ test_tree = {
 
 simple_pipeline = {
     "provider": {
+        "name": "testprovider",
         "module": "datalad_metalad.tests.test_conduct",
         "class": "FilesystemTraverser",
         "arguments": [],
@@ -46,18 +48,21 @@ simple_pipeline = {
     },
     "processors": [
         {
+            "name": "testproc1",
             "module": "datalad_metalad.tests.test_conduct",
             "class": "PathEater",
             "arguments": [],
             "keyword_arguments": {}
         },
         {
+            "name": "testproc2",
             "module": "datalad_metalad.tests.test_conduct",
             "class": "PathEater",
             "arguments": [],
             "keyword_arguments": {}
         },
         {
+            "name": "testproc3",
             "module": "datalad_metalad.tests.test_conduct",
             "class": "PathEater",
             "arguments": [],
@@ -111,22 +116,18 @@ def test_simple_pipeline(dataset):
 
     pipeline_results = list(
         meta_conduct(
-            arguments=[f"p:{dataset}"],
+            arguments=[f"testprovider:{dataset}"],
             configuration=simple_pipeline))
 
-    eq_(len(pipeline_results), 4)
-
-    result_paths = [str(result["result"]) for result in pipeline_results]
-    assert_in("b_0.1/c_0.1.0", result_paths)
-    assert_in("b_0.1/c_0.1.1", result_paths)
-    assert_in("b_0.0/c_0.0.1", result_paths)
-    assert_in("b_0.0/c_0.0.0", result_paths)
+    eq_(len(pipeline_results), 1)
+    assert_equal(pipeline_results[0]["status"], "ended")
 
 
 def test_extract():
 
     extract_pipeline = {
         "provider": {
+            "name": "provider",
             "module": "datalad_metalad.provider.datasettraverse",
             "class": "DatasetTraverser",
             "arguments": [],
@@ -134,6 +135,7 @@ def test_extract():
         },
         "processors": [
             {
+                "name": "testproc1",
                 "module": "datalad_metalad.processor.extract",
                 "class": "MetadataExtractor",
                 "arguments": [],
@@ -157,16 +159,10 @@ def test_extract():
         pipeline_results = list(
             meta_conduct(
                 arguments=[
-                    f"p:{root_dataset_dir_str}",
-                    f"0:{root_dataset_dir_str}",
-                    f"0:Dataset",
-                    f"0:metalad_core_dataset"],
+                    f"provider:{root_dataset_dir_str}",
+                    f"testproc1:Dataset",
+                    f"testproc1:metalad_core_dataset"],
                 configuration=extract_pipeline))
 
-        eq_(len(pipeline_results), 4)
-
-        result_paths = [str(result["result"]) for result in pipeline_results]
-        assert_in("b_0.1/c_0.1.0", result_paths)
-        assert_in("b_0.1/c_0.1.1", result_paths)
-        assert_in("b_0.0/c_0.0.1", result_paths)
-        assert_in("b_0.0/c_0.0.0", result_paths)
+        eq_(len(pipeline_results), 1)
+        assert_equal(pipeline_results[0]["status"], "ended")

@@ -71,7 +71,8 @@ class MetadataAdder(Processor):
         result = []
         for add_result in meta_add(metadata=metadata_record,
                                    dataset=str(metadata_repository),
-                                   additionalvalues=additional_values):
+                                   additionalvalues=additional_values,
+                                   result_renderer="disabled"):
             if add_result["status"] == "ok":
                 md_add_result = MetadataAddResult(ResultState.SUCCESS, add_result["path"])
             else:

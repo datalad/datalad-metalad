@@ -61,11 +61,13 @@ class MetadataExtractor(Processor):
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
-                path=object_path.relative_to(dataset_path))
+                path=object_path.relative_to(dataset_path),
+                result_renderer="disabled")
         elif object_type == "Dataset":
             kwargs = dict(
                 extractorname=self.extractor_name,
-                dataset=dataset_path)
+                dataset=dataset_path,
+                result_renderer="disabled")
         else:
             logger.warning(f"ignoring unknown type {object_type}")
             return pipeline_element

@@ -11,8 +11,10 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
+from collections import defaultdict
 from importlib import import_module
-from typing import Iterable, List, Union, Optional
+from itertools import chain
+from typing import Dict, Iterable, List, Union, Optional
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
@@ -177,14 +179,17 @@ class Conduct(Interface):
             metavar="ARGUMENTS",
             nargs="*",
             doc="""Additional constructor arguments for provider or processors.
-                   The arguments have to be prefixed with either "p:" for
-                   provider, or an integer for a processor. The integer is the
-                   index of the processor in the processor list of the
-                   configuration, e.g. "0:" for the first processor, "1:" for
-                   the second processor etc.
-    
-                   The arguments will be appended to the respective argument
-                   list that is given in the configuration.""")
+                   The arguments have to be prefixed with the name of the
+                   provider or processor followed by ":" or "=".
+                   
+                   Positional arguments are identified by the prefix "<name>:".
+                   The argument is given directly after the prefix. The
+                   arguments will be appended to the respective argument
+                   list that is given in the configuration.
+                   
+                   Key-Value parameter are identified by the prefix "<name>=".
+                   The key and value are then given as: "<name>=<key>=<value>".
+                   """)
     )
 
     @staticmethod
@@ -198,24 +203,35 @@ class Conduct(Interface):
 
         conduct_configuration = read_json_object(configuration)
 
+        element_names = [
+            element["name"] for element in chain(
+                [conduct_configuration["provider"]],
+                conduct_configuration["processors"])]
+
         additional_arguments = get_additional_arguments(
             arguments,
-            conduct_configuration)
+            element_names)
 
-        provider_instance = get_class_instance(
-            conduct_configuration["provider"])(
-            *(conduct_configuration["provider"]["arguments"] + additional_arguments["provider"]),
-            **conduct_configuration["provider"]["keyword_arguments"])
+        provider_name = conduct_configuration["provider"]["name"]
+        provider_instance = get_class_instance(conduct_configuration["provider"])(
+            *(
+                conduct_configuration["provider"]["arguments"] +
+                additional_arguments[provider_name]["positional_arguments"]
+            ),
+            **{
+                **conduct_configuration["provider"]["keyword_arguments"],
+                **additional_arguments[provider_name]["keyword_arguments"]
+            })
 
         processor_instances = [
             get_class_instance(spec)(
-                *spec["arguments"] + additional_arguments["processors"][index],
-                **spec["keyword_arguments"])
+                *(spec["arguments"] + additional_arguments[spec["name"]]["positional_arguments"]),
+                **{
+                    **spec["keyword_arguments"],
+                    **additional_arguments[spec["name"]]["keyword_arguments"]
+                }
+            )
             for index, spec in enumerate(conduct_configuration["processors"])]
-
-        assert_pipeline_validity(
-            provider_instance.output_type(),
-            processor_instances)
 
         if processing_mode == "sequential":
             yield from process_sequential(
@@ -403,23 +419,33 @@ def assert_pipeline_validity(current_output_type: str, processors: List[Processo
 
 
 def get_additional_arguments(arguments: List[str],
-                             conduct_configuration: JSONObject) -> dict:
-    result = dict(
-        provider=[],
-        processors={
-            i: []
-            for i in range(len(conduct_configuration["processors"]))})
+                             element_names: List[str]) -> dict:
+
+    def element_dict() -> Dict:
+        return dict(positional_arguments=[], keyword_arguments={})
+
+    def sortable_index(string: str, character: str):
+        index = string.find(character)
+        return len(string) if index < 0 else index
+
+    result = defaultdict(element_dict)
 
     for argument in arguments:
-        if argument.startswith("p:"):
-            result["provider"].append(argument[2:])
-        else:
-            prefix, argument = argument.split(":", 1)
-            if int(prefix) >= len(result["processors"]):
-                lgr.warning(
-                    f"ignoring argument {argument} for non-existing processor "
-                    f"#{prefix}")
-                continue
-            result["processors"][int(prefix)].append(argument)
+        delimiter = sorted(
+            [
+                (sortable_index(argument, delimiter), delimiter)
+                for delimiter in (":", "=")
+            ],
+            key=lambda element: element[0]
+        )[0][1]
 
+        name, argument = argument.split(delimiter, 1)
+        if name not in element_names:
+            raise ValueError(f"No provider or processor with name: '{name}'")
+
+        if delimiter == ":":
+            result[name]["positional_arguments"].append(argument)
+        else:
+            key, value = argument.split("=", 1)
+            result[name]["keyword_arguments"][key] = value
     return result
