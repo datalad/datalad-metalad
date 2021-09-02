@@ -124,7 +124,3 @@ class DatasetTraverser(Provider):
 
     def next_object(self) -> Iterable:
         yield from self._traverse_dataset(self.fs_base_path)
-
-    @staticmethod
-    def output_type() -> str:
-        return "dataset-traversal-entity"

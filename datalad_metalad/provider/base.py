@@ -9,8 +9,3 @@ class Provider(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def next_object(self) -> Iterable:
         raise NotImplementedError
-
-    @staticmethod
-    @abc.abstractmethod
-    def output_type() -> str:
-        raise NotImplementedError

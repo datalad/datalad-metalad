@@ -1,19 +1,27 @@
-from typing import Iterable
+import logging
 
 from .base import Processor
 from ..pipelineelement import PipelineElement
+from ..provider.datasettraverse import DatasetTraverseResult
+from ..utils import check_dataset
+
+
+logger = logging.getLogger("datalad.metadata.processor.autodrop")
 
 
 class AutoDrop(Processor):
     def __init__(self):
         super().__init__()
 
-    def process(self, pipeline_element: PipelineElement) -> Iterable:
-        traversal_record = pipeline_element.get_input()
-        if pipeline_element.get_dynamic_data("auto_get") is True:
-            dataset = traversal_record["dataset"]
-            dataset.drop(str(traversal_record["path"]), jobs=1)
-        return [traversal_record]
+    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+        if pipeline_element.get_result("auto_get") is not None:
+            for traverse_result in pipeline_element.get_result("dataset-traversal-record"):
+                fs_dataset_path = traverse_result.fs_base_path / traverse_result.dataset_path
+                dataset = check_dataset(str(fs_dataset_path), "auto_get")
+                path = traverse_result.path
+                logger.debug(f"AutoDrop: automatically dropping {path} in dataset {dataset.path}")
+                dataset.drop(str(path), jobs=1)
+        return pipeline_element
 
     @staticmethod
     def input_type() -> str:

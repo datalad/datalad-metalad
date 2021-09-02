@@ -84,11 +84,3 @@ class MetadataAdder(Processor):
 
         pipeline_element.set_result("add", result)
         return pipeline_element
-
-    @staticmethod
-    def input_type() -> str:
-        return "metadata-record"
-
-    @staticmethod
-    def output_type() -> str:
-        return "dataset-traversal-entity"

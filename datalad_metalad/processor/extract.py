@@ -90,11 +90,3 @@ class MetadataExtractor(Processor):
 
         pipeline_element.set_result("metadata", result)
         return pipeline_element
-
-    @staticmethod
-    def input_type() -> str:
-        return "dataset-traversal-entity"
-
-    @staticmethod
-    def output_type() -> str:
-        return "metadata-record"
