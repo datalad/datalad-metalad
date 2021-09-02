@@ -2,7 +2,6 @@ import logging
 
 from .base import Processor
 from ..pipelineelement import PipelineElement
-from ..provider.datasettraverse import DatasetTraverseResult
 from ..utils import check_dataset
 
 
