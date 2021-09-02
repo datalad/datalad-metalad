@@ -20,7 +20,7 @@ class AutoDrop(Processor):
                 dataset = check_dataset(str(fs_dataset_path), "auto_get")
                 path = traverse_result.path
                 logger.debug(f"AutoDrop: automatically dropping {path} in dataset {dataset.path}")
-                dataset.drop(str(path), jobs=1)
+                dataset.drop(str(path))
         return pipeline_element
 
     @staticmethod
