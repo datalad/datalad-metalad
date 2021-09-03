@@ -22,7 +22,7 @@ class TestTreeSearchBase(unittest.TestCase):
     def create_tree_search_from_paths(path_list: List[MetadataPath],
                                       report_matcher: Callable
                                       ) -> TreeSearch:
-        tree = FileTree("", "")
+        tree = FileTree("git", "")
         for path in path_list:
             tree.add_file(path)
         return TreeSearch(tree, report_matcher)
@@ -32,7 +32,7 @@ class TestTreeSearchBase(unittest.TestCase):
                                               report_matcher: Callable
                                               ) -> TreeSearch:
 
-        tree = DatasetTree("", "")
+        tree = DatasetTree("git", "")
         for path in path_list:
             tree.add_dataset(path, f"test_dataset:{path}")
         return TreeSearch(tree, report_matcher)

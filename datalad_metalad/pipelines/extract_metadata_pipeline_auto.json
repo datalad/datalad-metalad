@@ -1,0 +1,39 @@
+{
+  "provider": {
+    "module": "datalad_metalad.provider.datasettraverse",
+    "class": "DatasetTraverser",
+    "name": "traverser",
+    "arguments": [],
+    "keyword_arguments": {}
+  },
+  "processors": [
+    {
+      "name": "autoget",
+      "module": "datalad_metalad.processor.autoget",
+      "class": "AutoGet",
+      "arguments": [],
+      "keyword_arguments": {}
+    },
+    {
+      "name": "extractor",
+      "module": "datalad_metalad.processor.extract",
+      "class": "MetadataExtractor",
+      "arguments": [],
+      "keyword_arguments": {}
+    },
+    {
+      "name": "adder",
+      "module": "datalad_metalad.processor.add",
+      "class": "MetadataAdder",
+      "arguments": [],
+      "keyword_arguments": {}
+    },
+    {
+      "name": "autodrop",
+      "module": "datalad_metalad.processor.autodrop",
+      "class": "AutoDrop",
+      "arguments": [],
+      "keyword_arguments": {}
+    }
+  ]
+}
