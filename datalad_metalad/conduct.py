@@ -81,6 +81,7 @@ class Conduct(Interface):
         
                   {
                       "provider": {
+                        "name": "traverser",
                         "module": "datalad_metalad.provider.datasettraverse",
                         "class": "DatasetTraverser",
                         "arguments": [],
@@ -88,12 +89,14 @@ class Conduct(Interface):
                       },
                       "processors": [
                         {
+                          "name": "extractor",
                           "module": "datalad_metalad.processor.extract",
                           "class": "MetadataExtractor",
                           "arguments": [],
                           "keyword_arguments": {}
                         },
                         {
+                          "name": "adder",
                           "module": "datalad_metalad.processor.add",
                           "class": "MetadataAdder",
                           "arguments": [],
@@ -102,18 +105,22 @@ class Conduct(Interface):
                       ]
                     }
             """,
-            code_cmd="datalad meta-conduct pipeline2_conf.json p:<dataset path>"
-                     " 0:Dataset 0:metalad_core_dataset 1:<metadata-repo path>"
+            code_cmd="datalad meta-conduct pipelines/extract_metadata_pipeline_auto.json "
+                     "traverser:<dataset path> traverser:True "
+                     "extractor:Dataset extractor:metalad_core_dataset "
+                     "adder:True"
         ),
         dict(
             text="""
                 Run metalad_core_file extractor on all files of the root dataset
                 and the subdatasets. Automatically get the content, if it is
-                not present. Drop everything that was automatically fetched.
+                not present. Drop content that was automatically fetched after
+                its metadata has been added.
                 The pipeline specification looks like this::
         
                   {
                       "provider": {
+                        "name": "traverser",
                         "module": "datalad_metalad.provider.datasettraverse",
                         "class": "DatasetTraverser",
                         "arguments": [],
@@ -121,24 +128,28 @@ class Conduct(Interface):
                       },
                       "processors": [
                         {
+                          "name": "autoget",
                           "module": "datalad_metalad.processor.autoget",
                           "class": "AutoGet",
                           "arguments": [],
                           "keyword_arguments": {}
                         },
                         {
+                          "name": "extractor",
                           "module": "datalad_metalad.processor.extract",
                           "class": "MetadataExtractor",
                           "arguments": [],
                           "keyword_arguments": {}
                         },
                         {
+                          "name": "adder",
                           "module": "datalad_metalad.processor.add",
                           "class": "MetadataAdder",
                           "arguments": [],
                           "keyword_arguments": {}
                         },
                         {
+                          "name": "autodrop",
                           "module": "datalad_metalad.processor.autodrop",
                           "class": "AutoDrop",
                           "arguments": [],
@@ -147,9 +158,9 @@ class Conduct(Interface):
                       ]
                     }
             """,
-            code_cmd="datalad meta-conduct pipeline-spec_conf.json "
-                     "p:<dataset path> 1:Dataset 1:metalad_core_dataset "
-                     "2:<metadata-repo path>"
+            code_cmd="datalad meta-conduct pipelines/extract_metadata_pipeline_auto.json "
+                     "traverser:<dataset path> traverser:True extractor:File"
+                     " extractor:metalad_core_file adder:True"
         )
     ]
 
