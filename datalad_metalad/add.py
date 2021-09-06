@@ -258,7 +258,7 @@ class Add(Interface):
             result_path=(
                 dataset.pathobj
                 / Path(metadata.get("dataset_path", "."))
-                / Path(metadata.get("path", ""))).resolve(),
+                / Path(metadata.get("path", ""))),
             destination_path=dataset.pathobj,
             allow_id_mismatch=allow_id_mismatch,
 
