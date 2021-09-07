@@ -8,9 +8,13 @@ import sys
 from argparse import (
     ArgumentParser,
 )
+from typing import Dict
 
 
-from datalad_metalad.provider.datasettraverse import DatasetTraverser
+from datalad_metalad.provider.datasettraverse import (
+    DatasetTraverser,
+    DatasetTraverseResult
+)
 
 
 argument_parser = ArgumentParser(
@@ -30,20 +34,51 @@ argument_parser.add_argument(
 )
 
 
-def main():
+def get_dict_result(dtr: DatasetTraverseResult) -> str:
+    datalad_result_dict = {
+        "status": "ok",
+        "type": "file" if dtr.type == "File" else "dataset",
+        "path": str(dtr.path),
+        "dataset_path": str(dtr.dataset_path),
+        "dataset_id": str(dtr.dataset_id),
+        "dataset_version": dtr.dataset_version
+    }
+    if dtr.root_dataset_id is not None and dtr.root_dataset_version is not None:
+        datalad_result_dict["root_dataset_id"] = dtr.root_dataset_id
+        datalad_result_dict["root_dataset_version"] = dtr.root_dataset_version
 
-    arguments = argument_parser.parse_args()
-    t = DatasetTraverser(arguments.dataset_path, arguments.recursive)
+    return json.dumps(datalad_result_dict)
 
-    sys.stdout.write("[")
+
+def emit_cwl_result(traverser: DatasetTraverser):
+    sys.stdout.write("""{
+    "type": ["string", "array"],
+    "value": [
+""")
     first_line = True
+    for pipeline_element in traverser.next_object():
+        dtr_list = pipeline_element.get_result("dataset-traversal-record")
+        for dtr in dtr_list:
+            if not first_line:
+                sys.stdout.write(",\n")
+            first_line = False
+            sys.stdout.write(f'        "{str(dtr.path)}"')
+    sys.stdout.write('\n    ]\n}\n')
 
-    for pipeline_element in t.next_object():
+
+def emit_cwl_complex_result(traverser: DatasetTraverser):
+    sys.stdout.write("""{
+    "type": ["Any", "array"],
+    "value": [
+""")
+    first_line = True
+    for pipeline_element in traverser.next_object():
         dtr_list = pipeline_element.get_result("dataset-traversal-record")
         for dtr in dtr_list:
             datalad_result_dict = {
                 "status": "ok",
                 "type": "file" if dtr.type == "File" else "dataset",
+                "top_level_path": str(traverser.top_level_dir),
                 "path": str(dtr.path),
                 "dataset_path": str(dtr.dataset_path),
                 "dataset_id": str(dtr.dataset_id),
@@ -51,14 +86,23 @@ def main():
             }
             if dtr.root_dataset_id is not None and dtr.root_dataset_version is not None:
                 datalad_result_dict["root_dataset_id"] = dtr.root_dataset_id
-                datalad_result_dict["root_dataset_version"] = dtr.root_dataset_version
+                datalad_result_dict[
+                    "root_dataset_version"] = dtr.root_dataset_version
 
-            if first_line is False:
-                sys.stdout.write(",")
-            else:
-                first_line = False
-            sys.stdout.write("\n    " + json.dumps(datalad_result_dict))
-    sys.stdout.write("\n]\n")
+            if not first_line:
+                sys.stdout.write(",\n")
+            first_line = False
+            sys.stdout.write(f'        {json.dumps(datalad_result_dict)}')
+    sys.stdout.write('\n    ]\n}\n')
+
+
+def main():
+
+    arguments = argument_parser.parse_args()
+    t = DatasetTraverser(arguments.dataset_path, arguments.recursive)
+
+    emit_cwl_complex_result(t)
+    return 0
 
 
 if __name__ == "__main__":

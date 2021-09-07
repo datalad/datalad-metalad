@@ -1,0 +1,10 @@
+tr_record:
+    status: "ok"
+    type: "file"
+    top_level_path: "/home/cristian/datalad/datasets.datalad.org/labs/haxby/life"
+    path: "/home/cristian/datalad/datasets.datalad.org/labs/haxby/life/sub-rid000041/func/sub-rid000041_task-life_acq-412vol_run-04_bold.nii.gz"
+    dataset_path: "."
+    dataset_id: "4119bc6c-c32a-11e7-8fe5-003048ce7f90"
+    dataset_version: "47d39b039c88dcc559431ba55baa709f8d40860d"
+
+extractor: metalad_core_dataset
