@@ -5,13 +5,35 @@ used with a CWL-runner
 """
 import json
 import sys
+from argparse import (
+    ArgumentParser,
+)
+
 
 from datalad_metalad.provider.datasettraverse import DatasetTraverser
 
 
+argument_parser = ArgumentParser(
+    description="Traverse a dataset and print an JSON array with entries "
+                "for each file or subdataset element of the dataset."
+)
+argument_parser.add_argument(
+    "dataset_path",
+    type=str,
+    help="path to the dataset that should be traversed"
+)
+argument_parser.add_argument(
+    "-r", "--recursive",
+    action="store_true",
+    default=False,
+    help="recurse into sub datasets (if they are installed)"
+)
+
+
 def main():
 
-    t = DatasetTraverser(sys.argv[1], True)
+    arguments = argument_parser.parse_args()
+    t = DatasetTraverser(arguments.dataset_path, arguments.recursive)
 
     sys.stdout.write("[")
     first_line = True
