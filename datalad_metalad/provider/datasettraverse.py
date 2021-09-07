@@ -27,7 +27,8 @@ from ..pipelineelement import (
 lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
 
 
-_standard_exclude = [".git*", ".datalad", ".noannex"]
+# By default we exclude all paths that start with "."
+_standard_exclude = ["^\\..*"]
 
 
 @dataclass
@@ -80,37 +81,50 @@ class DatasetTraverser(Provider):
 
     def _traverse_dataset(self, dataset_path: Path) -> Iterable:
         dataset = require_dataset(dataset_path, purpose="dataset_traversal")
-        yield PipelineElement(((
-            "dataset-traversal-record",
-            [
-                DatasetTraverseResult(**{
-                    "state": ResultState.SUCCESS,
-                    "fs_base_path": self.fs_base_path,
-                    "type": "Dataset",
-                    **self._get_dataset_result_part(dataset)
-                })
-            ]
-        ),))
+        element_path = resolve_path("", dataset)
+        yield PipelineElement((
+            ("path", element_path),
+            (
+                "dataset-traversal-record",
+                [
+                    DatasetTraverseResult(**{
+                        "state": ResultState.SUCCESS,
+                        "fs_base_path": self.fs_base_path,
+                        "type": "Dataset",
+                        "path": element_path,
+                        **self._get_dataset_result_part(dataset)
+                    })
+                ]
+            )))
 
         repo = dataset.repo
         for element_path in repo.get_files():
-            if any(map(lambda pattern: re.match(pattern, element_path), _standard_exclude)):
+
+            element_path = resolve_path(element_path, dataset)
+
+            if any([
+                    re.match(pattern, path_part)
+                    for path_part in element_path.parts
+                    for pattern in _standard_exclude]):
                 lgr.debug(f"Ignoring excluded element {element_path}")
                 continue
-            element_path = resolve_path(element_path, dataset)
+
             if not isdir(element_path):
-                yield PipelineElement(((
-                    "dataset-traversal-record",
-                    [
-                        DatasetTraverseResult(**{
-                            "state": ResultState.SUCCESS,
-                            "fs_base_path": self.fs_base_path,
-                            "type": "File",
-                            "path": resolve_path(element_path, dataset),
-                            **self._get_dataset_result_part(dataset)
-                        })
-                    ]
-                ),))
+                yield PipelineElement((
+                    ("path", element_path),
+                    (
+                        "dataset-traversal-record",
+                        [
+                            DatasetTraverseResult(**{
+                                "state": ResultState.SUCCESS,
+                                "fs_base_path": self.fs_base_path,
+                                "type": "File",
+                                "path": element_path,
+                                **self._get_dataset_result_part(dataset)
+                            })
+                        ]
+                    )
+                ))
 
         if self.traverse_sub_datasets:
             for submodule_info in repo.get_submodules():

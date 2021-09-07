@@ -11,10 +11,17 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
+import traceback
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
-from typing import Dict, Iterable, List, Union, Optional
+from typing import (
+    Dict,
+    Iterable,
+    List,
+    Union,
+    Optional
+)
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import build_doc
@@ -28,7 +35,10 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
-from .pipelineelement import PipelineElement, PipelineElementState
+from .pipelineelement import (
+    PipelineElement,
+    PipelineElementState
+)
 from .processor.base import Processor
 from .provider.base import Provider
 
@@ -204,6 +214,16 @@ def process_parallel(executor,
     # starts a new pipeline element to process the result
     for pipeline_element in provider_instance.next_object():
 
+        if not processor_instances:
+            path = pipeline_element.get_result("path")
+            yield dict(
+                action="meta_conduct",
+                status="ok",
+                path=str(path),
+                logger=lgr,
+                pipeline_element=pipeline_element)
+            continue
+
         lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_element}")
         running.add(executor.submit(processor_instances[0].execute, -1, pipeline_element))
 
@@ -248,7 +268,7 @@ def process_parallel(executor,
                     action="meta_conduct",
                     status="error",
                     logger=lgr,
-                    message=e.args[0])
+                    message=traceback.format_exc())
 
     # Provider exhausted, process the running pipelines
     while running:
@@ -295,7 +315,7 @@ def process_parallel(executor,
                     action="meta_conduct",
                     status="error",
                     logger=lgr,
-                    message=e.args[0])
+                    message=traceback.format_exc())
     return
 
 
@@ -337,7 +357,7 @@ def process_downstream(pipeline_element: PipelineElement,
                 status="error",
                 logger=lgr,
                 message=f"Exception in processor {processor}",
-                base_error=str(e))
+                base_error=traceback.format_exc())
             return
 
     path = pipeline_element.get_result("path")

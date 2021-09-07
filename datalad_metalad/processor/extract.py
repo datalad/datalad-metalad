@@ -75,14 +75,13 @@ class MetadataExtractor(Processor):
         result = []
         for extract_result in meta_extract(**kwargs):
 
-            path = str(dataset_path) \
-                   if extract_result["type"] == "dataset" \
-                   else extract_result["path"]
+            path = str(dataset_path / extract_result.get("path", ""))
 
             if extract_result["status"] == "ok":
                 md_extractor_result = MetadataExtractorResult(ResultState.SUCCESS, path)
                 md_extractor_result.metadata_record = extract_result["metadata_record"]
                 md_extractor_result.context = None
+
             else:
                 md_extractor_result = MetadataExtractorResult(ResultState.FAILURE, path)
                 md_extractor_result.base_error = extract_result
