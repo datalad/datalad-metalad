@@ -34,6 +34,7 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.filetree import FileTree
+from dataladmetadatamodel.mapper.basemapper import BaseMapper
 from dataladmetadatamodel.mapper.gitmapper.objectreference import \
     flush_object_references
 from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, \
@@ -476,6 +477,7 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     add_metadata_content(file_level_metadata, ap)
 
+    BaseMapper.start_mapping_cycle()
     tree_version_list.save()
     uuid_set.save()
     flush_object_references(metadata_store)

@@ -75,6 +75,7 @@ from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
+from dataladmetadatamodel.mapper.basemapper import BaseMapper
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
     flush_object_references)
 from dataladmetadatamodel.mapper.gitmapper.utils import (
@@ -220,6 +221,7 @@ class Aggregate(Interface):
                 f"creating an empty set")
             uuid_set = UUIDSet(backend, root_realm)
 
+        BaseMapper.start_mapping_cycle()
         perform_aggregation(
             root_realm,
             tree_version_list,
