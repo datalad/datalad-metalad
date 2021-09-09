@@ -149,6 +149,9 @@ class TreeSearch:
                             starting_point_path: MetadataPath
                             ) -> List[MatchRecord]:
 
+        if starting_point is None:
+            return []
+
         result = [MatchRecord(starting_point_path, starting_point)]
         for node_name, sub_tree in starting_point.child_nodes.items():
             sub_tree_path = starting_point_path / node_name

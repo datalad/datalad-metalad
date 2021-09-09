@@ -9,18 +9,23 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 import tempfile
 import uuid
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
     assert_equal,
-    assert_in,
     with_tree,
     eq_,
 )
 
 from .utils import create_dataset
+from ..pipelineelement import (
+    PipelineElement,
+    PipelineResult,
+    ResultState
+)
 from ..processor.base import Processor
 from ..provider.base import Provider
 
@@ -42,7 +47,7 @@ simple_pipeline = {
     "provider": {
         "name": "testprovider",
         "module": "datalad_metalad.tests.test_conduct",
-        "class": "FilesystemTraverser",
+        "class": "TestTraverser",
         "arguments": [],
         "keyword_arguments": {}
     },
@@ -72,52 +77,44 @@ simple_pipeline = {
 }
 
 
-class FilesystemTraverser(Provider):
-    def __init__(self, file_system_object: Union[str, Path]):
-        super().__init__(file_system_object)
-        self.file_system_objects = [Path(file_system_object)]
+@dataclass
+class TestResult(PipelineResult):
+    path: Path
+
+
+class TestTraverser(Provider):
+    def __init__(self, path_spec: str):
+        super().__init__()
+        self.paths = [
+            Path(path)
+            for path in path_spec.split(":")]
 
     def next_object(self):
-        while self.file_system_objects:
-            file_system_object = self.file_system_objects.pop()
-            if file_system_object.is_symlink():
-                continue
-            elif file_system_object.is_dir():
-                self.file_system_objects.extend(
-                    list(file_system_object.glob("*")))
-            else:
-                yield [file_system_object]
-
-    @staticmethod
-    def output_type() -> str:
-        return "pathlib.Path"
+        for path in self.paths:
+            yield PipelineElement((
+                ("path", path),
+                (
+                    "test-traversal-record",
+                    [TestResult(ResultState.SUCCESS, path)]
+                )
+            ),)
 
 
 class PathEater(Processor):
     def __init__(self):
         super().__init__()
 
-    def process(self, pathes: List[Path]) -> List[Path]:
-        path = pathes[0]
-        if path.parts:
-            return [Path().joinpath(*(path.parts[1:]))]
-        return [path]
-
-    @staticmethod
-    def input_type() -> str:
-        return "pathlib.Path"
-
-    @staticmethod
-    def output_type() -> str:
-        return "pathlib.Path"
+    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+        for ttr in pipeline_element.get_result("test-traversal-record"):
+            ttr.path = Path().joinpath(*(ttr.path.parts[1:]))
+        return pipeline_element
 
 
-@with_tree(test_tree)
-def test_simple_pipeline(dataset):
+def test_simple_pipeline():
 
     pipeline_results = list(
         meta_conduct(
-            arguments=[f"testprovider:{dataset}"],
+            arguments=[f"testprovider:a/b/c:/d/e/f:/a/b/x:a/b/y"],
             configuration=simple_pipeline))
 
     eq_(len(pipeline_results), 4)
@@ -165,4 +162,4 @@ def test_extract():
                 configuration=extract_pipeline))
 
         eq_(len(pipeline_results), 1)
-        assert_equal(pipeline_results[0]["status"], "ended")
+        assert_equal(pipeline_results[0]["status"], "ok")
