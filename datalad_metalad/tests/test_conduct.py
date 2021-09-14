@@ -11,13 +11,11 @@ import tempfile
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
     assert_equal,
-    with_tree,
-    eq_,
+    eq_
 )
 
 from .utils import create_dataset

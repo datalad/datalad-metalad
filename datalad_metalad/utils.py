@@ -1,6 +1,7 @@
 import glob
 import json
 import os.path as op
+import pkg_resources
 import sys
 from collections import OrderedDict
 from itertools import islice
@@ -255,11 +256,18 @@ def check_dataset(dataset_or_path: Union[Dataset, str], purpose: str) -> Dataset
     return dataset
 
 
-def read_json_object(path_or_object: Union[str, JSONObject]):
+def read_json_object(path_or_object: Union[str, JSONObject]) -> JSONObject:
     if isinstance(path_or_object, str):
         if path_or_object == "-":
             metadata_file = sys.stdin
         else:
-            metadata_file = open(path_or_object, "tr")
+            try:
+                json_object = json.loads(
+                    pkg_resources.resource_string(
+                        "datalad_metalad",
+                        f"pipelines/{path_or_object}_pipeline.json"))
+                return json_object
+            except FileNotFoundError:
+                metadata_file = open(path_or_object, "tr")
         return json.load(metadata_file)
     return path_or_object

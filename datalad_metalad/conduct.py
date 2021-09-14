@@ -85,23 +85,21 @@ class Conduct(Interface):
 
     _examples_ = [
         dict(
-            text="Run metalad_core_dataset extractor on the top dataset and all"
-                "subdatasets.",
-            code_cmd="datalad meta-conduct "
-                "pipelines/extract_metadata_pipeline_auto.json "
-                "traverser:<dataset path> traverser:True "
-                "extractor:Dataset extractor:metalad_core_dataset "
-                "adder:True"
+            text="Run metalad_core_dataset extractor on the top dataset and "
+                 "all subdatasets.",
+            code_cmd="datalad meta-conduct extract_metadata_auto "
+                     "traverser:<dataset path> traverser:True "
+                     "extractor:Dataset extractor:metalad_core_dataset "
+                     "adder:True"
         ),
         dict(
             text="Run metalad_core_file extractor on all files of the root "
-                "dataset and the subdatasets. Automatically get the content, "
-                "if it is not present. Drop content that was automatically "
-                "fetched after its metadata has been added.",
-            code_cmd="datalad meta-conduct "
-                "pipelines/extract_metadata_pipeline_auto.json "
-                "traverser:<dataset path> traverser:True extractor:File "
-                "extractor:metalad_core_file adder:True"
+                 "dataset and the subdatasets. Automatically get the content, "
+                 "if it is not present. Drop content that was automatically "
+                 "fetched after its metadata has been added.",
+            code_cmd="datalad meta-conduct pipelines/extract_metadata_auto "
+                     "traverser:<dataset path> traverser:True extractor:File "
+                     "extractor:metalad_core_file adder:True"
         )
     ]
 
