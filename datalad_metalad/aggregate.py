@@ -221,7 +221,6 @@ class Aggregate(Interface):
                 f"creating an empty set")
             uuid_set = UUIDSet(backend, root_realm)
 
-        BaseMapper.start_mapping_cycle()
         perform_aggregation(
             root_realm,
             tree_version_list,

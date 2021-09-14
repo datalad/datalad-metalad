@@ -477,7 +477,6 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     add_metadata_content(file_level_metadata, ap)
 
-    BaseMapper.start_mapping_cycle()
     tree_version_list.save()
     uuid_set.save()
     flush_object_references(metadata_store)
