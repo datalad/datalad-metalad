@@ -71,17 +71,17 @@ from datalad.support.constraints import (
 )
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.support.param import Parameter
+from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
-from dataladmetadatamodel.mapper.basemapper import BaseMapper
+from dataladmetadatamodel.mapper.reference import Reference
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
     flush_object_references)
 from dataladmetadatamodel.mapper.gitmapper.utils import (
     lock_backend,
     unlock_backend)
-from .metadata import get_top_level_metadata_objects
 from .utils import check_dataset
 
 
@@ -214,12 +214,12 @@ class Aggregate(Interface):
             lgr.warning(
                 f"no tree version list found in {root_realm}, "
                 f"creating an empty tree version list")
-            tree_version_list = TreeVersionList(backend, root_realm)
+            tree_version_list = TreeVersionList()
         if uuid_set is None:
             lgr.warning(
                 f"no uuid set found in {root_realm}, "
                 f"creating an empty set")
-            uuid_set = UUIDSet(backend, root_realm)
+            uuid_set = UUIDSet()
 
         perform_aggregation(
             root_realm,
@@ -227,8 +227,8 @@ class Aggregate(Interface):
             uuid_set,
             aggregate_items)
 
-        tree_version_list.save()
-        uuid_set.save()
+        tree_version_list.write_out(root_realm)
+        uuid_set.write_out(root_realm)
         flush_object_references(root_dataset.pathobj)
 
         unlock_backend(root_dataset.pathobj)
@@ -308,7 +308,7 @@ def copy_uuid_set(destination_metadata_store: str,
             destination_uuid_set.set_version_list(
                 uuid,
                 src_version_list.deepcopy(
-                    new_realm=destination_metadata_store,
+                    new_destination=destination_metadata_store,
                     path_prefix=destination_path))
 
         else:
@@ -391,7 +391,7 @@ def copy_tree_version_list(destination_metadata_store: str,
                 lgr.debug(
                     f"creating new root dataset tree for version "
                     f"{root_pd_version}")
-                root_dataset_tree = DatasetTree("git", destination_metadata_store)
+                root_dataset_tree = DatasetTree()
 
             time_stamp, source_dataset_tree = \
                 source_tree_version_list.get_dataset_tree(source_pd_version)
@@ -411,9 +411,11 @@ def copy_tree_version_list(destination_metadata_store: str,
                 str(time.time()),
                 root_dataset_tree)
 
-            # Remove the trees from memory
+            # Save newly created tree-copy to new destination
             destination_tree_version_list.unget_dataset_tree(
-                root_pd_version)
+                root_pd_version, destination_metadata_store)
+
+            # Source should not need saving
             source_tree_version_list.unget_dataset_tree(
                 source_pd_version)
 

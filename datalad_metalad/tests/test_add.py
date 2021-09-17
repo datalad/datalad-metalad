@@ -16,7 +16,10 @@ from typing import List
 from unittest.mock import patch
 from uuid import UUID
 
-from datalad.api import meta_add, meta_dump
+from datalad.api import (
+    meta_add,
+    meta_dump
+)
 from datalad.support.exceptions import IncompleteResultsError
 from datalad.tests.utils import (
     assert_dict_equal,
