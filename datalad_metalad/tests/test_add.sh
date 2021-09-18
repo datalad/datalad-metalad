@@ -24,7 +24,11 @@ EOF
 echo After first meta-add
 datalad meta-dump -d $temp_dir -r "*"
 
-cat <<EOF |datalad -l debug meta-add -d $temp_dir -
+rm -rf $temp_dir
+exit 0
+
+
+cat <<EOF |datalad meta-add -d $temp_dir -
 {
         "type": "file",
         "path": "d/e/f",
@@ -43,7 +47,7 @@ EOF
 echo After second meta-add
 datalad meta-dump -d $temp_dir -r "*"
 
-cat <<EOF |datalad -l debug meta-add -d $temp_dir -
+cat <<EOF |datalad meta-add -d $temp_dir -
 {
         "type": "file",
         "path": "g/h/i",
@@ -62,7 +66,7 @@ EOF
 echo After third meta-add
 datalad meta-dump -d $temp_dir -r "*"
 
-cat <<EOF |datalad -l debug meta-add -d $temp_dir -
+cat <<EOF |datalad meta-add -d $temp_dir -
 {
         "type": "file",
         "path": "j/k/l",
