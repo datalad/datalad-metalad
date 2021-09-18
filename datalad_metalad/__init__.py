@@ -4,9 +4,7 @@ __docformat__ = 'restructuredtext'
 
 import os
 from .version import __version__
-from collections import (
-    Mapping,
-)
+from collections.abc import Mapping
 from six import iteritems
 import hashlib
 from datalad.utils import (
