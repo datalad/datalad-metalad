@@ -498,6 +498,9 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
     uuid_set.write_out(realm)
     flush_object_references(metadata_store)
 
+    assert str(metadata_store) in file_level_metadata.saved_on
+    assert str(metadata_store) in file_tree.saved_on
+
     unlock_backend(metadata_store)
 
     yield {
