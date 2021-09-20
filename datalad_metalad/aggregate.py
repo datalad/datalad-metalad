@@ -402,8 +402,19 @@ def copy_tree_version_list(destination_metadata_store: str,
                     f" version {root_pd_version}")
                 root_dataset_tree.delete_subtree(destination_path)
 
+            # TODO: due to the current policy of deepcopy, i.e. write
+            #  out everything that was copied and purge the complete
+            #  object, we have to read in the object after copying it
+            #  only, to write it out again. This is wasteful. We should
+            #  instead specify that the top-level object, here: the
+            #  DatasetTree, is not writen out.
+            copied_dataset_tree = source_dataset_tree.deepcopy(
+                "git",
+                destination_metadata_store)
+            copied_dataset_tree.read_in()
+
             root_dataset_tree.add_subtree(
-                source_dataset_tree.deepcopy("git", destination_metadata_store),
+                copied_dataset_tree,
                 destination_path)
 
             destination_tree_version_list.set_dataset_tree(
