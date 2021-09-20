@@ -250,8 +250,8 @@ def dump_from_dataset_tree(mapper: str,
     if root_mrr is None:
         lgr.warning(
             f"no root dataset record found for version "
-            f"{requested_root_dataset_version} in metadata store {str}, "
-            f"cannot determine root dataset id")
+            f"{requested_root_dataset_version} in metadata store "
+            f"{metadata_store}, cannot determine root dataset id")
         root_dataset_version = requested_root_dataset_version
         root_dataset_identifier = "<unknown>"
     else:
