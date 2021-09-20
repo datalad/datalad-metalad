@@ -417,8 +417,6 @@ def copy_tree_version_list(destination_metadata_store: str,
                 copied_dataset_tree,
                 destination_path)
 
-            copied_dataset_tree.purge()
-
             destination_tree_version_list.set_dataset_tree(
                 root_pd_version,
                 str(time.time()),
