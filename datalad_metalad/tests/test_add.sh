@@ -21,11 +21,12 @@ cat <<EOF |datalad meta-add -d $temp_dir -
 }
 EOF
 
-echo After first meta-add
-datalad meta-dump -d $temp_dir -r "*"
-
-rm -rf $temp_dir
-exit 0
+num=$(datalad -f json meta-dump -d $temp_dir -r "*"|wc -l)
+if [[ $num -ne "1" ]]; then
+  echo "expected one metadata entry, got: $num"
+  rm -rf $temp_dir
+  exit 1
+fi
 
 
 cat <<EOF |datalad meta-add -d $temp_dir -
@@ -44,8 +45,13 @@ cat <<EOF |datalad meta-add -d $temp_dir -
 }
 EOF
 
-echo After second meta-add
-datalad meta-dump -d $temp_dir -r "*"
+num=$(datalad -f json meta-dump -d $temp_dir -r "*"|wc -l)
+if [[ $num -ne "2" ]]; then
+  echo "expected two metadata entries, got: $num"
+  rm -rf $temp_dir
+  exit 1
+fi
+
 
 cat <<EOF |datalad meta-add -d $temp_dir -
 {
@@ -63,8 +69,13 @@ cat <<EOF |datalad meta-add -d $temp_dir -
 }
 EOF
 
-echo After third meta-add
-datalad meta-dump -d $temp_dir -r "*"
+num=$(datalad -f json meta-dump -d $temp_dir -r "*"|wc -l)
+if [[ $num -ne "3" ]]; then
+  echo "expected three metadata entries, got: $num"
+  rm -rf $temp_dir
+  exit 1
+fi
+
 
 cat <<EOF |datalad meta-add -d $temp_dir -
 {
@@ -82,8 +93,12 @@ cat <<EOF |datalad meta-add -d $temp_dir -
 }
 EOF
 
-echo After fourth meta-add
-datalad meta-dump -d $temp_dir -r "*"
+num=$(datalad -f json meta-dump -d $temp_dir -r "*"|wc -l)
+if [[ $num -ne "4" ]]; then
+  echo "expected four metadata entries, got: $num"
+  rm -rf $temp_dir
+  exit 1
+fi
 
 
 rm -rf $temp_dir
