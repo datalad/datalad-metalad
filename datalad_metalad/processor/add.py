@@ -36,7 +36,7 @@ class MetadataAdder(Processor):
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
 
         metadata_result_list = pipeline_element.get_result("metadata")
-        if metadata_result_list is None:
+        if not metadata_result_list:
             logger.debug(
                 f"Ignoring pipeline element without metadata: "
                 f"{pipeline_element}")
