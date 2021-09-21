@@ -15,13 +15,18 @@ from typing import Optional
 from unittest.mock import patch
 from uuid import UUID
 
-
-from datalad.api import meta_aggregate, meta_dump
+from datalad.api import (
+    meta_aggregate,
+    meta_dump
+)
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.tests.utils import assert_not_in, assert_raises, \
     assert_result_count, eq_
 
-from .utils import add_dataset_level_metadata, create_dataset
+from .utils import (
+    add_dataset_level_metadata,
+    create_dataset
+)
 
 
 root_id = UUID("00010203-1011-2021-3031-404142434445")

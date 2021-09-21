@@ -37,10 +37,14 @@ class MetadataAdder(Processor):
 
         metadata_result_list = pipeline_element.get_result("metadata")
         if metadata_result_list is None:
-            logger.debug(f"Ignoring pipeline element without metadata: {pipeline_element}")
+            logger.debug(
+                f"Ignoring pipeline element without metadata: "
+                f"{pipeline_element}")
             return pipeline_element
 
-        assert len(metadata_result_list) == 1, "metadata result list has not length one"
+        assert len(metadata_result_list) == 1, \
+            f"metadata result list has not length one: {metadata_result_list}"
+
         metadata_record = metadata_result_list[0].metadata_record
 
         logger.debug(f"Adding metadata from pipeline element: {pipeline_element}")

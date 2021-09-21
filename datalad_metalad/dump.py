@@ -31,6 +31,7 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
+from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.metadata import MetadataInstance
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
@@ -39,7 +40,6 @@ from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
 from .exceptions import NoMetadataStoreFound
-from .metadata import get_top_level_metadata_objects
 from .pathutils.metadataurlparser import (
     MetadataURLParser,
     TreeMetadataURL,
@@ -119,7 +119,7 @@ def show_dataset_metadata(mapper: str,
                           ) -> Generator[dict, None, None]:
 
     dataset_level_metadata = \
-        metadata_root_record.dataset_level_metadata.load_object()
+        metadata_root_record.dataset_level_metadata.read_in()
 
     if dataset_level_metadata is None:
         lgr.warning(
@@ -165,7 +165,7 @@ def show_file_tree_metadata(mapper: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
-    file_tree = metadata_root_record.file_tree.load_object()
+    file_tree = metadata_root_record.file_tree.read_in()
 
     # Determine matching file paths
     tree_search = TreeSearch(file_tree, _file_report_matcher)
@@ -183,10 +183,10 @@ def show_file_tree_metadata(mapper: str,
 
     for match_record in matches:
         path = match_record.path
-        metadata_connector = match_record.node.value
+        metadata = match_record.node.value
 
         # Ignore empty datasets
-        if metadata_connector is None:
+        if metadata is None:
             continue
 
         common_properties = _get_common_properties(
@@ -195,7 +195,7 @@ def show_file_tree_metadata(mapper: str,
             metadata_root_record,
             dataset_path)
 
-        metadata = metadata_connector.load_object()
+        metadata.read_in()
         for extractor_name, extractor_runs in metadata.extractor_runs():
             for instance in extractor_runs:
 
@@ -216,7 +216,7 @@ def show_file_tree_metadata(mapper: str,
                     report_type="dataset")
 
         # Remove metadata object after all instances are reported
-        metadata_connector.purge()
+        metadata.purge()
 
     # Remove file tree metadata when we are done with it
     metadata_root_record.file_tree.purge()
@@ -250,8 +250,8 @@ def dump_from_dataset_tree(mapper: str,
     if root_mrr is None:
         lgr.warning(
             f"no root dataset record found for version "
-            f"{requested_root_dataset_version} in metadata store {str}, "
-            f"cannot determine root dataset id")
+            f"{requested_root_dataset_version} in metadata store "
+            f"{metadata_store}, cannot determine root dataset id")
         root_dataset_version = requested_root_dataset_version
         root_dataset_identifier = "<unknown>"
     else:
@@ -327,6 +327,8 @@ def dump_from_uuid_set(mapper: str,
             f"{requested_dataset_version} for dataset with "
             f"UUID {path.uuid} in metadata_store {mapper}:{metadata_store}")
         return
+
+    assert isinstance(metadata_root_record, MetadataRootRecord)
 
     # Show dataset-level metadata
     yield from show_dataset_metadata(
@@ -474,7 +476,7 @@ class Dump(Interface):
         return
 
     @staticmethod
-    def custom_result_renderer(res, **kwargs):
+    def custom_result_renderer(res, **_):
 
         if res["status"] != "ok" or res.get("action", "") != 'meta_dump':
             # logging complained about this already

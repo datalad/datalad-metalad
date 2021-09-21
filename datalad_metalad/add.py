@@ -16,12 +16,22 @@ import logging
 from itertools import chain
 from os import curdir
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union
+)
 from uuid import UUID
 
 from dataclasses import dataclass
 
-from datalad.distribution.dataset import Dataset, EnsureDataset, datasetmethod
+from datalad.distribution.dataset import (
+    Dataset,
+    EnsureDataset,
+    datasetmethod
+)
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
@@ -32,19 +42,26 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
-from dataladmetadatamodel.connector import Connector
 from dataladmetadatamodel.filetree import FileTree
-from dataladmetadatamodel.mapper.basemapper import BaseMapper
-from dataladmetadatamodel.mapper.gitmapper.objectreference import \
-    flush_object_references
-from dataladmetadatamodel.mapper.gitmapper.utils import lock_backend, \
-    unlock_backend
-from dataladmetadatamodel.metadata import ExtractorConfiguration, Metadata
+from dataladmetadatamodel.metadata import (
+    ExtractorConfiguration,
+    Metadata
+)
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.uuidset import UUIDSet
+from dataladmetadatamodel.versionlist import TreeVersionList
+from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
+from dataladmetadatamodel.mapper.gitmapper.utils import (
+    lock_backend,
+    unlock_backend
+)
 
 from .exceptions import MetadataKeyException
-from .utils import check_dataset, read_json_object
+from .utils import (
+    check_dataset,
+    read_json_object
+)
 
 
 JSONObject = Union[Dict, List]
@@ -414,7 +431,9 @@ def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
                         f'ID of dataset at {dataset.path} ({dataset.id})')
 
 
-def _get_top_nodes(realm: str, ap: AddParameter):
+def _get_top_nodes(realm: str,
+                   ap: AddParameter
+                   ) -> Tuple[TreeVersionList, UUIDSet, MetadataRootRecord]:
 
     if ap.root_dataset_id is None:
         return get_top_nodes_and_metadata_root_record(
@@ -444,15 +463,13 @@ def _get_top_nodes(realm: str, ap: AddParameter):
                 f"dataset id {ap.dataset_id} at path {ap.dataset_path}, but "
                 f"the id of the stored dataset is {mrr.dataset_identifier}")
     else:
-        dataset_level_metadata = Metadata(default_mapper_family, realm)
-        file_tree = FileTree(default_mapper_family, realm)
+        dataset_level_metadata = Metadata()
+        file_tree = FileTree()
         mrr = MetadataRootRecord(
-            default_mapper_family,
-            realm,
             ap.dataset_id,
             ap.dataset_version,
-            Connector.from_object(dataset_level_metadata),
-            Connector.from_object(file_tree))
+            dataset_level_metadata,
+            file_tree)
         dataset_tree.add_dataset(ap.dataset_path, mrr)
     return tree_version_list, uuid_set, mrr
 
@@ -466,20 +483,23 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     file_tree = mrr.get_file_tree()
     if file_tree is None:
-        file_tree = FileTree(default_mapper_family, realm)
+        file_tree = FileTree()
         mrr.set_file_tree(file_tree)
 
     if ap.file_path in file_tree:
         file_level_metadata = file_tree.get_metadata(ap.file_path)
     else:
-        file_level_metadata = Metadata(default_mapper_family, realm)
+        file_level_metadata = Metadata()
         file_tree.add_metadata(ap.file_path, file_level_metadata)
 
     add_metadata_content(file_level_metadata, ap)
 
-    tree_version_list.save()
-    uuid_set.save()
+    tree_version_list.write_out(realm)
+    uuid_set.write_out(realm)
     flush_object_references(metadata_store)
+
+    assert str(metadata_store) in file_level_metadata.saved_on
+    assert str(metadata_store) in file_tree.saved_on
 
     unlock_backend(metadata_store)
 
@@ -503,13 +523,13 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
     dataset_level_metadata = mrr.get_dataset_level_metadata()
     if dataset_level_metadata is None:
-        dataset_level_metadata = Metadata(default_mapper_family, realm)
+        dataset_level_metadata = Metadata()
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
     add_metadata_content(dataset_level_metadata, ap)
 
-    tree_version_list.save()
-    uuid_set.save()
+    tree_version_list.write_out(realm)
+    uuid_set.write_out(realm)
     flush_object_references(metadata_store)
 
     unlock_backend(metadata_store)
