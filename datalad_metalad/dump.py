@@ -165,7 +165,9 @@ def show_file_tree_metadata(mapper: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
-    file_tree = metadata_root_record.file_tree.read_in()
+    file_tree = metadata_root_record.get_file_tree()
+    if file_tree is None:
+        return
 
     # Determine matching file paths
     tree_search = TreeSearch(file_tree, _file_report_matcher)
@@ -219,7 +221,7 @@ def show_file_tree_metadata(mapper: str,
         metadata.purge()
 
     # Remove file tree metadata when we are done with it
-    metadata_root_record.file_tree.purge()
+    file_tree.purge()
 
 
 def dump_from_dataset_tree(mapper: str,
