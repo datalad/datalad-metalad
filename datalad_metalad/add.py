@@ -455,6 +455,7 @@ def _get_top_nodes(realm: str,
     _, dataset_tree = tree_version_list.get_dataset_tree(
         ap.root_dataset_version)
 
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXX", ap.dataset_path)
     if ap.dataset_path != MetadataPath("") and ap.dataset_path in dataset_tree:
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
         if mrr.dataset_identifier != ap.dataset_id:
@@ -494,12 +495,18 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     add_metadata_content(file_level_metadata, ap)
 
+    #file_level_metadata.write_out(realm)
+    #file_tree.write_out(realm)
+    #mrr.write_out(realm)
+
     tree_version_list.write_out(realm)
     uuid_set.write_out(realm)
     flush_object_references(metadata_store)
 
-    assert str(metadata_store) in file_level_metadata.saved_on
-    assert str(metadata_store) in file_tree.saved_on
+    assert file_level_metadata.is_saved_on(realm), \
+        f"file level metadata was not saved on {realm}"
+    assert file_tree.is_saved_on(realm), \
+        f"file tree was not saved on {realm}"
 
     unlock_backend(metadata_store)
 
@@ -526,7 +533,7 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
         dataset_level_metadata = Metadata()
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-    add_metadata_content(dataset_level_metadata, ap)
+    #add_metadata_content(dataset_level_metadata, ap)
 
     tree_version_list.write_out(realm)
     uuid_set.write_out(realm)

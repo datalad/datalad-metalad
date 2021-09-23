@@ -377,6 +377,8 @@ def _get_top_nodes(git_repo, dataset_id, dataset_version):
 def _get_metadata_content(metadata):
 
     assert_is_not_none(metadata)
+
+    metadata.ensure_mapped()
     metadata_instances = tuple(metadata.extractor_runs())
     assert_true(len(metadata_instances) == 1)
 
@@ -446,7 +448,7 @@ def test_add_file_end_to_end(file_name):
 
         file_tree = mrr.get_file_tree()
         assert_is_not_none(file_tree)
-        assert_true(test_path in file_tree)
+        assert_true(MetadataPath(test_path) in file_tree)
 
         metadata = file_tree.get_metadata(MetadataPath(test_path))
         metadata_content = _get_metadata_content(metadata)
@@ -489,6 +491,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
             root_dataset_version)
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+        mrr.ensure_mapped()
         eq_(mrr.dataset_identifier, another_id)
 
         metadata = mrr.get_dataset_level_metadata()
@@ -534,11 +537,12 @@ def test_subdataset_add_file_end_to_end(file_name):
             root_dataset_version)
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+        mrr.ensure_mapped()
         eq_(mrr.dataset_identifier, another_id)
 
         file_tree = mrr.get_file_tree()
         assert_is_not_none(file_tree)
-        assert_true(test_path in file_tree)
+        assert_true(MetadataPath(test_path) in file_tree)
 
         metadata = file_tree.get_metadata(MetadataPath(test_path))
         metadata_content = _get_metadata_content(metadata)

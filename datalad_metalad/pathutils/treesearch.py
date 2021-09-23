@@ -6,6 +6,7 @@ import dataclasses
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadatapath import MetadataPath
+from dataladmetadatamodel.mtreenode import MTreeNode
 
 
 @dataclasses.dataclass
@@ -139,23 +140,22 @@ class TreeSearch:
             record
             for starting_point in starting_points
             for record in self._rec_list_recursive(
-                starting_point.node,
+                starting_point.node.mtree,
                 starting_point.path)
             if self.report_matcher(record.node)
         ]
 
     def _rec_list_recursive(self,
-                            starting_point: FileTree,
+                            starting_point: MTreeNode,
                             starting_point_path: MetadataPath
                             ) -> List[MatchRecord]:
 
         if starting_point is None:
             return []
 
-        result = [MatchRecord(starting_point_path, starting_point)]
-        for node_name, sub_tree in starting_point.child_nodes.items():
-            sub_tree_path = starting_point_path / node_name
-            result.extend(
-                self._rec_list_recursive(sub_tree, sub_tree_path))
-
+        result = [
+            MatchRecord(path, mappable_object)
+            for path, mappable_object in starting_point.get_paths_recursive()
+        ]
+        result.extend([MatchRecord(starting_point_path, starting_point)])
         return result
