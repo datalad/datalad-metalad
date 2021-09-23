@@ -495,10 +495,6 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
     add_metadata_content(file_level_metadata, ap)
 
-    #file_level_metadata.write_out(realm)
-    #file_tree.write_out(realm)
-    #mrr.write_out(realm)
-
     tree_version_list.write_out(realm)
     uuid_set.write_out(realm)
     flush_object_references(metadata_store)
@@ -533,7 +529,7 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
         dataset_level_metadata = Metadata()
         mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-    #add_metadata_content(dataset_level_metadata, ap)
+    add_metadata_content(dataset_level_metadata, ap)
 
     tree_version_list.write_out(realm)
     uuid_set.write_out(realm)

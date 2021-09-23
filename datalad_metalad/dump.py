@@ -172,18 +172,32 @@ def show_file_tree_metadata(mapper: str,
                             ) -> Generator[dict, None, None]:
 
     purge_mrr = metadata_root_record.ensure_mapped()
-    purge_file_tree = metadata_root_record.file_tree.ensure_mapped()
+
+    dataset_level_metadata = metadata_root_record.dataset_level_metadata
+    file_tree = metadata_root_record.file_tree
+
+    if dataset_level_metadata is not None:
+        purge_dataset_level_metadata = dataset_level_metadata.ensure_mapped()
+    else:
+        purge_dataset_level_metadata = False
+
+    if file_tree is not None:
+        purge_file_tree = file_tree.ensure_mapped()
+    else:
+        purge_file_tree = False
 
     # Do not try to search anything if the file tree is empty
-    if not metadata_root_record.file_tree.mtree.child_nodes:
+    if not file_tree or not file_tree.mtree.child_nodes:
         if purge_file_tree:
-            metadata_root_record.file_tree.purge()
+            file_tree.purge()
+        if purge_dataset_level_metadata:
+            dataset_level_metadata.purge()
         if purge_mrr:
             metadata_root_record.purge()
         return
 
     # Determine matching file paths
-    tree_search = TreeSearch(metadata_root_record.file_tree, _file_report_matcher)
+    tree_search = TreeSearch(file_tree, _file_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
         pattern_list=[search_pattern],
         recursive=recursive,
@@ -234,7 +248,11 @@ def show_file_tree_metadata(mapper: str,
         metadata.purge()
 
     if purge_file_tree:
-        metadata_root_record.file_tree.purge()
+        file_tree.purge()
+
+    if purge_dataset_level_metadata:
+        dataset_level_metadata.purge()
+
     if purge_mrr:
         metadata_root_record.purge()
 
