@@ -72,6 +72,14 @@ class MetadataAdder(Processor):
         if "path" in metadata_record:
             metadata_record["path"] = str(metadata_record["path"])
 
+        logger.debug(
+            "processor.add: running meta-add with:\n"
+            f"metadata:\n"
+            f"{json.dumps(metadata_record)}\n"
+            f"dataset: {metadata_repository}\n"
+            f"additional_values:\n"
+            f"{json.dumps(additional_values)}\n")
+
         result = []
         for add_result in meta_add(metadata=metadata_record,
                                    dataset=str(metadata_repository),
