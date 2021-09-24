@@ -1,7 +1,6 @@
+import dataclasses
 from fnmatch import fnmatchcase
 from typing import Any, Callable, List, Tuple, Union
-
-import dataclasses
 
 from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.filetree import FileTree
@@ -12,7 +11,7 @@ from dataladmetadatamodel.mtreenode import MTreeNode
 @dataclasses.dataclass
 class MatchRecord:
     path: MetadataPath
-    node: FileTree
+    node: MTreeNode
 
     def __eq__(self, other) -> bool:
         return (
@@ -27,7 +26,7 @@ class TreeSearch:
     identified by an empty string, i.e. "".
     """
     def __init__(self,
-                 tree: Union[DatasetTree, FileTree],
+                 tree: MTreeNode,
                  report_matcher: Callable[[Any], bool]):
         self.tree = tree
         self.report_matcher = report_matcher
@@ -140,18 +139,21 @@ class TreeSearch:
             record
             for starting_point in starting_points
             for record in self._rec_list_recursive(
-                starting_point.node.mtree,
+                starting_point.node,
                 starting_point.path)
             if self.report_matcher(record.node)
         ]
 
     def _rec_list_recursive(self,
-                            starting_point: MTreeNode,
+                            starting_point: Any,
                             starting_point_path: MetadataPath
                             ) -> List[MatchRecord]:
 
         if starting_point is None:
             return []
+
+        if not isinstance(starting_point, MTreeNode):
+            return [MatchRecord(starting_point_path, starting_point)]
 
         result = [
             MatchRecord(path, mappable_object)
