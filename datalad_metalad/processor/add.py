@@ -73,12 +73,12 @@ class MetadataAdder(Processor):
             metadata_record["path"] = str(metadata_record["path"])
 
         logger.debug(
-            f"Processor: add: calling meta-add with repository {str(metadata_repository)}\n"
+            "processor.add: running meta-add with:\n"
             f"metadata:\n"
             f"{json.dumps(metadata_record)}\n"
-            f"additionalvalues:\n"
-            f"{json.dumps(additional_values)}\n"
-        )
+            f"dataset: {metadata_repository}\n"
+            f"additional_values:\n"
+            f"{json.dumps(additional_values)}\n")
 
         result = []
         for add_result in meta_add(metadata=metadata_record,

@@ -377,6 +377,8 @@ def _get_top_nodes(git_repo, dataset_id, dataset_version):
 def _get_metadata_content(metadata):
 
     assert_is_not_none(metadata)
+
+    metadata.ensure_mapped()
     metadata_instances = tuple(metadata.extractor_runs())
     assert_true(len(metadata_instances) == 1)
 
@@ -446,7 +448,7 @@ def test_add_file_end_to_end(file_name):
 
         file_tree = mrr.get_file_tree()
         assert_is_not_none(file_tree)
-        assert_true(test_path in file_tree)
+        assert_true(MetadataPath(test_path) in file_tree)
 
         metadata = file_tree.get_metadata(MetadataPath(test_path))
         metadata_content = _get_metadata_content(metadata)
@@ -489,6 +491,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
             root_dataset_version)
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+        mrr.ensure_mapped()
         eq_(mrr.dataset_identifier, another_id)
 
         metadata = mrr.get_dataset_level_metadata()
@@ -534,11 +537,12 @@ def test_subdataset_add_file_end_to_end(file_name):
             root_dataset_version)
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
+        mrr.ensure_mapped()
         eq_(mrr.dataset_identifier, another_id)
 
         file_tree = mrr.get_file_tree()
         assert_is_not_none(file_tree)
-        assert_true(test_path in file_tree)
+        assert_true(MetadataPath(test_path) in file_tree)
 
         metadata = file_tree.get_metadata(MetadataPath(test_path))
         metadata_content = _get_metadata_content(metadata)
@@ -581,6 +585,52 @@ def test_current_dir_add_end_to_end(file_name):
             **additional_keys_template,
             "type": "dataset",
             "dataset_id": str(another_id),
+        }
+
+        # Check extraction parameter result
+        ep_key = "extraction_parameter"
+        assert_dict_equal(expected[ep_key], result[ep_key])
+        del expected[ep_key]
+        del result[ep_key]
+
+        # Check remaining result
+        assert_dict_equal(result, expected)
+
+
+@with_tempfile
+def test_add_file_dump_end_to_end(file_name):
+
+    test_path = "d_1/d_1.0/f_1.0.0"
+
+    json.dump({
+        **{
+            **metadata_template,
+            "dataset_id": str(another_id)
+        },
+        **additional_keys_template,
+        "type": "file",
+        "path": test_path
+    }, open(file_name, "tw"))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        git_repo = create_dataset(temp_dir, default_id)
+
+        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        assert_result_count(res, 1)
+        assert_result_count(res, 1, type='file')
+        assert_result_count(res, 0, type='dataset')
+
+        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+
+        assert_true(len(results), 1)
+        result = results[0]["metadata"]
+
+        expected = {
+            **metadata_template,
+            **additional_keys_template,
+            "type": "file",
+            "path": test_path,
+            "dataset_id": str(another_id)
         }
 
         # Check extraction parameter result

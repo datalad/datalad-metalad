@@ -17,7 +17,10 @@ __docformat__ = 'restructuredtext'
 import json
 import logging
 from pathlib import Path
-from typing import Generator
+from typing import (
+    Any,
+    Generator
+)
 from uuid import UUID
 
 from datalad.distribution.dataset import datasetmethod
@@ -32,10 +35,13 @@ from datalad.support.param import Parameter
 from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_level_metadata_objects
-from dataladmetadatamodel.metadata import MetadataInstance
+from dataladmetadatamodel.datasettree import datalad_root_record_name
+from dataladmetadatamodel.metadata import (
+    Metadata,
+    MetadataInstance
+)
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
-from dataladmetadatamodel.treenode import TreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
@@ -52,13 +58,12 @@ default_mapper_family = "git"
 lgr = logging.getLogger('datalad.metadata.dump')
 
 
-def _dataset_report_matcher(tree_node: TreeNode) -> bool:
-    return isinstance(tree_node.value, MetadataRootRecord)
+def _dataset_report_matcher(node: Any) -> bool:
+    return isinstance(node, MetadataRootRecord)
 
 
-def _file_report_matcher(tree_node: TreeNode) -> bool:
-    # We only report files, not directories in file tree searches
-    return len(tree_node.child_nodes) == 0
+def _file_report_matcher(node: Any) -> bool:
+    return isinstance(node, Metadata)
 
 
 def _create_result_record(mapper: str,
@@ -82,11 +87,11 @@ def _get_common_properties(root_dataset_identifier: UUID,
                            metadata_root_record: MetadataRootRecord,
                            dataset_path: MetadataPath) -> dict:
 
-    if dataset_path != MetadataPath(""):
+    if dataset_path != MetadataPath(datalad_root_record_name):
         root_info = {
             "root_dataset_id": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": str(dataset_path)}
+            "dataset_path": str(dataset_path)[:-len("/" + datalad_root_record_name)]}
     else:
         root_info = {}
 
@@ -118,6 +123,7 @@ def show_dataset_metadata(mapper: str,
                           metadata_root_record: MetadataRootRecord
                           ) -> Generator[dict, None, None]:
 
+    purge_metadata_root_record = metadata_root_record.ensure_mapped()
     dataset_level_metadata = \
         metadata_root_record.dataset_level_metadata.read_in()
 
@@ -125,6 +131,8 @@ def show_dataset_metadata(mapper: str,
         lgr.warning(
             f"no dataset level metadata for dataset "
             f"uuid:{root_dataset_identifier}@{root_dataset_version}")
+        if purge_metadata_root_record:
+            metadata_root_record.purge()
         return
 
     common_properties = _get_common_properties(
@@ -151,8 +159,8 @@ def show_dataset_metadata(mapper: str,
                 element_path=dataset_path,
                 report_type="dataset")
 
-    # Remove dataset-level metadata when we are done with it
-    metadata_root_record.dataset_level_metadata.purge()
+    if purge_metadata_root_record:
+        metadata_root_record.purge()
 
 
 def show_file_tree_metadata(mapper: str,
@@ -165,8 +173,29 @@ def show_file_tree_metadata(mapper: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
-    file_tree = metadata_root_record.get_file_tree()
-    if file_tree is None:
+    purge_mrr = metadata_root_record.ensure_mapped()
+
+    dataset_level_metadata = metadata_root_record.dataset_level_metadata
+    file_tree = metadata_root_record.file_tree
+
+    if dataset_level_metadata is not None:
+        purge_dataset_level_metadata = dataset_level_metadata.ensure_mapped()
+    else:
+        purge_dataset_level_metadata = False
+
+    if file_tree is not None:
+        purge_file_tree = file_tree.ensure_mapped()
+    else:
+        purge_file_tree = False
+
+    # Do not try to search anything if the file tree is empty
+    if not file_tree or not file_tree.mtree.child_nodes:
+        if purge_file_tree:
+            file_tree.purge()
+        if purge_dataset_level_metadata:
+            dataset_level_metadata.purge()
+        if purge_mrr:
+            metadata_root_record.purge()
         return
 
     # Determine matching file paths
@@ -185,7 +214,7 @@ def show_file_tree_metadata(mapper: str,
 
     for match_record in matches:
         path = match_record.path
-        metadata = match_record.node.value
+        metadata = match_record.node
 
         # Ignore empty datasets
         if metadata is None:
@@ -220,8 +249,14 @@ def show_file_tree_metadata(mapper: str,
         # Remove metadata object after all instances are reported
         metadata.purge()
 
-    # Remove file tree metadata when we are done with it
-    file_tree.purge()
+    if purge_file_tree:
+        file_tree.purge()
+
+    if purge_dataset_level_metadata:
+        dataset_level_metadata.purge()
+
+    if purge_mrr:
+        metadata_root_record.purge()
 
 
 def dump_from_dataset_tree(mapper: str,
@@ -248,6 +283,7 @@ def dump_from_dataset_tree(mapper: str,
     # Fetch dataset tree for the specified version
     time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
         requested_root_dataset_version)
+
     root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
     if root_mrr is None:
         lgr.warning(
@@ -256,7 +292,9 @@ def dump_from_dataset_tree(mapper: str,
             f"{metadata_store}, cannot determine root dataset id")
         root_dataset_version = requested_root_dataset_version
         root_dataset_identifier = "<unknown>"
+        purge_root_mrr = False
     else:
+        purge_root_mrr = root_mrr.ensure_mapped()
         root_dataset_version = root_mrr.dataset_version
         root_dataset_identifier = root_mrr.dataset_identifier
 
@@ -280,7 +318,7 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_identifier,
             root_dataset_version,
             match_record.path,
-            match_record.node.value)
+            match_record.node)
 
         yield from show_file_tree_metadata(
             mapper,
@@ -288,10 +326,12 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_identifier,
             root_dataset_version,
             MetadataPath(match_record.path),
-            match_record.node.value,
+            match_record.node,
             str(metadata_url.local_path),
             recursive)
 
+    if purge_root_mrr:
+        root_mrr.purge()
     return
 
 
