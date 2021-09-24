@@ -119,7 +119,6 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertPathsInResult(found, [MetadataPath(".datalad_metadata")])
         self.assertListEqual(failed, [])
 
-    @unittest.skip
     def test_auto_list_dirs_on_recursive(self):
         found, failed = self.file_tree_search.get_matching_paths(
             pattern_list=[""],

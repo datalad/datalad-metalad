@@ -199,7 +199,7 @@ def show_file_tree_metadata(mapper: str,
         return
 
     # Determine matching file paths
-    tree_search = TreeSearch(file_tree, _file_report_matcher)
+    tree_search = TreeSearch(file_tree.mtree, _file_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
         pattern_list=[search_pattern],
         recursive=recursive,
@@ -299,7 +299,7 @@ def dump_from_dataset_tree(mapper: str,
         root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
-    tree_search = TreeSearch(dataset_tree, _dataset_report_matcher)
+    tree_search = TreeSearch(dataset_tree.mtree, _dataset_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
         pattern_list=[str(metadata_url.dataset_path)],
         recursive=recursive,

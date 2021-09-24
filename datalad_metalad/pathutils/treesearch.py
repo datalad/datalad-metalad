@@ -156,7 +156,7 @@ class TreeSearch:
             return [MatchRecord(starting_point_path, starting_point)]
 
         result = [
-            MatchRecord(path, mappable_object)
+            MatchRecord(starting_point_path / path, mappable_object)
             for path, mappable_object in starting_point.get_paths_recursive()
         ]
         result.extend([MatchRecord(starting_point_path, starting_point)])
