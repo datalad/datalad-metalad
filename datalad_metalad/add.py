@@ -455,7 +455,6 @@ def _get_top_nodes(realm: str,
     _, dataset_tree = tree_version_list.get_dataset_tree(
         ap.root_dataset_version)
 
-    print("XXXXXXXXXXXXXXXXXXXXXXXXXXX", ap.dataset_path)
     if ap.dataset_path != MetadataPath("") and ap.dataset_path in dataset_tree:
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
         if mrr.dataset_identifier != ap.dataset_id:
