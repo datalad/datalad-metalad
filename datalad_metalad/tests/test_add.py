@@ -595,3 +595,49 @@ def test_current_dir_add_end_to_end(file_name):
 
         # Check remaining result
         assert_dict_equal(result, expected)
+
+
+@with_tempfile
+def test_add_file_dump_end_to_end(file_name):
+
+    test_path = "d_1/d_1.0/f_1.0.0"
+
+    json.dump({
+        **{
+            **metadata_template,
+            "dataset_id": str(another_id)
+        },
+        **additional_keys_template,
+        "type": "file",
+        "path": test_path
+    }, open(file_name, "tw"))
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        git_repo = create_dataset(temp_dir, default_id)
+
+        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        assert_result_count(res, 1)
+        assert_result_count(res, 1, type='file')
+        assert_result_count(res, 0, type='dataset')
+
+        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+
+        assert_true(len(results), 1)
+        result = results[0]["metadata"]
+
+        expected = {
+            **metadata_template,
+            **additional_keys_template,
+            "type": "file",
+            "path": test_path,
+            "dataset_id": str(another_id)
+        }
+
+        # Check extraction parameter result
+        ep_key = "extraction_parameter"
+        assert_dict_equal(expected[ep_key], result[ep_key])
+        del expected[ep_key]
+        del result[ep_key]
+
+        # Check remaining result
+        assert_dict_equal(result, expected)

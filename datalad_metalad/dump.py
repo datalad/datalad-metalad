@@ -36,7 +36,10 @@ from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import datalad_root_record_name
-from dataladmetadatamodel.metadata import MetadataInstance
+from dataladmetadatamodel.metadata import (
+    Metadata,
+    MetadataInstance
+)
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
@@ -55,13 +58,12 @@ default_mapper_family = "git"
 lgr = logging.getLogger('datalad.metadata.dump')
 
 
-def _dataset_report_matcher(tree_node: Any) -> bool:
-    return isinstance(tree_node, MetadataRootRecord)
+def _dataset_report_matcher(node: Any) -> bool:
+    return isinstance(node, MetadataRootRecord)
 
 
-def _file_report_matcher(tree_node: Any) -> bool:
-    # We only report files, not directories in file tree searches
-    return len(tree_node.child_nodes) == 0
+def _file_report_matcher(node: Any) -> bool:
+    return isinstance(node, Metadata)
 
 
 def _create_result_record(mapper: str,
