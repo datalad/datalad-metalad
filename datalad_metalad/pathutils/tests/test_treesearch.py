@@ -116,7 +116,13 @@ class TestTreeSearchMatching(TestTreeSearchBase):
             auto_list_dirs=True)
 
         # Only top-level files should be reported
-        self.assertPathsInResult(found, [MetadataPath(".datalad_metadata")])
+        self.assertPathsInResult(found,
+                                 [
+                                     MetadataPath(".datalad_metadata"),
+                                     MetadataPath("s1"),
+                                     MetadataPath("s2"),
+                                     MetadataPath("d3")
+                                 ])
         self.assertListEqual(failed, [])
 
     def test_auto_list_dirs_on_recursive(self):
@@ -138,7 +144,6 @@ class TestTreeSearchMatching(TestTreeSearchBase):
 
         self.assertListEqual(failed, [])
 
-    @unittest.skip
     def test_auto_list_dirs_on_recursive_plain(self):
         found, failed = self.plain_tree_search.get_matching_paths(
             pattern_list=[""],
@@ -150,16 +155,11 @@ class TestTreeSearchMatching(TestTreeSearchBase):
             [
                 MetadataPath(".datalad_metadata"),
                 MetadataPath("s1"),
-                MetadataPath("s1/s1.1"),
-                MetadataPath("s1/s1.1/d1.1.1"),
-                MetadataPath("s1/s1.2"),
-                MetadataPath("s1/s1.2/d1.2.1"),
+                MetadataPath("s2"),
+                MetadataPath("d3"),
                 MetadataPath("s1/s1.1/d1.1.1/.datalad_metadata"),
                 MetadataPath("s1/s1.2/d1.2.1/.datalad_metadata"),
-                MetadataPath("s2"),
-                MetadataPath("s2/d2.1"),
                 MetadataPath("s2/d2.1/.datalad_metadata"),
-                MetadataPath("d3"),
                 MetadataPath("d3/.datalad_metadata"),
                 MetadataPath("d3/some_file")
             ])
@@ -167,30 +167,27 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertListEqual(failed, [])
 
     def test_auto_list_dirs_off(self):
-        # Expect no records, since only root is specified and is not reported
+        # Expect the root record, since only root is specified
         found, failed = self.file_tree_search.get_matching_paths(
             [""],
             False,
             auto_list_dirs=False)
 
-        self.assertListEqual(found, [])
+        self.assertListEqual(found, [MetadataPath("")])
         self.assertListEqual(failed, [])
 
-    @unittest.skip
     def test_root_dataset(self):
         self._test_pattern(
             [""],
-            [
-                MetadataPath(""),
-            ],
+            [MetadataPath("")],
             self.dataset_tree_search,
             auto_list_dirs=False)
 
-    @unittest.skip
     def test_autolist_dirs_dataset_on(self):
         self._test_pattern(
             [""],
             [
+                MetadataPath(".mrr"),
                 MetadataPath("dataset_0.0"),
                 MetadataPath("dataset_0.1")
             ],
@@ -206,20 +203,19 @@ class TestTreeSearchMatching(TestTreeSearchBase):
                 MetadataPath("d3")],
             self.plain_tree_search)
 
-    @unittest.skip
     def test_root_dataset_recursive(self):
         self._test_pattern(
             [""],
             [
-                MetadataPath(""),
-                MetadataPath("dataset_0.0"),
-                MetadataPath("dataset_0.0/dataset_0.0.0"),
-                MetadataPath("dataset_0.0/dataset_0.0.1"),
-                MetadataPath("dataset_0.0/dataset_0.0.2"),
-                MetadataPath("dataset_0.1"),
-                MetadataPath("dataset_0.1/dataset_0.1.0"),
-                MetadataPath("dataset_0.1/dataset_0.1.1"),
-                MetadataPath("dataset_0.1/dataset_0.1.2"),
+                MetadataPath(".mrr"),
+                MetadataPath("dataset_0.0/.mrr"),
+                MetadataPath("dataset_0.0/dataset_0.0.0/.mrr"),
+                MetadataPath("dataset_0.0/dataset_0.0.1/.mrr"),
+                MetadataPath("dataset_0.0/dataset_0.0.2/.mrr"),
+                MetadataPath("dataset_0.1/.mrr"),
+                MetadataPath("dataset_0.1/dataset_0.1.0/.mrr"),
+                MetadataPath("dataset_0.1/dataset_0.1.1/.mrr"),
+                MetadataPath("dataset_0.1/dataset_0.1.2/.mrr"),
             ],
             self.dataset_tree_search,
             recursive=True,

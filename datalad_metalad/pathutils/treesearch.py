@@ -1,9 +1,7 @@
 import dataclasses
 from fnmatch import fnmatchcase
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple
 
-from dataladmetadatamodel.datasettree import DatasetTree
-from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mtreenode import MTreeNode
 
@@ -60,12 +58,12 @@ class TreeSearch:
 
         if recursive:
             matching = self._list_recursive(matching[:])
-        else:
-            matching = [
-                match
-                for match in matching
-                if self.report_matcher(match.node)
-            ]
+        #else:
+        #    matching = [
+        #        match
+        #        for match in matching
+        #        if self.report_matcher(match.node)
+        #    ]
         return matching, failed
 
     def _get_matching_nodes(self,
@@ -113,9 +111,12 @@ class TreeSearch:
 
     def _search_matches(self,
                         pattern_parts: Tuple[str],
-                        tree: FileTree,
+                        tree: MTreeNode,
                         accumulated_path: MetadataPath
                         ) -> List[MatchRecord]:
+
+        if not isinstance(tree, MTreeNode):
+            return [MatchRecord(MetadataPath(accumulated_path), tree)]
 
         if not pattern_parts:
             return [MatchRecord(MetadataPath(accumulated_path), tree)]
