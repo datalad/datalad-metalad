@@ -1,7 +1,8 @@
 import dataclasses
 from fnmatch import fnmatchcase
-from typing import Any, Callable, List, Tuple
+from typing import Any, List, Tuple
 
+from dataladmetadatamodel.mappableobject import MappableObject
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mtreenode import MTreeNode
 
@@ -9,7 +10,7 @@ from dataladmetadatamodel.mtreenode import MTreeNode
 @dataclasses.dataclass
 class MatchRecord:
     path: MetadataPath
-    node: MTreeNode
+    node: MappableObject
 
     def __eq__(self, other) -> bool:
         return (
@@ -19,20 +20,19 @@ class MatchRecord:
 
 class TreeSearch:
     """
-    Search through FileTrees. File Tree elements
+    Search through MTrees. Tree elements
     are always separated by "/". The root is
     identified by an empty string, i.e. "".
     """
     def __init__(self,
-                 tree: MTreeNode,
-                 report_matcher: Callable[[Any], bool]):
+                 tree: MTreeNode
+                 ):
+        assert isinstance(tree, MTreeNode)
         self.tree = tree
-        self.report_matcher = report_matcher
 
     def get_matching_paths(self,
                            pattern_list: List[str],
-                           recursive: bool,
-                           auto_list_dirs: bool = True
+                           recursive: bool
                            ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
         """
         Get all metadata paths that are matching the patterns in
@@ -43,47 +43,27 @@ class TreeSearch:
 
         - Empty pattern-specifications, i.e. '', are interpreted
           as root-dataset or root-file-tree nodes.
-
-        If auto_list_dirs is True, and if the pattern identify a
-        directory, the content of the directory is reported instead
-        of the directory itself.
         """
         pattern_elements_list = [
             MetadataPath(pattern)
             for pattern in set(pattern_list)
         ]
-        matching, failed = self._get_matching_nodes(
-            pattern_elements_list,
-            auto_list_dirs)
+        matching, failed = self._get_matching_nodes(pattern_elements_list)
 
         if recursive:
             matching = self._list_recursive(matching[:])
-        #else:
-        #    matching = [
-        #        match
-        #        for match in matching
-        #        if self.report_matcher(match.node)
-        #    ]
         return matching, failed
 
     def _get_matching_nodes(self,
                             pattern_list: List[MetadataPath],
-                            auto_list_dirs: bool
                             ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
 
         match_records: List[MatchRecord] = []
         failed_patterns: List[MetadataPath] = []
 
         for pattern in pattern_list:
-            if pattern.parts in (("*",), ("",)):
-
-                # TODO: fix this case and combine with the next
-                # Special cases in which the root node is added
-                match_records.extend(self._get_root_nodes(auto_list_dirs))
-
-            elif pattern.parts == ():
-                match_records.extend(self._get_root_nodes(auto_list_dirs))
-
+            if pattern.parts == ():
+                match_records.extend(self._get_root_nodes())
             else:
                 matching_path_records = self._search_matches(
                     pattern.parts,
@@ -97,17 +77,8 @@ class TreeSearch:
 
         return match_records, failed_patterns
 
-    def _get_root_nodes(self,
-                        auto_list_dirs: bool
-                        ) -> List[MatchRecord]:
-        return (
-            [
-                MatchRecord(MetadataPath(name), child_node)
-                for name, child_node in self.tree.child_nodes.items()
-            ]
-            if auto_list_dirs is True
-            else [MatchRecord(MetadataPath(""), self.tree)]
-        )
+    def _get_root_nodes(self) -> List[MatchRecord]:
+        return [MatchRecord(MetadataPath(""), self.tree)]
 
     def _search_matches(self,
                         pattern_parts: Tuple[str],
@@ -116,7 +87,9 @@ class TreeSearch:
                         ) -> List[MatchRecord]:
 
         if not isinstance(tree, MTreeNode):
-            return [MatchRecord(MetadataPath(accumulated_path), tree)]
+            if not pattern_parts:
+                return [MatchRecord(MetadataPath(accumulated_path), tree)]
+            return []
 
         if not pattern_parts:
             return [MatchRecord(MetadataPath(accumulated_path), tree)]
@@ -136,14 +109,23 @@ class TreeSearch:
                         starting_points: List[MatchRecord]
                         ) -> List[MatchRecord]:
 
-        return [
+        record_list = [
             record
             for starting_point in starting_points
             for record in self._rec_list_recursive(
                 starting_point.node,
-                starting_point.path)
-            if self.report_matcher(record.node)
-        ]
+                starting_point.path)]
+
+        # remove duplicates which might stem from
+        # starting points that are contained in other
+        # starting points, e.g. "a/d" is contained in "a".
+        result = []
+        name_set = set()
+        for record in record_list:
+            if str(record.path) not in name_set:
+                name_set.add(str(record.path))
+                result.append(record)
+        return result
 
     def _rec_list_recursive(self,
                             starting_point: Any,
@@ -160,5 +142,4 @@ class TreeSearch:
             MatchRecord(starting_point_path / path, mappable_object)
             for path, mappable_object in starting_point.get_paths_recursive()
         ]
-        result.extend([MatchRecord(starting_point_path, starting_point)])
         return result

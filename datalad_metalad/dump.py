@@ -141,6 +141,8 @@ def show_dataset_metadata(mapper: str,
         metadata_root_record,
         dataset_path)
 
+    assert isinstance(dataset_level_metadata, Metadata)
+
     for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
         for instance in extractor_runs:
 
@@ -202,8 +204,7 @@ def show_file_tree_metadata(mapper: str,
     tree_search = TreeSearch(file_tree.mtree, _file_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
         pattern_list=[search_pattern],
-        recursive=recursive,
-        auto_list_dirs=False)
+        recursive=recursive)
 
     for missing_path in not_found_paths:
         lgr.warning(
@@ -219,6 +220,8 @@ def show_file_tree_metadata(mapper: str,
         # Ignore empty datasets
         if metadata is None:
             continue
+
+        assert isinstance(metadata, Metadata)
 
         common_properties = _get_common_properties(
             root_dataset_identifier,
@@ -302,8 +305,7 @@ def dump_from_dataset_tree(mapper: str,
     tree_search = TreeSearch(dataset_tree.mtree, _dataset_report_matcher)
     matches, not_found_paths = tree_search.get_matching_paths(
         pattern_list=[str(metadata_url.dataset_path)],
-        recursive=recursive,
-        auto_list_dirs=False)
+        recursive=recursive)
 
     for missing_path in not_found_paths:
         lgr.error(
@@ -312,6 +314,9 @@ def dump_from_dataset_tree(mapper: str,
             f"metadata_store {mapper}:{metadata_store}")
 
     for match_record in matches:
+
+        assert isinstance(match_record.node, MetadataRootRecord)
+
         yield from show_dataset_metadata(
             mapper,
             metadata_store,
