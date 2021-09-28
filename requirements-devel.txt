@@ -11,4 +11,4 @@ pyyaml
 # Remove click and dataclasses once the metadata model distribution is on pypi
 click
 dataclasses
-git+https://github.com/christian-monch/metadata-model.git@0.1.0b4#egg=datalad-metadata-model
+git+https://github.com/christian-monch/metadata-model.git@0.1.0b5#egg=datalad-metadata-model
