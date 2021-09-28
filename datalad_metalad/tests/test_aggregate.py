@@ -20,9 +20,12 @@ from datalad.api import (
     meta_dump
 )
 from datalad.support.exceptions import InsufficientArgumentsError
-from datalad.tests.utils import assert_not_in, assert_raises, \
-    assert_result_count, eq_
-
+from datalad.tests.utils import (
+    assert_not_in,
+    assert_raises,
+    assert_result_count,
+    eq_
+)
 from .utils import (
     add_dataset_level_metadata,
     create_dataset
@@ -62,9 +65,9 @@ def test_basic_aggregation():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        create_dataset(root_dataset_dir, root_id)
-        create_dataset(subdataset_0_dir, sub_0_id)
-        create_dataset(subdataset_1_dir, sub_1_id)
+        create_dataset(str(root_dataset_dir), root_id)
+        create_dataset(str(subdataset_0_dir), sub_0_id)
+        create_dataset(str(subdataset_1_dir), sub_1_id)
 
         # TODO: there is a dependency here in meta_add. We should instead
         #  use the model API to add metadata to metadata stores
@@ -130,6 +133,17 @@ def test_basic_aggregation():
                 eq_(result_object["extracted_metadata"]["content"],
                     f"metadata-content_{index}")
 
+            # Test a second aggregation
+            result = meta_aggregate(
+                str(root_dataset_dir),
+                [str(subdataset_0_dir), str(subdataset_1_dir)])
+
+            result_objects = meta_dump(
+                dataset=str(root_dataset_dir),
+                recursive=True)
+
+            assert_result_count(result_objects, 3)
+
 
 def test_missing_metadata_stores():
 
@@ -138,9 +152,9 @@ def test_missing_metadata_stores():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        create_dataset(root_dataset_dir, root_id)
-        create_dataset(subdataset_0_dir, sub_0_id)
-        create_dataset(subdataset_1_dir, sub_1_id)
+        create_dataset(str(root_dataset_dir), root_id)
+        create_dataset(str(subdataset_0_dir), sub_0_id)
+        create_dataset(str(subdataset_1_dir), sub_1_id)
 
         assert_raises(
             InsufficientArgumentsError,
@@ -156,9 +170,9 @@ def test_basic_aggregation_into_empty_store():
         subdataset_0_dir = root_dataset_dir / "subdataset_0"
         subdataset_1_dir = root_dataset_dir / "subdataset_1"
 
-        create_dataset(root_dataset_dir, root_id)
-        create_dataset(subdataset_0_dir, sub_0_id)
-        create_dataset(subdataset_1_dir, sub_1_id)
+        create_dataset(str(root_dataset_dir), root_id)
+        create_dataset(str(subdataset_0_dir), sub_0_id)
+        create_dataset(str(subdataset_1_dir), sub_1_id)
 
         # TODO: this is more an end-to-end test, since we depend
         #  on meta_add. We should instead use the model API to add

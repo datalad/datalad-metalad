@@ -438,8 +438,6 @@ def test_add_file_end_to_end(file_name):
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
 
-        print(temp_dir)
-
         # Verify file level metadata was added
         tree_version_list, uuid_set, mrr = _get_top_nodes(
             git_repo,

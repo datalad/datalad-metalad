@@ -337,14 +337,17 @@ def copy_uuid_set(destination_metadata_store: str,
                     pd_version,
                     time_stamp,
                     new_path,
-                    element.deepcopy(new_realm=destination_metadata_store))
+                    element.deepcopy(
+                        new_destination=destination_metadata_store))
 
                 # Unget the versioned element
                 lgr.debug(
                     f"persisting copied metadata element for pd version "
                     f"{pd_version} of UUID: {uuid}")
 
-                dest_version_list.unget_versioned_element(pd_version)
+                dest_version_list.unget_versioned_element(
+                    pd_version,
+                    destination_metadata_store)
 
                 # Remove the source versioned element from memory
                 lgr.debug(
@@ -426,9 +429,8 @@ def copy_tree_version_list(destination_metadata_store: str,
             destination_tree_version_list.unget_dataset_tree(
                 root_pd_version, destination_metadata_store)
 
-            # Source should not need saving
-            source_tree_version_list.unget_dataset_tree(
-                source_pd_version)
+            # Source should not need saving, so we purge it
+            source_tree_version_list.purge()
 
     return
 
