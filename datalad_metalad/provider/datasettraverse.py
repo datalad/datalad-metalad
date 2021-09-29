@@ -46,15 +46,37 @@ class DatasetTraverseResult(PipelineResult):
 
 
 class DatasetTraverser(Provider):
+
+    file_mask = 0x01
+    dataset_mask = 0x02
+    name_to_item_set = {
+        "file": {file_mask},
+        "dataset": {dataset_mask},
+        "both": {file_mask, dataset_mask}
+    }
+
     def __init__(self,
                  top_level_dir: Union[str, Path],
+                 item_type: str,
                  traverse_sub_datasets: bool = False):
 
+        assert item_type.lower() in ("file", "dataset", "both")
+
         super().__init__()
+
         self.top_level_dir = Path(top_level_dir)
+        self.item_set = self.name_to_item_set[item_type.lower()]
         self.traverse_sub_datasets = traverse_sub_datasets
         self.root_dataset = require_dataset(self.top_level_dir, purpose="dataset_traversal")
         self.fs_base_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
+        self.seen = set()
+
+    def _already_visited(self, element_path):
+        if element_path in self.seen:
+            lgr.info(f"ignoring already visited path: {element_path}")
+            return True
+        self.seen.add(element_path)
+        return False
 
     def _get_base_dataset_result(self,
                                  dataset: Dataset,
@@ -82,58 +104,70 @@ class DatasetTraverser(Provider):
     def _traverse_dataset(self, dataset_path: Path) -> Iterable:
         dataset = require_dataset(dataset_path, purpose="dataset_traversal")
         element_path = resolve_path("", dataset)
-        yield PipelineElement((
-            ("path", element_path),
-            (
-                "dataset-traversal-record",
-                [
-                    DatasetTraverseResult(**{
-                        "state": ResultState.SUCCESS,
-                        "fs_base_path": self.fs_base_path,
-                        "type": "Dataset",
-                        "path": element_path,
-                        **self._get_dataset_result_part(dataset)
-                    })
-                ]
-            )))
 
-        repo = dataset.repo
-        for element_path in repo.get_files():
+        if self.dataset_mask in self.item_set:
 
-            element_path = resolve_path(element_path, dataset)
+            if self._already_visited(element_path):
+                return
 
-            if any([
-                    re.match(pattern, path_part)
-                    for path_part in element_path.parts
-                    for pattern in _standard_exclude]):
-                lgr.debug(f"Ignoring excluded element {element_path}")
-                continue
+            yield PipelineElement((
+                ("path", element_path),
+                (
+                    "dataset-traversal-record",
+                    [
+                        DatasetTraverseResult(**{
+                            "state": ResultState.SUCCESS,
+                            "fs_base_path": self.fs_base_path,
+                            "type": "Dataset",
+                            "path": element_path,
+                            **self._get_dataset_result_part(dataset)
+                        })
+                    ]
+                )))
 
-            if not isdir(element_path):
-                yield PipelineElement((
-                    ("path", element_path),
-                    (
-                        "dataset-traversal-record",
-                        [
-                            DatasetTraverseResult(**{
-                                "state": ResultState.SUCCESS,
-                                "fs_base_path": self.fs_base_path,
-                                "type": "File",
-                                "path": element_path,
-                                **self._get_dataset_result_part(dataset)
-                            })
-                        ]
-                    )
-                ))
+        if self.file_mask in self.item_set:
+            repo = dataset.repo
+            for element_path in repo.get_files():
+
+                element_path = resolve_path(element_path, dataset)
+                if any([
+                        re.match(pattern, path_part)
+                        for path_part in element_path.parts
+                        for pattern in _standard_exclude]):
+                    lgr.debug(f"Ignoring excluded element {element_path}")
+                    continue
+
+                if not isdir(element_path):
+
+                    if self._already_visited(element_path):
+                        continue
+
+                    yield PipelineElement((
+                        ("path", element_path),
+                        (
+                            "dataset-traversal-record",
+                            [
+                                DatasetTraverseResult(**{
+                                    "state": ResultState.SUCCESS,
+                                    "fs_base_path": self.fs_base_path,
+                                    "type": "File",
+                                    "path": element_path,
+                                    **self._get_dataset_result_part(dataset)
+                                })
+                            ]
+                        )
+                    ))
 
         if self.traverse_sub_datasets:
+            repo = dataset.repo
             for submodule_info in repo.get_submodules():
                 submodule_path = submodule_info["path"]
                 sub_dataset = Dataset(submodule_path)
                 if sub_dataset.is_installed():
                     yield from self._traverse_dataset(submodule_info["path"])
                 else:
-                    lgr.debug(f"ignoring un-installed dataset at {submodule_path}")
+                    lgr.debug(
+                        f"ignoring un-installed dataset at {submodule_path}")
         return
 
     def next_object(self) -> Iterable:
