@@ -69,13 +69,17 @@ class DatasetTraverser(Provider):
         self.traverse_sub_datasets = traverse_sub_datasets
         self.root_dataset = require_dataset(self.top_level_dir, purpose="dataset_traversal")
         self.fs_base_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
-        self.seen = set()
+        self.seen = dict()
 
-    def _already_visited(self, element_path):
-        if element_path in self.seen:
-            lgr.info(f"ignoring already visited path: {element_path}")
+    def _already_visited(self, dataset: Dataset, relative_element_path: Path):
+        if dataset.id not in self.seen:
+            self.seen[dataset.id] = set()
+        if relative_element_path in self.seen[dataset.id]:
+            lgr.info(f"ignoring already visited element: "
+                     f"{dataset.id}:{relative_element_path}\t"
+                     f"({dataset.repo.pathobj / relative_element_path})")
             return True
-        self.seen.add(element_path)
+        self.seen[dataset.id].add(relative_element_path)
         return False
 
     def _get_base_dataset_result(self,
@@ -107,7 +111,7 @@ class DatasetTraverser(Provider):
 
         if self.dataset_mask in self.item_set:
 
-            if self._already_visited(element_path):
+            if self._already_visited(dataset, Path("")):
                 return
 
             yield PipelineElement((
@@ -127,9 +131,9 @@ class DatasetTraverser(Provider):
 
         if self.file_mask in self.item_set:
             repo = dataset.repo
-            for element_path in repo.get_files():
+            for relative_element_path in repo.get_files():
 
-                element_path = resolve_path(element_path, dataset)
+                element_path = resolve_path(relative_element_path, dataset)
                 if any([
                         re.match(pattern, path_part)
                         for path_part in element_path.parts
@@ -139,7 +143,7 @@ class DatasetTraverser(Provider):
 
                 if not isdir(element_path):
 
-                    if self._already_visited(element_path):
+                    if self._already_visited(dataset, relative_element_path):
                         continue
 
                     yield PipelineElement((
