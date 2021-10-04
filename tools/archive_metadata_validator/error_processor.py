@@ -147,4 +147,4 @@ def classify_validation_error(error: ValidationError):
     elif error.validator == TYPE_VALIDATOR:
         return InvalidType(error.instance, list(error.path), error.validator_value)
 
-    raise Exception("implement yaml error classifier")
+    return Unknown(error.instance, list(error.path))
