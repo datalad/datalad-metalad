@@ -87,5 +87,5 @@ class MetadataExtractor(Processor):
                 md_extractor_result.base_error = extract_result
             result.append(md_extractor_result)
 
-        pipeline_element.set_result("metadata", result)
+        pipeline_element.add_result("metadata", result)
         return pipeline_element

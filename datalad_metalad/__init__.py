@@ -387,7 +387,6 @@ from datalad import setup_package
 from datalad import teardown_package
 
 
-
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
