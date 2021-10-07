@@ -155,6 +155,7 @@ def test_extract():
             meta_conduct(
                 arguments=[
                     f"provider:{root_dataset_dir_str}",
+                    f"provider:both",
                     f"testproc1:Dataset",
                     f"testproc1:metalad_core_dataset"],
                 configuration=extract_pipeline))
