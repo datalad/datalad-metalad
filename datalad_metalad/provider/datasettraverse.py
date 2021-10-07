@@ -8,7 +8,11 @@ import re
 from dataclasses import dataclass
 from os.path import isdir
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import (
+    Iterable,
+    Optional,
+    Union
+)
 
 from datalad.distribution.dataset import (
     Dataset,
@@ -25,7 +29,6 @@ from ..pipelineelement import (
 
 
 lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
-
 
 # By default we exclude all paths that start with "."
 _standard_exclude = ["^\\..*"]
@@ -58,7 +61,8 @@ class DatasetTraverser(Provider):
     def __init__(self,
                  top_level_dir: Union[str, Path],
                  item_type: str,
-                 traverse_sub_datasets: bool = False):
+                 traverse_sub_datasets: bool = False
+                 ):
 
         assert item_type.lower() in ("file", "dataset", "both")
 
@@ -67,8 +71,10 @@ class DatasetTraverser(Provider):
         self.top_level_dir = Path(top_level_dir)
         self.item_set = self.name_to_item_set[item_type.lower()]
         self.traverse_sub_datasets = traverse_sub_datasets
-        self.root_dataset = require_dataset(self.top_level_dir, purpose="dataset_traversal")
-        self.fs_base_path = Path(resolve_path(self.top_level_dir, self.root_dataset))
+        self.root_dataset = require_dataset(self.top_level_dir,
+                                            purpose="dataset_traversal")
+        self.fs_base_path = Path(resolve_path(self.top_level_dir,
+                                              self.root_dataset))
         self.seen = dict()
 
     def _already_visited(self, dataset: Dataset, relative_element_path: Path):
@@ -86,24 +92,26 @@ class DatasetTraverser(Provider):
                                  dataset: Dataset,
                                  id_key: str,
                                  version_key: str):
-
         return {
             id_key: str(dataset.id),
-            version_key: str(dataset.repo.get_hexsha())
-        }
+            version_key: str(dataset.repo.get_hexsha())}
 
     def _get_dataset_result_part(self, dataset: Dataset):
         if dataset.pathobj == self.fs_base_path:
             return {
                 "dataset_path": Path("."),
-                **self._get_base_dataset_result(dataset, "dataset_id", "dataset_version")
-            }
+                **self._get_base_dataset_result(dataset,
+                                                "dataset_id",
+                                                "dataset_version")}
         else:
             return {
                 "dataset_path": dataset.pathobj.relative_to(self.fs_base_path),
-                **self._get_base_dataset_result(dataset, "dataset_id", "dataset_version"),
-                **self._get_base_dataset_result(self.root_dataset, "root_dataset_id", "root_dataset_version"),
-            }
+                **self._get_base_dataset_result(dataset,
+                                                "dataset_id",
+                                                "dataset_version"),
+                **self._get_base_dataset_result(self.root_dataset,
+                                                "root_dataset_id",
+                                                "root_dataset_version")}
 
     def _traverse_dataset(self, dataset_path: Path) -> Iterable:
         dataset = require_dataset(dataset_path, purpose="dataset_traversal")
