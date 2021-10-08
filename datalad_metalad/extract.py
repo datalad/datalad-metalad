@@ -15,20 +15,31 @@ import logging
 import re
 import time
 from os import curdir
-from pathlib import Path, PurePath
-from typing import Dict, Iterable,  List, Optional, Tuple, Type, Union
+from pathlib import (
+    Path,
+    PurePath,
+)
+from typing import (
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 from uuid import UUID
 
 from dataclasses import dataclass
 
 from datalad.distribution.dataset import Dataset
-from datalad.interface.base import Interface
-from datalad.interface.base import build_doc
-from datalad.interface.utils import eval_results
 from datalad.distribution.dataset import (
     datasetmethod,
     EnsureDataset,
 )
+from datalad.interface.base import Interface
+from datalad.interface.base import build_doc
+from datalad.interface.utils import eval_results
 from datalad.metadata.extractors.base import BaseMetadataExtractor
 from datalad.ui import ui
 
@@ -38,18 +49,22 @@ from .extractors.base import (
     FileInfo,
     FileMetadataExtractor,
     MetadataExtractor,
-    MetadataExtractorBase
+    MetadataExtractorBase,
 )
 
 from datalad.support.constraints import (
     EnsureNone,
-    EnsureStr
+    EnsureStr,
 )
 from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
-from .utils import args_to_dict, check_dataset
+from .utils import (
+    NoDatasetFound,
+    args_to_dict,
+    check_dataset,
+)
 
 
 __docformat__ = "restructuredtext"
@@ -215,7 +230,20 @@ class Extract(Interface):
                 if isinstance(context, str)
                 else context))
 
-        source_dataset = check_dataset(dataset or curdir, "extract metadata")
+        try:
+            source_dataset = check_dataset(dataset or curdir,
+                                           "extract metadata")
+        except NoDatasetFound as raised_exception:
+            yield dict(
+                status="error",
+                path=dataset or curdir,
+                type="dataset" if path is None else "file",
+                action="meta_extract",
+                message=str(raised_exception),
+                logger=lgr
+            )
+            return
+
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()
@@ -257,8 +285,6 @@ class Extract(Interface):
         # If path is not given, we assume that a dataset-level extraction is
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
-        path = None if path == "++" else path
-
         if path:
             # Check whether the path points to a sub_dataset.
             ensure_path_validity(source_dataset, file_tree_path)
@@ -598,7 +624,7 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
 
     if issubclass(ep.extractor_class, MetadataExtractor):
 
-        status = []
+        status = ep.source_dataset.repo.get_submodules()
         extractor = ep.extractor_class()
         ensure_legacy_content_availability(ep, extractor, "dataset", status)
 
@@ -607,23 +633,35 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
                                 "dataset",
                                 status):
 
-            result["action"] = "meta_extract"
-            result["type"] = "dataset"
-            if result["status"] == "ok":
-                result["metadata_record"] = dict(
-                    type="dataset",
-                    dataset_id=ep.source_dataset_id,
-                    dataset_version=ep.source_dataset_version,
-                    extractor_name=ep.extractor_name,
-                    extractor_version=str(
-                        extractor.get_state(ep.source_dataset)["version"]),
-                    extraction_parameter=ep.extractor_arguments,
-                    extraction_time=time.time(),
-                    agent_name=ep.agent_name,
-                    agent_email=ep.agent_email,
-                    extracted_metadata=result["metadata"])
-
-            yield result
+            yield {
+                "status": result["status"],
+                "action": "meta_extract",
+                "path": ep.source_dataset.path,
+                "type": "dataset",
+                ** {
+                    "message": result["message"]
+                    for _ in [1]
+                    if "message" in result
+                },
+                ** (
+                    {
+                        "metadata_record": dict(
+                            type="dataset",
+                            dataset_id=ep.source_dataset_id,
+                            dataset_version=ep.source_dataset_version,
+                            extractor_name=ep.extractor_name,
+                            extractor_version=str(
+                                extractor.get_state(ep.source_dataset).get(
+                                    "version", "---")),
+                            extraction_parameter=ep.extractor_arguments,
+                            extraction_time=time.time(),
+                            agent_name=ep.agent_name,
+                            agent_email=ep.agent_email,
+                            extracted_metadata=result["metadata"])
+                    }
+                    if result["status"] == "ok"
+                    else {})
+            }
 
     elif issubclass(ep.extractor_class, BaseMetadataExtractor):
 
@@ -635,7 +673,7 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
         extractor = ep.extractor_class(ep.source_dataset, [ds_path])
         dataset_result, _ = extractor.get_metadata(True, False)
 
-        result = dict(
+        yield dict(
             action="meta_extract",
             status="ok",
             type="dataset",
@@ -651,21 +689,28 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
                 agent_email=ep.agent_email,
                 extracted_metadata=dataset_result))
 
-        yield result
-
     else:
         raise ValueError(
             f"unknown extractor class: {type(ep.extractor_class).__name__}")
 
 
-def legacy_get_file_info(path: Path) -> Tuple[str, int]:
+def get_subdatasets_info(ep: ExtractionParameter) -> List[Dict]:
+    repo = ep.source_dataset.repo
+    for submodule_info in repo.get_submodules():
+        print(submodule_info)
+        # path, gitshasum
+    return []
+
+
+def legacy_get_file_info(path: Path) -> Tuple[str, int, Optional[str]]:
+    annex_key = None
     if path.is_symlink():
+        file_type = "file"
+        target_path = path.resolve().absolute()
+        annex_key = target_path.parts[-1]
         if path.exists():
-            file_type = "file"
             file_size = path.stat().st_size
         else:
-            file_type = "symlink"
-            target_path = path.resolve().absolute()
             try:
                 file_size = int(re.match(
                     ".*/[^/]*-s([0-9]*)-",
@@ -680,7 +725,7 @@ def legacy_get_file_info(path: Path) -> Tuple[str, int]:
         file_size = path.stat().st_size
     else:
         raise ValueError(f"cannot determine type and size of: {path}")
-    return file_type, file_size
+    return file_type, file_size, annex_key
 
 
 def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
@@ -689,17 +734,18 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
 
         # Call metalad legacy extractor with a single status record.
 
+        file_path = ep.source_dataset.pathobj / ep.file_tree_path
         # Determine the file type:
-        file_type, file_size = legacy_get_file_info(
-            ep.source_dataset.pathobj / ep.file_tree_path)
-
+        file_type, file_size, key = legacy_get_file_info(file_path)
         status = [{
             "type": file_type,
             "bytesize": file_size,
-            "path": str(
-                (ep.source_dataset.pathobj / ep.file_tree_path).absolute()),
+            "key": key,
+            "path": str(file_path.absolute()),
             "state": "clean",
-            "gitshasum": ep.source_dataset_version
+            "gitshasum": ep.source_dataset.repo.call_git(
+                args=["ls-files", "-s"],
+                files=[str(file_path)]).split()[1]
         }]
         extractor = ep.extractor_class()
         ensure_legacy_content_availability(ep, extractor, "content", status)
@@ -709,23 +755,33 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
                                 "content",
                                 status):
 
-            result["action"] = "meta_extract"
             if result["status"] == "ok":
-                result["metadata_record"] = dict(
+                yield dict(
+                    action="meta_extract",
+                    status="ok",
                     type="file",
-                    dataset_id=ep.source_dataset_id,
-                    dataset_version=ep.source_dataset_version,
-                    path=ep.file_tree_path,
-                    extractor_name=ep.extractor_name,
-                    extractor_version=str(
-                        extractor.get_state(ep.source_dataset)["version"]),
-                    extraction_parameter=ep.extractor_arguments,
-                    extraction_time=time.time(),
-                    agent_name=ep.agent_name,
-                    agent_email=ep.agent_email,
-                    extracted_metadata=result["metadata"])
-
-            yield result
+                    path=str(file_path.absolute()),
+                    metadata_record=dict(
+                        type="file",
+                        dataset_id=ep.source_dataset_id,
+                        dataset_version=ep.source_dataset_version,
+                        path=ep.file_tree_path,
+                        extractor_name=ep.extractor_name,
+                        extractor_version=str(
+                            extractor.get_state(ep.source_dataset).get(
+                                "version", "---")),
+                        extraction_parameter=ep.extractor_arguments,
+                        extraction_time=time.time(),
+                        agent_name=ep.agent_name,
+                        agent_email=ep.agent_email,
+                        extracted_metadata=result["metadata"]))
+            else:
+                yield dict(
+                    action="meta_extract",
+                    status=result["status"],
+                    type="file",
+                    path=str(file_path.absolute()),
+                    message=result["message"])
 
     elif issubclass(ep.extractor_class, BaseMetadataExtractor):
 
@@ -738,7 +794,7 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
         _, file_result = extractor.get_metadata(False, True)
 
         for path, metadata in file_result:
-            result = dict(
+            yield dict(
                 action="meta_extract",
                 status="ok",
                 type="file",
@@ -755,8 +811,6 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
                     agent_email=ep.agent_email,
                     extracted_metadata=metadata
                 ))
-
-            yield result
 
     else:
         raise ValueError(

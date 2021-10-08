@@ -28,14 +28,12 @@ from datalad.tests.utils import (
     assert_in,
     assert_raises,
     assert_result_count,
-    eq_,
-    known_failure,
+    known_failure_windows,
     with_tree,
     with_tempfile,
 )
 from ...tests import (
     make_ds_hierarchy_with_metadata,
-    _get_dsid_from_core_metadata,
     _get_dsmeta_from_core_metadata,
 )
 
@@ -48,17 +46,30 @@ def check_api(annex, path):
 
     processed_extractors, skipped_extractors = [], []
     for extractor_ep in iter_entry_points('datalad.metadata.extractors'):
+
+        # There are a number of extractors that do not
+        # work on empty datasets, or datasets, or without
+        # external processes. We skip those here, instead
+        # of skipping them later.
+        if extractor_ep.name in ("metalad_core_file",
+                                 "external_dataset",
+                                 "external_file",
+                                 "metalad_studyminimeta",
+                                 "bids",
+                                 "dicom"):
+            continue
+
         # we need to be able to query for metadata, even if there is none
         # from any extractor
         try:
             res = meta_extract(
                 dataset=ds,
-                sources=[extractor_ep.name],
+                extractorname=extractor_ep.name,
             )
         except Exception as exc:
-            exc_ = str(exc)
-            skipped_extractors += [exc_]
+            skipped_extractors += [f"{extractor_ep.name}: {exc}"]
             continue
+
         # metalad_core does provide some information about our precious file
         if extractor_ep.name == 'metalad_core':
             assert_result_count(
@@ -68,15 +79,23 @@ def check_api(annex, path):
                 type='dataset',
                 status='ok',
             )
+
             assert_true(
-                all('metalad_core' in r.get('metadata', {}) for r in res))
+                all([
+                    r['metadata_record']['extractor_name'] == extractor_ep.name
+                    for r in res]))
+
+            extracted_metadata = [
+                r['metadata_record']['extracted_metadata']
+                for r in res
+            ]
+
             # every single report comes with an identifier
             assert_true(all(
-                (_get_dsid_from_core_metadata(r['metadata']['metalad_core'])
-                    if r.get('type', None) == 'dataset'
-                    else r['metadata']['metalad_core'].get('@id', None)) \
-                is not None
-                for r in res))
+                (em["@graph"][1]["identifier"] == ds.id
+                 for em in extracted_metadata)
+            ))
+
         processed_extractors.append(extractor_ep.name)
     assert "metalad_core" in processed_extractors, \
         "Should have managed to find at least the core extractor extractor"
@@ -86,30 +105,30 @@ def check_api(annex, path):
             " to load:\n%s" % ("\n".join(skipped_extractors)))
 
 
-@known_failure
 def test_api_git():
     # should tolerate both pure git and annex repos
     yield check_api, False
 
 
-@known_failure
 def test_api_annex():
     yield check_api, True
 
 
-@known_failure
 @with_tempfile(mkdir=True)
 def test_plainest(path):
+
     # blow on nothing
     assert_raises(
         ValueError,
-        meta_extract, dataset=path, sources=['metalad_core'])
+        meta_extract, dataset=path, extractorname='metalad_core')
+
     r = GitRepo(path, create=True)
     # proper error, no crash, when there is the thinnest of all traces
     # of a dataset: but nothing to describe
     assert_result_count(
         meta_extract(
             dataset=r.path,
+            extractorname='metalad_core',
             on_failure='ignore',
         ),
         1,
@@ -127,7 +146,7 @@ def test_plainest(path):
     assert_result_count(
         meta_extract(
             dataset=ds.path,
-            sources=['metalad_core'],
+            extractorname='metalad_core',
             on_failure='ignore',
         ),
         1,
@@ -138,7 +157,7 @@ def test_plainest(path):
     )
 
 
-@known_failure
+@known_failure_windows
 @with_tempfile
 @with_tempfile
 def test_report(path, orig):
@@ -146,10 +165,10 @@ def test_report(path, orig):
     # now clone to a new place to ensure no content is present
     ds = install(source=origds.path, path=path)
     # only dataset-global metadata
-    res = meta_extract(dataset=ds, process_type='dataset')
+    res = meta_extract(dataset=ds, extractorname='metalad_core')
     assert_result_count(res, 1)
     core_dsmeta = _get_dsmeta_from_core_metadata(
-        res[0]['metadata']['metalad_core']
+        res[0]['metadata_record']['extracted_metadata']
     )
     assert_in(
             {'@type': 'Dataset',
@@ -162,27 +181,14 @@ def test_report(path, orig):
         'contentbytesize',
         core_dsmeta
     )
-    res = meta_extract(dataset=ds, process_type='content')
+    res = meta_extract(dataset=ds,
+                       extractorname='metalad_annex',
+                       path="file.dat")
     assert(any(
-        dict(tag=['one', 'two']) == r['metadata'].get('metalad_annex', None)
+        dict(tag=['one', 'two']) == r['metadata_record']['extracted_metadata']
         for r in res
     ))
     # we have a report on file(s)
     assert(len(res) > 0)
     # but no subdataset reports
     assert_result_count(res, 0, type='dataset')
-    content_size = sum(
-        (_get_dsmeta_from_core_metadata(
-            r['metadata']['metalad_core'])
-         if r['type'] == 'dataset'
-         else r['metadata']['metalad_core'])['contentbytesize'] for r in res)
-    # and now all together
-    res = meta_extract(dataset=ds, process_type='all')
-    # got a content size report that sums up all individual sizes
-    eq_(
-        (_get_dsmeta_from_core_metadata(
-            res[0]['metadata']['metalad_core'])
-         if res[0]['type'] == 'dataset'
-         else res[0]['metadata']['metalad_core'])['contentbytesize'],
-        content_size
-    )

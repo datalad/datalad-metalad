@@ -18,13 +18,14 @@ from datalad.api import (
     meta_extract,
 )
 from datalad.tests.utils import (
+    assert_equal,
     assert_result_count,
-    known_failure,
+    known_failure_windows,
     with_tempfile,
 )
 
 
-@known_failure
+@known_failure_windows
 @with_tempfile
 def test_annex_contentmeta(path):
     ds = Dataset(path).create()
@@ -46,6 +47,8 @@ def test_annex_contentmeta(path):
         path=text_type(mfile_path),
         type='file',
         status='ok',
-        metadata={'metalad_annex': {'tag': 'mytag', 'fancy': 'this?'}},
-        action='meta_extract'
+        action='meta_extract')
+    assert_equal(
+        res[0]['metadata_record']['extracted_metadata'],
+        {'tag': 'mytag', 'fancy': 'this?'}
     )
