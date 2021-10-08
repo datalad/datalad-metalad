@@ -152,7 +152,6 @@ install:
 
 
 build_script:
-  - python -m pip install -r requirements-devel.txt
   - python -m pip install .
 
 
