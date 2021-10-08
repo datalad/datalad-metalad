@@ -12,16 +12,18 @@ from six import text_type
 
 from datalad.distribution.dataset import Dataset
 from datalad.tests.utils import (
-    with_tree,
-    eq_,
-    neq_,
-    assert_result_count,
     assert_in,
     assert_not_in,
     assert_repo_status,
+    assert_result_count,
+    known_failure_windows,
+    eq_,
+    neq_,
+    with_tree,
 )
 
 
+@known_failure_windows
 @with_tree({'existing_file': 'some_content'})
 def test_custom_dsmeta(path):
     ds = Dataset(path).create(force=True)
