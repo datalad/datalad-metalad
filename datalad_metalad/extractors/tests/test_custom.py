@@ -11,24 +11,16 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-# API commands needed
-from datalad.api import (
-    create,
-    save,
-    meta_dump,
-    meta_aggregate,
-)
 from datalad.tests.utils import (
-    with_tree,
-    eq_,
-    assert_status,
-    assert_result_count,
-    assert_in,
-    assert_not_in,
     assert_repo_status,
-    known_failure,
+    assert_result_count,
+    assert_status,
+    eq_,
+    known_failure_windows,
+    with_tree,
 )
 from simplejson import dumps as jsondumps
+
 
 # some metadata to play with, taken from the examples of the google dataset
 # search
@@ -90,7 +82,6 @@ testmeta = {
 }
 
 
-@known_failure
 @with_tree(
     tree={
         '.metadata': {
@@ -103,16 +94,13 @@ def test_custom_dsmeta(path):
     sample_jsonld_.update({'@id': ds.id})
     # enable custom extractor
     # use default location
-    ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
     ds.save()
     assert_repo_status(ds.path)
-    res = ds.meta_aggregate()
+    res = ds.meta_extract(extractorname='metalad_custom')
     assert_status('ok', res)
-    res = ds.meta_dump(reporton='datasets')
     assert_result_count(res, 1)
-    dsmeta = res[0]['metadata']
-    assert_in('metalad_custom', dsmeta)
-    eq_(sample_jsonld_, dsmeta['metalad_custom'])
+    dsmeta = res[0]
+    eq_(sample_jsonld_, dsmeta['metadata_record']['extracted_metadata'])
 
     # overwrite default source location within something non-exiting
     # extraction does not blow up, but no metadata is reported
@@ -121,13 +109,7 @@ def test_custom_dsmeta(path):
         'nothere',
         where='dataset')
     ds.save()
-    # we could argue that any config change should lead
-    # to a reaggregation automatically, but that would mean
-    # that we are willing to pay a hefty performance price
-    # in many situation that do not need re-aggregation
-    res = ds.meta_aggregate(
-        force='fromscratch',
-        on_failure='ignore')
+    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
     assert_result_count(
         res, 1, action='meta_extract', type='dataset', status='impossible',
         path=ds.path,
@@ -135,10 +117,7 @@ def test_custom_dsmeta(path):
             'configured custom metadata source is not available in %s: %s',
             ds, 'nothere'),
     )
-
-    res = ds.meta_dump(reporton='datasets')
-    assert_result_count(res, 1)
-    eq_(res[0]['metadata'].get('metalad_custom', {}), {})
+    eq_(res[0].get('metalad_record', {}), {})
 
     # overwrite default source location within something existing
     ds.config.set(
@@ -147,10 +126,9 @@ def test_custom_dsmeta(path):
         'down/customloc',
         where='dataset')
     ds.save()
-    ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_dump(reporton='datasets')
+    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
     assert_result_count(res, 1)
-    eq_(testmeta, res[0]['metadata']['metalad_custom'])
+    eq_(testmeta, res[0]['metadata_record']['extracted_metadata'])
 
     # multiple source locations
     ds.config.add(
@@ -159,17 +137,16 @@ def test_custom_dsmeta(path):
         '.metadata/dataset.json',
         where='dataset')
     ds.save()
-    ds.meta_aggregate(force='fromscratch')
-    res = ds.meta_dump(reporton='datasets')
+    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
     assert_result_count(res, 1)
     eq_(
         # merge order: testmeta <- sample_jsonld
         dict(testmeta, **sample_jsonld),
-        res[0]['metadata']['metalad_custom']
+        res[0]['metadata_record']['extracted_metadata']
     )
 
 
-@known_failure
+@known_failure_windows
 @with_tree(
     tree={
         'sub': {
@@ -179,29 +156,26 @@ def test_custom_dsmeta(path):
     })
 def test_custom_contentmeta(path):
     ds = Dataset(path).create(force=True)
-    ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
     # use custom location
     ds.config.add('datalad.metadata.custom-content-source',
                   '{freldir}/_{fname}.dl.json',
                   where='dataset')
     ds.save()
-    res = ds.meta_extract(sources=['metalad_custom'], process_type='content')
+    res = ds.meta_extract(extractorname='metalad_custom', path="sub/one")
+    print(res)
     assert_result_count(
         res, 1,
         path=text_type(ds.pathobj / 'sub' / 'one'),
         type='file',
         status='ok',
-        metadata={
-            'metalad_custom': {
-                'some': 'thing',
-                "@id": "datalad:MD5E-s1--c4ca4238a0b923820dcc509a6f75849b",
-            }
-        },
-        action='meta_extract'
-    )
+        action='meta_extract')
+
+    eq_(res[0]["metadata_record"]["extracted_metadata"], {
+            'some': 'thing',
+            "@id": "datalad:MD5E-s1--c4ca4238a0b923820dcc509a6f75849b",
+    })
 
 
-@known_failure
 @with_tree(
     tree={
         '.metadata': {
@@ -217,10 +191,10 @@ def test_custom_contentmeta(path):
     })
 def test_custom_content_broken(path):
     ds = Dataset(path).create(force=True)
-    ds.config.add('datalad.metadata.nativetype', 'metalad_custom', where='dataset')
     ds.save()
-    res = ds.meta_extract(sources=['metalad_custom'], process_type='content',
-                                  on_failure='ignore')
+    res = ds.meta_extract(extractorname='metalad_custom',
+                          path='sub/one',
+                          on_failure='ignore')
     assert_result_count(res, 1)
     assert_result_count(
         res, 1,

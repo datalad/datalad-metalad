@@ -11,26 +11,19 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-# API commands needed
-from datalad.api import (
-    create,
-    save,
-    meta_extract,
-)
 from datalad.tests.utils import (
-    with_tree,
-    eq_,
-    neq_,
-    assert_status,
-    assert_result_count,
     assert_in,
     assert_not_in,
     assert_repo_status,
-    known_failure,
+    assert_result_count,
+    known_failure_windows,
+    eq_,
+    neq_,
+    with_tree,
 )
 
 
-@known_failure
+@known_failure_windows
 @with_tree({'existing_file': 'some_content'})
 def test_custom_dsmeta(path):
     ds = Dataset(path).create(force=True)
@@ -42,22 +35,24 @@ def test_custom_dsmeta(path):
     ds.save()
     assert_repo_status(ds.path)
     # run when there are no run records
-    res = ds.meta_extract(sources=['metalad_runprov'])
+    res = ds.meta_extract(extractorname='metalad_runprov')
     # no report
     assert_result_count(res, 0)
 
     # now let's have a record
     ds.run("cd .> dummy0", message="pristine")
-    res = ds.meta_extract(sources=['metalad_runprov'])
-    # we get two reports: one for the dataset, one for the generated file
-    assert_result_count(res, 2)
+    res = ds.meta_extract(extractorname='metalad_runprov')
     assert_result_count(res, 1, type='dataset', path=ds.path)
-    assert_result_count(
-        res, 1, type='file', path=text_type(ds.pathobj / 'dummy0'))
+    res = ds.meta_extract(extractorname='metalad_runprov', path='existing_file')
+    assert_result_count(res, 0)
+    res = ds.meta_extract(extractorname='metalad_runprov', path='dummy0')
+    assert_result_count(res, 1)
+    eq_(res[0]["type"], "file")
+    eq_(res[0]["path"], text_type(ds.pathobj / 'dummy0'))
     for r in res:
         # we have something from the extractor
-        neq_(r.get('metadata', {}).get('metalad_runprov', None), None)
-        md = r['metadata']['metalad_runprov']
+        md = r.get('metadata_record', {}).get('extracted_metadata', None)
+        neq_(md, None)
         assert(isinstance(md, dict))
         if r['type'] == 'file':
             # simple report on a file, any non-file reports must come with
@@ -77,13 +72,12 @@ def test_custom_dsmeta(path):
             assert(any(n['@type'] == 'agent' for n in nodes))
 
     # switching works in standard fashion
-    dsres = ds.meta_extract(
-        sources=['metalad_runprov'], process_type='dataset')
+    dsres = ds.meta_extract(extractorname='metalad_runprov')
     assert_result_count(dsres, 1)
     assert_result_count(
         dsres, 1, type='dataset', path=ds.path)
     fileres = ds.meta_extract(
-        sources=['metalad_runprov'], process_type='content')
+        extractorname='metalad_runprov', path='dummy0')
     assert_result_count(fileres, 1)
     assert_result_count(
         fileres, 1, type='file', path=text_type(ds.pathobj / 'dummy0'))
@@ -93,20 +87,24 @@ def test_custom_dsmeta(path):
     # ATM we are not doing anything with the information in the sidecar
     # for fear of leakage
     ds.run("cd .> dummy_side", message="sidecar arg", sidecar=True)
-    res = ds.meta_extract(sources=['metalad_runprov'])
-    assert_result_count(res, 3)
+    res = ds.meta_extract(extractorname='metalad_runprov')
+    assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset', path=ds.path)
-    assert_result_count(
-        res, 2, type='file')
+    res = ds.meta_extract(extractorname='metalad_runprov', path='dummy0')
+    assert_result_count(res, 1)
+    eq_(res[0]['type'], 'file')
+    res = ds.meta_extract(extractorname='metalad_runprov', path='dummy_side')
+    assert_result_count(res, 1)
+    eq_(res[0]['type'], 'file')
     assert_result_count(
         res, 1, type='file', path=text_type(ds.pathobj / 'dummy_side'))
 
     # check that it survives a partial report (no _core metadata extracted)
     # for JSON-LD reporting
-    res = ds.meta_extract(sources=['metalad_runprov'], format='jsonld')
+    res = ds.meta_extract(extractorname='metalad_runprov')
     # only a single results
     assert_result_count(res, 1)
     # 2 actvities, 1 agent, 2 generated entities
-    eq_(len(res[0]['metadata']['@graph']), 5)
+    eq_(len(res[0]['metadata_record']['extracted_metadata']['@graph']), 3)
     # all properly ID'ed
-    assert(all('@id' in d for d in res[0]['metadata']['@graph']))
+    assert(all('@id' in d for d in res[0]['metadata_record']['extracted_metadata']['@graph']))
