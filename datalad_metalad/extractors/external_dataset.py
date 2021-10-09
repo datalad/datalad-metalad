@@ -44,7 +44,7 @@ class ExternalDatasetExtractor(DatasetMetadataExtractor):
 
         self.extractor_id = (
             UUID(provided_extractor_id)
-            if self.extractor_id is not None
+            if provided_extractor_id is not None
             else None)
 
     def _get_args(self) -> List[str]:
