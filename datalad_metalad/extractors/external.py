@@ -38,7 +38,7 @@ class ExternalExtractor:
         provided_output_category_number = self.parameter.get("data-output-category", None)
 
         self.data_output_category = (
-            DataOutputCategory(int(provided_output_category_number))
+            DataOutputCategory[provided_output_category_number]
             if provided_output_category_number is not None
             else None
         )

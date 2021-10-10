@@ -542,7 +542,7 @@ def test_external_extractor(ds_path):
         dataset=ds,
         path="--",
         extractorargs=[
-            "data-output-category", "3",
+            "data-output-category", "IMMEDIATE",
             "command", "python",
             "0", "-c",
             "1", "print('abc')"])
@@ -555,10 +555,35 @@ def test_external_extractor(ds_path):
         dataset=ds,
         path="sub/one",
         extractorargs=[
-            "data-output-category", "3",
+            "data-output-category", "IMMEDIATE",
             "command", "python",
             "0", "-c",
             "1", "import sys; print('True')"])
     eq_(len(result), 1)
     eq_(result[0]["status"], "ok")
     eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
+
+
+@with_tree(meta_tree)
+def test_external_extractor_categories(ds_path):
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    for path, extractor_name in (("--", "metalad_external_dataset"), ("sub/one", "metalad_external_file")):
+        for output_category in ("DIRECTORY", "FILE"):
+            assert_raises(
+                NotImplementedError,
+                meta_extract,
+                extractorname=extractor_name,
+                dataset=ds,
+                path=path,
+                extractorargs=[
+                    "data-output-category", output_category,
+                    "command", "python",
+                    "0", "-c",
+                    "1", "print('True')"])
