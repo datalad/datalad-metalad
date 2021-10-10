@@ -485,3 +485,80 @@ def test_get_context(ds_path):
         stdout=subprocess.PIPE).stdout.decode().strip()
     eq_(len(result), 1)
     eq_(result[0]["context"]["dataset_version"], version)
+
+
+@with_tree(meta_tree)
+def test_extractor_parameter_handling(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_dataset",
+            dataset=ds,
+            path="--",
+            extractorargs=["k0", "v0", "k1", "v1"]
+        )
+        eq_(fe.call_count, 0)
+        eq_(de.call_count, 1)
+        eq_(de.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+            patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            path="sub/one",
+            extractorargs=["k0", "v0", "k1", "v1"]
+        )
+        eq_(de.call_count, 0)
+        eq_(fe.call_count, 1)
+        eq_(fe.call_args[0][0].file_tree_path, MetadataPath("sub/one"))
+        eq_(fe.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+
+
+@with_tree(meta_tree)
+def test_external_extractor(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    result = meta_extract(
+        extractorname="metalad_external_dataset",
+        dataset=ds,
+        path="--",
+        extractorargs=[
+            "data-output-category", "3",
+            "command", "python",
+            "0", "-c",
+            "1", "print('abc')"])
+    eq_(len(result), 1)
+    eq_(result[0]["status"], "ok")
+    eq_(result[0]["metadata_record"]["extracted_metadata"], "abc")
+
+    result = meta_extract(
+        extractorname="metalad_external_file",
+        dataset=ds,
+        path="sub/one",
+        extractorargs=[
+            "data-output-category", "3",
+            "command", "python",
+            "0", "-c",
+            "1", "import sys; print('True')"])
+    eq_(len(result), 1)
+    eq_(result[0]["status"], "ok")
+    eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
