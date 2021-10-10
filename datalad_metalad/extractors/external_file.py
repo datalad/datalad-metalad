@@ -7,21 +7,15 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata extractor for files stored in Datalad's own core storage"""
-import json
 import logging
 from typing import (
     Any,
     Dict,
-    IO,
-    Optional,
-    Union,
 )
 
 from datalad.distribution.dataset import Dataset
 
 from .base import (
-    DataOutputCategory,
-    ExtractorResult,
     FileInfo,
     FileMetadataExtractor,
 )
@@ -31,7 +25,7 @@ from .external import ExternalExtractor
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_external_file')
 
 
-class ExternalFileExtractor(FileMetadataExtractor, ExternalExtractor):
+class ExternalFileExtractor(ExternalExtractor, FileMetadataExtractor):
     def __init__(self,
                  dataset: Dataset,
                  ref_commit: str,
@@ -54,14 +48,3 @@ class ExternalFileExtractor(FileMetadataExtractor, ExternalExtractor):
                     f"--is-content-required, got {required}")
             self.content_required = required == "True"
         return self.content_required
-
-    def get_data_output_category(self) -> DataOutputCategory:
-        return ExternalExtractor.get_data_output_category(self)
-
-    def extract(self,
-                output_location: Optional[Union[IO, str]] = None
-                ) -> ExtractorResult:
-        return ExternalExtractor.extract(self, output_location)
-
-    def get_version(self) -> str:
-        return ExternalExtractor.get_version(self)

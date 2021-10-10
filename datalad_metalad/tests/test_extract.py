@@ -360,7 +360,7 @@ def test_extra_parameter_recognition(ds_path):
         meta_extract(
             extractorname="metalad_core_file",
             dataset=ds,
-            path="++",
+            path="--",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
         )
         eq_(fe.call_count, 0)
@@ -537,31 +537,19 @@ def test_external_extractor(ds_path):
     ds.save()
     assert_repo_status(ds.path)
 
-    result = meta_extract(
-        extractorname="metalad_external_dataset",
-        dataset=ds,
-        path="--",
-        extractorargs=[
-            "data-output-category", "IMMEDIATE",
-            "command", "python",
-            "0", "-c",
-            "1", "print('abc')"])
-    eq_(len(result), 1)
-    eq_(result[0]["status"], "ok")
-    eq_(result[0]["metadata_record"]["extracted_metadata"], "abc")
-
-    result = meta_extract(
-        extractorname="metalad_external_file",
-        dataset=ds,
-        path="sub/one",
-        extractorargs=[
-            "data-output-category", "IMMEDIATE",
-            "command", "python",
-            "0", "-c",
-            "1", "import sys; print('True')"])
-    eq_(len(result), 1)
-    eq_(result[0]["status"], "ok")
-    eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
+    for path, extractor_name in (("--", "metalad_external_dataset"), ("sub/one", "metalad_external_file")):
+        result = meta_extract(
+            extractorname=extractor_name,
+            dataset=ds,
+            path=path,
+            extractorargs=[
+                "data-output-category", "IMMEDIATE",
+                "command", "python",
+                "0", "-c",
+                "1", "print('True')"])
+        eq_(len(result), 1)
+        eq_(result[0]["status"], "ok")
+        eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
 
 
 @with_tree(meta_tree)
