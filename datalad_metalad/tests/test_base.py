@@ -10,7 +10,7 @@
 """Test metadata """
 
 from datalad.distribution.dataset import Dataset
-from .. import get_metadata_type,
+from .. import get_metadata_type
 from datalad.tests.utils import (
     with_tempfile,
     eq_,
