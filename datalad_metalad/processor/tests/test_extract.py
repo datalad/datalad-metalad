@@ -8,17 +8,11 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 import tempfile
-from itertools import chain
 from pathlib import Path
 from typing import cast
 from uuid import UUID
 
-from datalad.api import meta_conduct
-from datalad.tests.utils import (
-    assert_equal,
-    assert_true,
-    eq_,
-)
+from datalad.tests.utils import eq_
 
 from ..extract import (
     MetadataExtractor,
