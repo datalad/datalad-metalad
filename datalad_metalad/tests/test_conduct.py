@@ -15,14 +15,14 @@ from pathlib import Path
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
     assert_equal,
-    eq_
+    eq_,
 )
 
 from .utils import create_dataset
 from ..pipelineelement import (
     PipelineElement,
     PipelineResult,
-    ResultState
+    ResultState,
 )
 from ..processor.base import Processor
 from ..provider.base import Provider
@@ -41,6 +41,25 @@ test_tree = {
     }
 }
 
+extract_pipeline = {
+    "provider": {
+        "name": "provider",
+        "module": "datalad_metalad.provider.datasettraverse",
+        "class": "DatasetTraverser",
+        "arguments": [],
+        "keyword_arguments": {}
+    },
+    "processors": [
+        {
+            "name": "testproc1",
+            "module": "datalad_metalad.processor.extract",
+            "class": "MetadataExtractor",
+            "arguments": [],
+            "keyword_arguments": {}
+        }
+    ]
+}
+
 simple_pipeline = {
     "provider": {
         "name": "testprovider",
@@ -51,26 +70,13 @@ simple_pipeline = {
     },
     "processors": [
         {
-            "name": "testproc1",
-            "module": "datalad_metalad.tests.test_conduct",
-            "class": "PathEater",
-            "arguments": [],
-            "keyword_arguments": {}
-        },
-        {
-            "name": "testproc2",
-            "module": "datalad_metalad.tests.test_conduct",
-            "class": "PathEater",
-            "arguments": [],
-            "keyword_arguments": {}
-        },
-        {
-            "name": "testproc3",
+            "name": f"testproc{index}",
             "module": "datalad_metalad.tests.test_conduct",
             "class": "PathEater",
             "arguments": [],
             "keyword_arguments": {}
         }
+        for index in range(3)
     ]
 }
 
@@ -109,7 +115,6 @@ class PathEater(Processor):
 
 
 def test_simple_pipeline():
-
     pipeline_results = list(
         meta_conduct(
             arguments=[f"testprovider:a/b/c:/d/e/f:/a/b/x:a/b/y"],
@@ -119,26 +124,6 @@ def test_simple_pipeline():
 
 
 def test_extract():
-
-    extract_pipeline = {
-        "provider": {
-            "name": "provider",
-            "module": "datalad_metalad.provider.datasettraverse",
-            "class": "DatasetTraverser",
-            "arguments": [],
-            "keyword_arguments": {}
-        },
-        "processors": [
-            {
-                "name": "testproc1",
-                "module": "datalad_metalad.processor.extract",
-                "class": "MetadataExtractor",
-                "arguments": [],
-                "keyword_arguments": {}
-            }
-        ]
-    }
-
     import logging
     logging.basicConfig(level=logging.DEBUG)
 
