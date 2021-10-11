@@ -44,6 +44,11 @@ class PipelineElement:
             self._result[result_type] = []
         self._result[result_type].append(result)
 
+    def add_result_list(self, result_type: str, results: List[PipelineResult]):
+        if result_type not in self._result:
+            self._result[result_type] = []
+        self._result[result_type].extend(results)
+
     def set_result(self, result_type: str, result_list: List[PipelineResult]):
         self._result[result_type] = result_list
 
