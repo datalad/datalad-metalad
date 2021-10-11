@@ -1,0 +1,3 @@
+ignore:
+  - "datalad_metalad/_version.py"
+  - "versioneer.py"
