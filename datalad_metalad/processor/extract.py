@@ -17,7 +17,7 @@ from .base import Processor
 from ..pipelineelement import (
     PipelineElement,
     PipelineResult,
-    ResultState
+    ResultState,
 )
 from ..provider.datasettraverse import DatasetTraverseResult
 
@@ -48,7 +48,9 @@ class MetadataExtractor(Processor):
 
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
 
-        dataset_traverse_record = cast(DatasetTraverseResult, pipeline_element.get_result("dataset-traversal-record")[0])
+        dataset_traverse_record = cast(
+            DatasetTraverseResult,
+            pipeline_element.get_result("dataset-traversal-record")[0])
         logger.debug(f"MetadataExtractor process: {dataset_traverse_record}")
 
         if dataset_traverse_record.type != self.extractor_type:
@@ -57,7 +59,10 @@ class MetadataExtractor(Processor):
                 f"{dataset_traverse_record.type}")
             return pipeline_element
 
-        dataset_path = dataset_traverse_record.fs_base_path / dataset_traverse_record.dataset_path
+        dataset_path = (
+                dataset_traverse_record.fs_base_path
+                / dataset_traverse_record.dataset_path
+        )
         object_type = dataset_traverse_record.type
 
         if object_type == "File":

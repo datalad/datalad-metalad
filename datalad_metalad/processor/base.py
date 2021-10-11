@@ -1,5 +1,8 @@
 import abc
-from typing import Any, Tuple
+from typing import (
+    Any,
+    Tuple,
+)
 
 from ..pipelineelement import PipelineElement
 

@@ -64,8 +64,8 @@ class MetadataAdder(Processor):
                 })
             else:
                 metadata_repository = (
-                        dataset_traversal_record.fs_base_path
-                        / dataset_traversal_record.dataset_path
+                    dataset_traversal_record.fs_base_path
+                    / dataset_traversal_record.dataset_path
                 )
                 additional_values = None
 

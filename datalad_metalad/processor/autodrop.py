@@ -15,10 +15,15 @@ class AutoDrop(Processor):
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
         if pipeline_element.get_result("auto_get") is not None:
             for traverse_result in pipeline_element.get_result("dataset-traversal-record"):
-                fs_dataset_path = traverse_result.fs_base_path / traverse_result.dataset_path
+                fs_dataset_path = (
+                    traverse_result.fs_base_path
+                    / traverse_result.dataset_path
+                )
                 dataset = check_dataset(str(fs_dataset_path), "auto_get")
                 path = traverse_result.path
-                logger.debug(f"AutoDrop: automatically dropping {path} in dataset {dataset.path}")
+                logger.debug(
+                    f"AutoDrop: automatically dropping {path} "
+                    f"in dataset {dataset.path}")
                 dataset.drop(str(path))
         return pipeline_element
 
