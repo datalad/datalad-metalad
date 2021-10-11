@@ -203,7 +203,10 @@ class Extract(Interface):
         extractorargs=Parameter(
             args=("extractorargs",),
             metavar="EXTRACTOR_ARGUMENTS",
-            doc="""Extractor arguments""",
+            doc="""Extractor arguments given as string arguments to the
+            extractor. If dataset level extraction is performed, i.e. no path
+            is required, specify '--' as path to prevent interpretation of
+            the first extractor argument as path.""",
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -221,7 +224,7 @@ class Extract(Interface):
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs
-        path = None if path == "++" else path
+        path = None if path == "--" else path
         context = (
             {}
             if context is None

@@ -360,7 +360,7 @@ def test_extra_parameter_recognition(ds_path):
         meta_extract(
             extractorname="metalad_core_file",
             dataset=ds,
-            path="++",
+            path="--",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
         )
         eq_(fe.call_count, 0)
@@ -485,3 +485,93 @@ def test_get_context(ds_path):
         stdout=subprocess.PIPE).stdout.decode().strip()
     eq_(len(result), 1)
     eq_(result[0]["context"]["dataset_version"], version)
+
+
+@with_tree(meta_tree)
+def test_extractor_parameter_handling(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+         patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_dataset",
+            dataset=ds,
+            path="--",
+            extractorargs=["k0", "v0", "k1", "v1"]
+        )
+        eq_(fe.call_count, 0)
+        eq_(de.call_count, 1)
+        eq_(de.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+
+    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
+            patch("datalad_metalad.extract.do_dataset_extraction") as de:
+
+        meta_extract(
+            extractorname="metalad_core_file",
+            dataset=ds,
+            path="sub/one",
+            extractorargs=["k0", "v0", "k1", "v1"]
+        )
+        eq_(de.call_count, 0)
+        eq_(fe.call_count, 1)
+        eq_(fe.call_args[0][0].file_tree_path, MetadataPath("sub/one"))
+        eq_(fe.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+
+
+@with_tree(meta_tree)
+def test_external_extractor(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    for path, extractor_name in (("--", "metalad_external_dataset"), ("sub/one", "metalad_external_file")):
+        result = meta_extract(
+            extractorname=extractor_name,
+            dataset=ds,
+            path=path,
+            extractorargs=[
+                "data-output-category", "IMMEDIATE",
+                "command", "python",
+                "0", "-c",
+                "1", "print('True')"])
+        eq_(len(result), 1)
+        eq_(result[0]["status"], "ok")
+        eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
+
+
+@with_tree(meta_tree)
+def test_external_extractor_categories(ds_path):
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    for path, extractor_name in (("--", "metalad_external_dataset"), ("sub/one", "metalad_external_file")):
+        for output_category in ("DIRECTORY", "FILE"):
+            assert_raises(
+                NotImplementedError,
+                meta_extract,
+                extractorname=extractor_name,
+                dataset=ds,
+                path=path,
+                extractorargs=[
+                    "data-output-category", output_category,
+                    "command", "python",
+                    "0", "-c",
+                    "1", "print('True')"])
