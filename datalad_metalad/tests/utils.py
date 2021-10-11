@@ -1,11 +1,20 @@
 from pathlib import Path
-from typing import Optional
+from typing import (
+    List,
+    Optional,
+    Union,
+)
 from uuid import UUID
 
-from dataladmetadatamodel.metadatapath import MetadataPath
-
-from datalad.api import meta_add
+from datalad.api import (
+    create,
+    meta_add,
+)
+from datalad.distribution.dataset import Dataset
 from datalad.support.gitrepo import GitRepo
+from datalad.tests.utils import assert_repo_status
+
+from dataladmetadatamodel.metadatapath import MetadataPath
 
 
 def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
@@ -22,6 +31,25 @@ def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
         f'\tid = {dataset_id}')
 
     return git_repo
+
+
+def create_dataset_proper(directory: Union[str, Path],
+                          sub_dataset_names: Optional[List[Union[str, Path]]] = None
+                          ) -> Dataset:
+
+    directory = Path(directory)
+    ds = Dataset(directory).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    sub_dataset_names = sub_dataset_names or []
+    for sub_dataset_name in sub_dataset_names:
+        create(directory/sub_dataset_name, dataset=directory)
+    return ds
 
 
 common_elements = {

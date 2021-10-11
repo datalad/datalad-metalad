@@ -5,7 +5,11 @@ import enum
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
+from typing import (
+    cast,
+    Dict,
+    Optional,
+)
 
 from datalad.api import meta_extract
 
@@ -13,7 +17,7 @@ from .base import Processor
 from ..pipelineelement import (
     PipelineElement,
     PipelineResult,
-    ResultState
+    ResultState,
 )
 from ..provider.datasettraverse import DatasetTraverseResult
 
@@ -44,8 +48,10 @@ class MetadataExtractor(Processor):
 
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
 
-        dataset_traverse_record: DatasetTraverseResult = pipeline_element.get_result("dataset-traversal-record")[0]
-        logger.debug(f"MetadataExtractor called with: {dataset_traverse_record}")
+        dataset_traverse_record = cast(
+            DatasetTraverseResult,
+            pipeline_element.get_result("dataset-traversal-record")[0])
+        logger.debug(f"MetadataExtractor process: {dataset_traverse_record}")
 
         if dataset_traverse_record.type != self.extractor_type:
             logger.debug(
@@ -53,7 +59,10 @@ class MetadataExtractor(Processor):
                 f"{dataset_traverse_record.type}")
             return pipeline_element
 
-        dataset_path = dataset_traverse_record.fs_base_path / dataset_traverse_record.dataset_path
+        dataset_path = (
+                dataset_traverse_record.fs_base_path
+                / dataset_traverse_record.dataset_path
+        )
         object_type = dataset_traverse_record.type
 
         if object_type == "File":
@@ -72,7 +81,7 @@ class MetadataExtractor(Processor):
             logger.warning(f"ignoring unknown type {object_type}")
             return pipeline_element
 
-        result = []
+        results = []
         for extract_result in meta_extract(**kwargs):
 
             path = str(dataset_path / extract_result.get("path", ""))
@@ -85,7 +94,7 @@ class MetadataExtractor(Processor):
             else:
                 md_extractor_result = MetadataExtractorResult(ResultState.FAILURE, path)
                 md_extractor_result.base_error = extract_result
-            result.append(md_extractor_result)
+            results.append(md_extractor_result)
 
-        pipeline_element.set_result("metadata", result)
+        pipeline_element.add_result_list("metadata", results)
         return pipeline_element
