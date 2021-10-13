@@ -219,7 +219,7 @@ def process_parallel(executor,
                 status="ok",
                 path=str(path),
                 logger=lgr,
-                pipeline_element=pipeline_element)
+                pipeline_element=pipeline_element.to_json())
             continue
 
         lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_element}")
@@ -249,7 +249,7 @@ def process_parallel(executor,
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_element=pipeline_element)
+                            pipeline_element=pipeline_element.to_json())
                 else:
                     lgr.debug(
                         f"Starting processor[{next_index}]"
@@ -296,7 +296,7 @@ def process_parallel(executor,
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_element=pipeline_element)
+                            pipeline_element=pipeline_element.to_json())
                 else:
                     lgr.debug(
                         f"Handing pipeline element {pipeline_element} to"
@@ -365,7 +365,7 @@ def process_downstream(pipeline_element: PipelineElement,
             status="ok",
             path=str(path),
             logger=lgr,
-            pipeline_element=pipeline_element)
+            pipeline_element=pipeline_element.to_json())
 
         lgr.debug(
             f"Pipeline finished, returning datalad result {datalad_result}")

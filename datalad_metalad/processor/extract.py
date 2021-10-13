@@ -36,6 +36,13 @@ class MetadataExtractorResult(PipelineResult):
     context: Optional[Dict] = None
     metadata_record: Optional[Dict] = field(init=False)
 
+    def to_json(self) -> Dict:
+        return {
+            **super().to_json(),
+            "path": str(self.path),
+            "metadata_record": self.metadata_record
+        }
+
 
 class MetadataExtractor(Processor):
     def __init__(self,

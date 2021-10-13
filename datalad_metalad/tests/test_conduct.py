@@ -7,6 +7,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+import json
 import tempfile
 from dataclasses import dataclass
 from itertools import chain
@@ -155,6 +156,9 @@ def test_simple_pipeline():
             configuration=simple_pipeline))
 
     eq_(len(pipeline_results), 4)
+
+    # check for correct json encoding
+    assert_true(all(map(json.dumps, pipeline_results)))
 
 
 def test_extract():
