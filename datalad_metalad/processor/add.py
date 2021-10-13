@@ -26,6 +26,12 @@ logger = logging.getLogger("datalad.metadata.processor.add")
 class MetadataAddResult(PipelineResult):
     path: str
 
+    def to_json(self) -> Dict:
+        return {
+            **super().to_json(),
+            "path": str(self.path)
+        }
+
 
 class MetadataAdder(Processor):
     def __init__(self,

@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from enum import Enum
 from dataclasses import dataclass, field
@@ -23,6 +24,14 @@ class PipelineResult:
     def __post_init__(self):
         self.message = ""
         self.base_error = None
+
+    def to_json(self) -> Dict:
+        result = dict(state=self.state.name)
+        if self.base_error is not None:
+            result["error"] = self.base_error
+        if self.message:
+            result["message"] = self.message
+        return result
 
 
 class PipelineElement:
@@ -67,3 +76,18 @@ class PipelineElement:
             "state": self.state.name,
             "result": self._result
         })
+
+    def to_json(self) -> Dict:
+        json_obj = {
+            "state": self.state.name,
+            "result": {
+                key: [
+                    result.to_json()
+                    for result in value
+                ]
+                for key, value in self._result.items()
+                if key not in ("path",)
+            }
+        }
+        json_obj["result"]["path"] = str(self._result["path"])
+        return json_obj

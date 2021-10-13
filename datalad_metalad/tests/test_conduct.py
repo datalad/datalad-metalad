@@ -7,10 +7,12 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
+import json
 import tempfile
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
+from typing import Dict
 
 from datalad.api import meta_conduct
 from datalad.tests.utils import (
@@ -87,6 +89,12 @@ class TestResult(PipelineResult):
 class StringResult(PipelineResult):
     content: str
 
+    def to_json(self) -> Dict:
+        return {
+            **super().to_json(),
+            "content": self.content
+        }
+
 
 class TestTraverser(Provider):
     def __init__(self, path_spec: str):
@@ -156,6 +164,9 @@ def test_simple_pipeline():
 
     eq_(len(pipeline_results), 4)
 
+    # check for correct json encoding
+    assert_true(all(map(json.dumps, pipeline_results)))
+
 
 def test_extract():
     import logging
@@ -180,7 +191,7 @@ def test_extract():
 
         # Ensure that each pipeline element carries two metadata results,
         # one from each extractor in the pipeline definition.
-        assert_true(all(map(lambda e: len(e["pipeline_element"].get_result("metadata")) == 2, pipeline_results)))
+        assert_true(all(map(lambda e: len(e["pipeline_element"]["result"]["metadata"]) == 2, pipeline_results)))
 
 
 def test_multiple_adder():
@@ -220,7 +231,7 @@ def test_multiple_adder():
     result = pipeline_results[0]
     assert_equal(result["status"], "ok")
     pipeline_element = result["pipeline_element"]
-    adder_results = pipeline_element.get_result("adder-data")
+    adder_results = pipeline_element["result"]["adder-data"]
     assert_equal(len(adder_results), adder_count)
     for i in range(adder_count):
-        assert_equal(adder_results[i].content, f"content from adder {i}")
+        assert_equal(adder_results[i]["content"], f"content from adder {i}")
