@@ -23,6 +23,7 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_in,
     eq_,
+    known_failure_windows,
     with_tempfile,
     with_tree
 )
@@ -264,6 +265,7 @@ def test_legacy1_file_extraction_result(ds_path):
     eq_(extracted_metadata["contentbytesize"], 1)
 
 
+@known_failure_windows
 @with_tree(meta_tree)
 def test_legacy2_file_extraction_result(ds_path):
 
