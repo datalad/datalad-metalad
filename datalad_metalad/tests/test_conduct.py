@@ -113,6 +113,9 @@ class PathEater(Processor):
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
         for ttr in pipeline_element.get_result("test-traversal-record"):
             ttr.path = Path().joinpath(*(ttr.path.parts[1:]))
+            pipeline_element.add_result(
+                "path-eater",
+                TestResult(ResultState.SUCCESS, ttr.path))
         return pipeline_element
 
 
@@ -155,6 +158,14 @@ def test_simple_pipeline():
             configuration=simple_pipeline))
 
     eq_(len(pipeline_results), 4)
+    for result in pipeline_results:
+        path = result["path"]
+        if path.startswith("/"):
+            parts = path[1:].split("/")
+        else:
+            parts = path.split("/")
+        eq_(len(parts),
+            len(result["pipeline_element"].get_result("path-eater")))
 
 
 def test_extract():
