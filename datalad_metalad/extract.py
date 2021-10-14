@@ -41,6 +41,7 @@ from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
 from datalad.metadata.extractors.base import BaseMetadataExtractor
+from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
 from .extractors.base import (
@@ -697,38 +698,35 @@ def legacy_extract_dataset(ep: ExtractionParameter) -> Iterable[dict]:
             f"unknown extractor class: {type(ep.extractor_class).__name__}")
 
 
-def get_subdatasets_info(ep: ExtractionParameter) -> List[Dict]:
-    repo = ep.source_dataset.repo
-    for submodule_info in repo.get_submodules():
-        print(submodule_info)
-        # path, gitshasum
-    return []
+def annex_status(annex_repo, paths=None):
+    info = annex_repo.get_content_annexinfo(
+        paths=paths,
+        eval_availability=False,
+        init=annex_repo.get_content_annexinfo(
+            paths=paths,
+            ref="HEAD",
+            eval_availability=False,
+            init=annex_repo.status(
+                paths=paths,
+                untracked="no",
+                eval_submodule_state="full")
+        )
+    )
+    annex_repo._mark_content_availability(info)
+    return info
 
 
-def legacy_get_file_info(path: Path) -> Tuple[str, int, Optional[str]]:
-    annex_key = None
-    if path.is_symlink():
-        file_type = "file"
-        target_path = path.resolve().absolute()
-        annex_key = target_path.parts[-1]
-        if path.exists():
-            file_size = path.stat().st_size
-        else:
-            try:
-                file_size = int(re.match(
-                    ".*/[^/]*-s([0-9]*)-",
-                    str(target_path)).group(1))
-            except (IndexError, ValueError):
-                file_size = 0
-    elif path.is_dir():
-        file_type = "dir"
-        file_size = path.stat().st_size
-    elif path.is_file():
-        file_type = "file"
-        file_size = path.stat().st_size
-    else:
-        raise ValueError(f"cannot determine type and size of: {path}")
-    return file_type, file_size, annex_key
+def legacy_get_file_info(dataset: Dataset,
+                         path: Path
+                         ) -> Dict:
+    return {
+        "path": str(path),
+        **(
+            annex_status(dataset.repo, [path])[path]
+            if isinstance(dataset.repo, AnnexRepo)
+            else dataset.repo.status([path], untracked="no")[path]
+        )
+    }
 
 
 def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
@@ -739,24 +737,14 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
 
         file_path = ep.source_dataset.pathobj / ep.file_tree_path
         # Determine the file type:
-        file_type, file_size, key = legacy_get_file_info(file_path)
-        status = [{
-            "type": file_type,
-            "bytesize": file_size,
-            "key": key,
-            "path": str(file_path.absolute()),
-            "state": "clean",
-            "gitshasum": ep.source_dataset.repo.call_git(
-                args=["ls-files", "-s"],
-                files=[str(file_path)]).split()[1]
-        }]
         extractor = ep.extractor_class()
-        ensure_legacy_content_availability(ep, extractor, "content", status)
+        status = legacy_get_file_info(ep.source_dataset, file_path)
+        ensure_legacy_content_availability(ep, extractor, "content", [status])
 
         for result in extractor(ep.source_dataset,
                                 ep.source_dataset_version,
                                 "content",
-                                status):
+                                [status]):
 
             if result["status"] == "ok":
                 yield dict(
