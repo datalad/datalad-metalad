@@ -5,7 +5,10 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import (
+    cast,
+    Dict,
+)
 
 from datalad.api import meta_add
 
