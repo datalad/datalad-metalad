@@ -130,7 +130,7 @@ class DatasetTraverser(Provider):
                         DatasetTraverseResult(**{
                             "state": ResultState.SUCCESS,
                             "fs_base_path": self.fs_base_path,
-                            "type": "Dataset",
+                            "type": "dataset",
                             "path": element_path,
                             **self._get_dataset_result_part(dataset)
                         })
@@ -149,7 +149,7 @@ class DatasetTraverser(Provider):
                     lgr.debug(f"Ignoring excluded element {element_path}")
                     continue
 
-                if not isdir(element_path):
+                if not element_path.is_dir():
 
                     if self._already_visited(dataset, relative_element_path):
                         continue
@@ -162,7 +162,7 @@ class DatasetTraverser(Provider):
                                 DatasetTraverseResult(**{
                                     "state": ResultState.SUCCESS,
                                     "fs_base_path": self.fs_base_path,
-                                    "type": "File",
+                                    "type": "file",
                                     "path": element_path,
                                     **self._get_dataset_result_part(dataset)
                                 })

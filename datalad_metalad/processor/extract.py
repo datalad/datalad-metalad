@@ -26,8 +26,8 @@ logger = logging.getLogger("datalad.metadata.processor.extract")
 
 
 class ExtractorType(enum.Enum):
-    DATASET = "Dataset"
-    FILE = "File"
+    DATASET = "dataset"
+    FILE = "file"
 
 
 @dataclass
@@ -50,7 +50,7 @@ class MetadataExtractor(Processor):
                  extractor_name: str
                  ):
         super().__init__()
-        self.extractor_type = extractor_type
+        self.extractor_type = extractor_type.lower()
         self.extractor_name = extractor_name
 
     def process(self, pipeline_element: PipelineElement) -> PipelineElement:
@@ -72,14 +72,14 @@ class MetadataExtractor(Processor):
         )
         object_type = dataset_traverse_record.type
 
-        if object_type == "File":
+        if object_type == "file":
             object_path = Path(dataset_traverse_record.path)
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
-                path=object_path.relative_to(dataset_path),
+                path=dataset_path / object_path.relative_to(dataset_path),
                 result_renderer="disabled")
-        elif object_type == "Dataset":
+        elif object_type == "dataset":
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
