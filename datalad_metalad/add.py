@@ -45,7 +45,7 @@ from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadata import (
     ExtractorConfiguration,
-    Metadata
+    Metadata,
 )
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
@@ -54,13 +54,13 @@ from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
 from dataladmetadatamodel.mapper.gitmapper.utils import (
     lock_backend,
-    unlock_backend
+    unlock_backend,
 )
 
 from .exceptions import MetadataKeyException
 from .utils import (
     check_dataset,
-    read_json_object
+    read_json_objects,
 )
 
 
@@ -72,6 +72,8 @@ __docformat__ = "restructuredtext"
 default_mapper_family = "git"
 
 lgr = logging.getLogger("datalad.metadata.add")
+
+g_top_node_cache = None
 
 
 @dataclass
@@ -185,28 +187,29 @@ class Add(Interface):
             args=("metadata",),
             metavar="METADATA",
             doc=f"""path of the file that contains the
-            metadata that should be added to the metadata model instance (the
-            metadata must be provided as a JSON-serialized metadata
-            dictionary).
-            
+            metadata that should be added to the metadata model instance
+            (metadata must be provided as a JSON-serialized metadata
+            dictionary). The file may contain a single metadata-record or
+            a JSON-array with multiple metadata-records.
+
             If the path is "-", metadata is read from standard input.
-            
+
             The dictionary must contain the following keys:
-            
+
             {required_keys_lines}
-            
+
             If the metadata is associated with a file, the following key
             indicates the file path:
-            
+
             'path'
-            
+
             It may in addition contain either all or none of the
             following keys (they are used to add metadata element
             as a sub-dataset element, i.e. perform aggregation):
-            
+
             {required_additional_keys_lines}            
             """,
-            constraints=EnsureStr() | EnsureNone()),
+            constraints=EnsureStr()),
         additionalvalues=Parameter(
             args=("additionalvalues",),
             metavar="ADDITIONAL_VALUES",
@@ -217,7 +220,10 @@ class Add(Interface):
             already present in the metadata, an error is raised, unless
             -o, --allow-override is provided. In this case, the additional
             values will override the value in metadata and a warning is 
-            issued.""",
+            issued.
+            
+            NB! If multiple records are provided in METADATA, the
+            additional values will be aplied to all of them.""",
             nargs="?",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
@@ -258,67 +264,93 @@ class Add(Interface):
             allow_unknown: bool = False,
             allow_id_mismatch: bool = False):
 
+        global g_top_node_cache
+
+        # Initialize the cache on each call, This is done here
+        # to yield correct results, if multiple calls are processed
+        # by the same module instance.
+        g_top_node_cache = dict()
+
         additional_values = additionalvalues or dict()
 
+        # Get costly values
         dataset = check_dataset(dataset or curdir, "add metadata")
+        metadata_store = dataset.pathobj
+        dataset_id = dataset.id
+        additional_values_object = get_json_object(additional_values)
 
-        metadata = process_parameters(
-            metadata=read_json_object(metadata),
-            additional_values=get_json_object(additional_values),
-            allow_override=allow_override,
-            allow_unknown=allow_unknown)
+        all_metadata_objects = read_json_objects(metadata)
+        for metadata_object in all_metadata_objects:
+            metadata = process_parameters(
+                metadata=metadata_object,
+                additional_values=additional_values_object,
+                allow_override=allow_override,
+                allow_unknown=allow_unknown)
 
-        lgr.debug(
-            f"attempting to add metadata: '{json.dumps(metadata)}' to "
-            f"dataset {dataset.pathobj}")
+            lgr.debug(
+                f"attempting to add metadata: '{json.dumps(metadata)}' to "
+                f"metadata store {metadata_store}")
 
-        add_parameter = AddParameter(
-            result_path=(
-                dataset.pathobj
-                / Path(metadata.get("dataset_path", "."))
-                / Path(metadata.get("path", ""))),
-            destination_path=dataset.pathobj,
-            allow_id_mismatch=allow_id_mismatch,
+            add_parameter = AddParameter(
+                result_path=(
+                    metadata_store
+                    / Path(metadata.get("dataset_path", "."))
+                    / Path(metadata.get("path", ""))),
+                destination_path=metadata_store,
+                allow_id_mismatch=allow_id_mismatch,
 
-            dataset_id=UUID(metadata["dataset_id"]),
-            dataset_version=metadata["dataset_version"],
-            file_path=(
-                MetadataPath(metadata["path"])
-                if "path" in metadata
-                else None),
+                dataset_id=UUID(metadata["dataset_id"]),
+                dataset_version=metadata["dataset_version"],
+                file_path=(
+                    MetadataPath(metadata["path"])
+                    if "path" in metadata
+                    else None),
 
-            root_dataset_id=(
-                UUID(metadata["root_dataset_id"])
-                if "root_dataset_id" in metadata
-                else None),
-            root_dataset_version=metadata.get("root_dataset_version", None),
-            dataset_path=MetadataPath(
-                metadata.get("dataset_path", "")),
+                root_dataset_id=(
+                    UUID(metadata["root_dataset_id"])
+                    if "root_dataset_id" in metadata
+                    else None),
+                root_dataset_version=metadata.get("root_dataset_version", None),
+                dataset_path=MetadataPath(
+                    metadata.get("dataset_path", "")),
 
-            extractor_name=metadata["extractor_name"],
-            extractor_version=metadata["extractor_version"],
-            extraction_time=metadata["extraction_time"],
-            extraction_parameter=metadata["extraction_parameter"],
-            agent_name=metadata["agent_name"],
-            agent_email=metadata["agent_email"],
+                extractor_name=metadata["extractor_name"],
+                extractor_version=metadata["extractor_version"],
+                extraction_time=metadata["extraction_time"],
+                extraction_parameter=metadata["extraction_parameter"],
+                agent_name=metadata["agent_name"],
+                agent_email=metadata["agent_email"],
 
-            extracted_metadata=metadata["extracted_metadata"])
+                extracted_metadata=metadata["extracted_metadata"])
 
-        error_result = check_dataset_ids(dataset, add_parameter)
-        if error_result:
-            if not allow_id_mismatch:
-                yield error_result
-                return
-            lgr.warning(error_result["message"])
+            error_result = check_dataset_ids(dataset.pathobj,
+                                             UUID(dataset_id),
+                                             add_parameter)
+            if error_result:
+                if not allow_id_mismatch:
+                    yield error_result
+                    continue
+                lgr.warning(error_result["message"])
 
-        # If the key "path" is present in the metadata
-        # dictionary, we assume that the metadata-dictionary describes
-        # file-level metadata. Otherwise, we assume that the
-        # metadata-dictionary contains dataset-level metadata.
-        if add_parameter.file_path:
-            yield from add_file_metadata(dataset.pathobj, add_parameter)
-        else:
-            yield from add_dataset_metadata(dataset.pathobj, add_parameter)
+            # If the key "path" is present in the metadata
+            # dictionary, we assume that the metadata-dictionary describes
+            # file-level metadata. Otherwise, we assume that the
+            # metadata-dictionary contains dataset-level metadata.
+            if add_parameter.file_path:
+                yield from add_file_metadata(dataset.pathobj, add_parameter)
+            else:
+                yield from add_dataset_metadata(dataset.pathobj, add_parameter)
+
+        # Write out memory-based changes
+        lock_backend(metadata_store)
+
+        for value in g_top_node_cache.values():
+            tree_version_list, uuid_set = value[0:2]
+            tree_version_list.write_out(str(metadata_store))
+            uuid_set.write_out(str(metadata_store))
+
+        flush_object_references(metadata_store)
+        unlock_backend(metadata_store)
         return
 
 
@@ -410,35 +442,38 @@ def process_parameters(metadata: dict,
     return metadata
 
 
-def check_dataset_ids(dataset, add_parameter: AddParameter) -> Optional[dict]:
+def check_dataset_ids(dataset_path: Path,
+                      dataset_id: UUID,
+                      add_parameter: AddParameter) -> Optional[dict]:
+
     if add_parameter.root_dataset_id is not None:
-        if add_parameter.root_dataset_id != UUID(dataset.id):
+        if add_parameter.root_dataset_id != dataset_id:
             return dict(
                 action="meta_add",
                 status="error",
                 path=add_parameter.result_path,
                 message=f'value of "root-dataset-id" '
                         f'({add_parameter.root_dataset_id}) does not match '
-                        f'ID of dataset at {dataset.path} ({dataset.id})')
+                        f'ID of dataset at {dataset_path} ({dataset_id})')
     else:
-        if add_parameter.dataset_id != UUID(dataset.id):
+        if add_parameter.dataset_id != dataset_id:
             return dict(
                 action="meta_add",
                 status="error",
                 path=add_parameter.result_path,
                 message=f'value of "dataset-id" '
                         f'({add_parameter.dataset_id}) does not match '
-                        f'ID of dataset at {dataset.path} ({dataset.id})')
+                        f'ID of dataset at {dataset_path} ({dataset_id})')
 
 
-def _get_top_nodes(realm: str,
+def _get_top_nodes(realm: Path,
                    ap: AddParameter
                    ) -> Tuple[TreeVersionList, UUIDSet, MetadataRootRecord]:
 
     if ap.root_dataset_id is None:
         return get_top_nodes_and_metadata_root_record(
             default_mapper_family,
-            realm,
+            str(realm),
             ap.dataset_id,
             ap.dataset_version,
             MetadataPath(""),
@@ -446,7 +481,7 @@ def _get_top_nodes(realm: str,
 
     tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
         default_mapper_family,
-        realm,
+        str(realm),
         ap.root_dataset_id,
         ap.root_dataset_version,
         MetadataPath(""),
@@ -474,17 +509,61 @@ def _get_top_nodes(realm: str,
     return tree_version_list, uuid_set, mrr
 
 
-def add_file_metadata(metadata_store: Path, ap: AddParameter):
+def get_tvl_uuid_mrr_metadata_file_tree(
+    metadata_store: Path,
+    ap: AddParameter
+) -> Tuple[TreeVersionList, UUIDSet, MetadataRootRecord, Metadata, FileTree]:
+    """
+    Read tree version list, uuid set, metadata root record, dataset-level
+    metadata, and filetree from the metadata store, for the given root
+    dataset id, root dataset version, dataset id, dataset version, and
+    dataset path.
 
-    realm = str(metadata_store)
-    lock_backend(metadata_store)
+    This function caches results in order to avoid costly persist operations.
 
-    tree_version_list, uuid_set, mrr = _get_top_nodes(realm, ap)
+    :param metadata_store: the metadata store
+    :param ap: the add parameters
+    :return: a tuple containing the tree version list, the uuid set, the
+             metadata root records, the dataset level metadata object, and
+             the file tree of the dataset given by dataset id and version
+    """
+    cache_key = (
+        metadata_store,
+        ap.root_dataset_id,
+        ap.root_dataset_version,
+        ap.dataset_id,
+        ap.dataset_version,
+        ap.dataset_path)
+
+    if cache_key in g_top_node_cache:
+        return g_top_node_cache[cache_key]
+
+    tree_version_list, uuid_set, mrr = _get_top_nodes(metadata_store, ap)
+
+    dataset_level_metadata = mrr.get_dataset_level_metadata()
+    if dataset_level_metadata is None:
+        dataset_level_metadata = Metadata()
+        mrr.set_dataset_level_metadata(dataset_level_metadata)
 
     file_tree = mrr.get_file_tree()
     if file_tree is None:
         file_tree = FileTree()
         mrr.set_file_tree(file_tree)
+
+    g_top_node_cache[cache_key] = (
+        tree_version_list,
+        uuid_set,
+        mrr,
+        dataset_level_metadata,
+        file_tree)
+
+    return g_top_node_cache[cache_key]
+
+
+def add_file_metadata(metadata_store: Path, ap: AddParameter):
+
+    tree_version_list, uuid_set, mrr, metadata, file_tree = \
+        get_tvl_uuid_mrr_metadata_file_tree(metadata_store, ap)
 
     if ap.file_path in file_tree:
         file_level_metadata = file_tree.get_metadata(ap.file_path)
@@ -493,17 +572,6 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
         file_tree.add_metadata(ap.file_path, file_level_metadata)
 
     add_metadata_content(file_level_metadata, ap)
-
-    tree_version_list.write_out(realm)
-    uuid_set.write_out(realm)
-    flush_object_references(metadata_store)
-
-    assert file_level_metadata.is_saved_on(realm), \
-        f"file level metadata was not saved on {realm}"
-    assert file_tree.is_saved_on(realm), \
-        f"file tree was not saved on {realm}"
-
-    unlock_backend(metadata_store)
 
     yield {
         "status": "ok",
@@ -518,23 +586,10 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
 def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
-    realm = str(metadata_store)
-    lock_backend(metadata_store)
+    tree_version_list, uuid_set, mrr, metadata, file_tree = \
+        get_tvl_uuid_mrr_metadata_file_tree(metadata_store, ap)
 
-    tree_version_list, uuid_set, mrr = _get_top_nodes(realm, ap)
-
-    dataset_level_metadata = mrr.get_dataset_level_metadata()
-    if dataset_level_metadata is None:
-        dataset_level_metadata = Metadata()
-        mrr.set_dataset_level_metadata(dataset_level_metadata)
-
-    add_metadata_content(dataset_level_metadata, ap)
-
-    tree_version_list.write_out(realm)
-    uuid_set.write_out(realm)
-    flush_object_references(metadata_store)
-
-    unlock_backend(metadata_store)
+    add_metadata_content(metadata, ap)
 
     yield {
         "status": "ok",
