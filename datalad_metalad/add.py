@@ -111,19 +111,19 @@ class Add(Interface):
     that describes the metadata.
 
     In case of an API-call metadata can also be provided in a python
-    dictionary directly.
+    dictionary or a list of dictionaries.
 
     [TODO: add a schema]
 
     If metadata is read from a source, parameter can overwrite or
     amend information that is stored in the source.
 
-    The METADATA and the ADDITIONAL_VALUES arguments can be pre-fixed by '@',
+    The ADDITIONAL_VALUES arguments can be pre-fixed by '@',
     in which case the pre-fixed argument is interpreted as a file-name and
     the argument value is read from the file.
 
     The metadata key "dataset-id" must be identical to the ID of the dataset
-    that receives the metadata.
+    that receives the metadata, unless -i or --allow-id-mismatch is provided.
     """
 
     _examples_ = [
@@ -151,7 +151,7 @@ class Add(Interface):
         ),
         dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
-                 'dataset the current directory and overwrite the values'
+                 'dataset in the current directory and overwrite the values'
                  'from "metadata-123.json" with the values stored in '
                  '"extra-info.json"',
             code_cmd='datalad meta-add metadata-123.json @extra-info.json'
