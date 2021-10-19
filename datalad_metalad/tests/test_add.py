@@ -613,7 +613,17 @@ def test_add_file_dump_end_to_end(file_name):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
+        import time
+
+        start_time = time.time()
+        res = meta_add(metadata=[], dataset=git_repo.path)
+        print(f"meta-add x 0: {time.time() - start_time} s")
+
+        start_time = time.time()
         res = meta_add(metadata=file_name, dataset=git_repo.path)
+        print(f"meta-add x 1: {time.time() - start_time} s")
+
+        #res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
@@ -639,3 +649,81 @@ def test_add_file_dump_end_to_end(file_name):
 
         # Check remaining result
         assert_dict_equal(result, expected)
+
+
+def _create_json_metadata_records(file_count: int,
+                                  metadata_count: int) -> List:
+
+    test_path = "d_1/d_1.0"
+
+    return [
+            {
+                **{
+                    **{
+                        **metadata_template,
+                        "extraction_parameter": {
+                            "parameter1": f"pvalue{metadata_index}"
+                        }
+                    },
+                    "dataset_id": str(another_id)
+                },
+                **additional_keys_template,
+                "type": "file",
+                "path": test_path + f"/f_1.0.{file_index}"
+            }
+            for file_index in range(file_count)
+            for metadata_index in range(metadata_count)
+    ]
+
+
+def check_multi_adding(metadata, file_count, metadata_count):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        git_repo = create_dataset(temp_dir, default_id)
+
+        import time
+        start_time = time.time()
+        res = meta_add(metadata=metadata, dataset=git_repo.path)
+        print(
+            f"meta-add ({file_count} files, {metadata_count} records): "
+            f"{time.time() - start_time}s"
+        )
+
+        assert_result_count(res, file_count * metadata_count)
+
+        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+        assert_true(len(results), file_count * metadata_count)
+
+
+def _check_file_multiple_end_to_end_test(file_count: int,
+                                        metadata_count: int,
+                                        file_name: str):
+    json.dump(
+        _create_json_metadata_records(
+            file_count=file_count,
+            metadata_count=metadata_count),
+        open(file_name, "tw")
+    )
+
+    check_multi_adding(file_name, file_count, metadata_count)
+
+
+def _check_memory_multiple_end_to_end_test(file_count: int,
+                                           metadata_count: int):
+
+    json_objects = _create_json_metadata_records(
+        file_count=file_count,
+        metadata_count=metadata_count
+    )
+    check_multi_adding(json_objects, file_count, metadata_count)
+
+
+def test_add_multiple_file_records_end_to_end():
+    _check_memory_multiple_end_to_end_test(31, 31)
+    _check_memory_multiple_end_to_end_test(1, 1000)
+    _check_memory_multiple_end_to_end_test(1000, 1)
+    _check_memory_multiple_end_to_end_test(100, 100)
+
+
+@with_tempfile
+def test_add_multiple_metadata_records_end_to_end(file_name: str):
+    _check_file_multiple_end_to_end_test(1, 1000, file_name)

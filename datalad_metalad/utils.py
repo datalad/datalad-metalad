@@ -271,3 +271,17 @@ def read_json_object(path_or_object: Union[str, JSONObject]) -> JSONObject:
                 metadata_file = open(path_or_object, "tr")
         return json.load(metadata_file)
     return path_or_object
+
+
+def read_json_objects(path_or_object: Union[str, JSONObject]
+                      ) -> List[JSONObject]:
+
+    if isinstance(path_or_object, str):
+        if path_or_object == "-":
+            metadata_file = sys.stdin
+        else:
+            metadata_file = open(path_or_object, "tr")
+        path_or_object = json.load(metadata_file)
+    if isinstance(path_or_object, List):
+        return path_or_object
+    return [path_or_object]
