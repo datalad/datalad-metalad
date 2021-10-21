@@ -280,6 +280,9 @@ class Add(Interface):
         additional_values_object = get_json_object(additional_values)
 
         all_metadata_objects = read_json_objects(metadata)
+
+        lock_backend(metadata_store)
+
         for metadata_object in all_metadata_objects:
             metadata = process_parameters(
                 metadata=metadata_object,
@@ -340,9 +343,6 @@ class Add(Interface):
                 yield from add_file_metadata(dataset.pathobj, add_parameter)
             else:
                 yield from add_dataset_metadata(dataset.pathobj, add_parameter)
-
-        # Write out memory-based changes
-        lock_backend(metadata_store)
 
         for value in g_top_node_cache.values():
             tree_version_list, uuid_set = value[0:2]
