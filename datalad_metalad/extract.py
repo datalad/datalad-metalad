@@ -517,7 +517,7 @@ def get_file_info(dataset: Dataset,
 
     # noinspection PyUnresolvedReferences
     return FileInfo(
-        type=path_status["type"],
+        type="file",     # TODO: what about the situation where path_status["type"] == "symlink"?
         git_sha_sum=path_status["gitshasum"],
         byte_size=path_status.get("bytesize", 0),
         state=path_status["state"],
