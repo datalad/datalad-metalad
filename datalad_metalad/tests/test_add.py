@@ -82,7 +82,10 @@ def test_unknown_key_reporting(file_name):
         },
         open(file_name, "tw"))
 
-    with patch("datalad_metalad.add.check_dataset"):
+    with \
+            patch("datalad_metalad.add.check_dataset"), \
+            patch("datalad_metalad.add.lock_backend"):
+
         _assert_raise_mke_with_keys(
             ["strange_key_name"],
             metadata=file_name)
@@ -148,7 +151,10 @@ def test_incomplete_non_mandatory_key_handling(file_name):
         },
         open(file_name, "tw"))
 
-    with patch("datalad_metalad.add.check_dataset"):
+    with \
+            patch("datalad_metalad.add.check_dataset"), \
+            patch("datalad_metalad.add.lock_backend"):
+
         _assert_raise_mke_with_keys(
             ["root_dataset_version", "dataset_path"],
             metadata=file_name,
@@ -163,7 +169,9 @@ def test_override_key_reporting(file_name):
         },
         open(file_name, "tw"))
 
-    with patch("datalad_metalad.add.check_dataset"):
+    with \
+            patch("datalad_metalad.add.check_dataset"), \
+            patch("datalad_metalad.add.lock_backend"):
         _assert_raise_mke_with_keys(
             ["dataset_id"],
             metadata=file_name,
@@ -689,6 +697,8 @@ def check_multi_adding(metadata, file_count, metadata_count):
         )
 
         assert_result_count(res, file_count * metadata_count)
+        if file_count * metadata_count == 0:
+            return
 
         results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
         assert_true(len(results), file_count * metadata_count)
@@ -717,7 +727,13 @@ def _check_memory_multiple_end_to_end_test(file_count: int,
     check_multi_adding(json_objects, file_count, metadata_count)
 
 
+def test_really_large_end_to_end():
+    _check_memory_multiple_end_to_end_test(1000, 1)
+
+
 def test_add_multiple_file_records_end_to_end():
+    _check_memory_multiple_end_to_end_test(0, 0)
+    _check_memory_multiple_end_to_end_test(1, 1)
     _check_memory_multiple_end_to_end_test(31, 31)
     _check_memory_multiple_end_to_end_test(1, 1000)
     _check_memory_multiple_end_to_end_test(1000, 1)
