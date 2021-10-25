@@ -96,7 +96,7 @@ def _get_common_properties(root_dataset_identifier: UUID,
         root_info = {
             "root_dataset_id": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": str(_shortened_by(dataset_path, 1))}
+            "dataset_path": str(dataset_path)}
     else:
         root_info = {}
 
@@ -163,7 +163,7 @@ def show_dataset_metadata(mapper: str,
                     **common_properties,
                     **instance_properties
                 },
-                element_path=_shortened_by(dataset_path, 1),
+                element_path=dataset_path,
                 report_type="dataset")
 
     if purge_metadata_root_record:
@@ -207,18 +207,21 @@ def show_file_tree_metadata(mapper: str,
 
     # Determine matching file paths
     tree_search = TreeSearch(file_tree.mtree)
-    matches, not_found_paths = tree_search.get_matching_paths(
-        pattern_list=[search_pattern],
-        recursive=recursive)
 
-    for missing_path in not_found_paths:
-        lgr.warning(
-            f"could not locate file path {missing_path} "
-            f"in dataset {metadata_root_record.dataset_identifier}"
-            f"@{metadata_root_record.dataset_version} in "
-            f"metadata_store {mapper}:{metadata_store}")
+    for found, match_or_path in tree_search.get_matching_paths(
+            pattern_list=[search_pattern],
+            recursive=recursive):
 
-    for match_record in matches:
+        if found is False:
+            missing_path = match_or_path
+            lgr.warning(
+                f"could not locate file path {missing_path} "
+                f"in dataset {metadata_root_record.dataset_identifier}"
+                f"@{metadata_root_record.dataset_version} in "
+                f"metadata_store {mapper}:{metadata_store}")
+            continue
+
+        match_record = match_or_path
         path = match_record.path
         metadata = match_record.node
 
@@ -226,7 +229,9 @@ def show_file_tree_metadata(mapper: str,
         if metadata is None:
             continue
 
-        assert isinstance(metadata, Metadata)
+        # Ignore paths that do not identify metadata
+        if not isinstance(metadata, Metadata):
+            continue
 
         common_properties = _get_common_properties(
             root_dataset_identifier,
@@ -308,19 +313,23 @@ def dump_from_dataset_tree(mapper: str,
 
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree.mtree)
-    matches, not_found_paths = tree_search.get_matching_paths(
-        pattern_list=[str(metadata_url.dataset_path / datalad_root_record_name)],
-        recursive=recursive)
+    for found, match_record_or_path in tree_search.get_matching_paths(
+            pattern_list=[str(metadata_url.dataset_path)],
+            recursive=recursive,
+            invisible_suffix=datalad_root_record_name):
 
-    for missing_path in not_found_paths:
-        lgr.error(
-            f"could not locate metadata for dataset path {missing_path} "
-            f"in tree version {metadata_url.version} in "
-            f"metadata_store {mapper}:{metadata_store}")
+        if found is False:
+            path = match_record_or_path
+            lgr.error(
+                f"could not locate metadata for dataset path {path} "
+                f"in tree version {metadata_url.version} in "
+                f"metadata_store {mapper}:{metadata_store}")
+            continue
 
-    for match_record in matches:
-
-        assert isinstance(match_record.node, MetadataRootRecord)
+        match_record = match_record_or_path
+        node_needs_purge = match_record.node.ensure_mapped()
+        mrr = match_record.node.child_nodes[datalad_root_record_name]
+        assert isinstance(mrr, MetadataRootRecord)
 
         yield from show_dataset_metadata(
             mapper,
@@ -328,17 +337,20 @@ def dump_from_dataset_tree(mapper: str,
             root_dataset_identifier,
             root_dataset_version,
             match_record.path,
-            match_record.node)
+            mrr)
 
         yield from show_file_tree_metadata(
             mapper,
             metadata_store,
             root_dataset_identifier,
             root_dataset_version,
-            MetadataPath(match_record.path),
-            match_record.node,
+            match_record.path,
+            mrr,
             str(metadata_url.local_path),
             recursive)
+
+        if node_needs_purge:
+            match_record.node.purge()
 
     # Clean up objects that were loaded during search
     tree_search.purge_mapped_objects()

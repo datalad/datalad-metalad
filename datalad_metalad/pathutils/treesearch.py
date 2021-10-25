@@ -1,6 +1,12 @@
 import dataclasses
 from fnmatch import fnmatchcase
-from typing import Any, List, Tuple
+from typing import (
+    Any,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+)
 
 from dataladmetadatamodel.mappableobject import MappableObject
 from dataladmetadatamodel.metadatapath import MetadataPath
@@ -33,30 +39,50 @@ class TreeSearch:
 
     def get_matching_paths(self,
                            pattern_list: List[str],
-                           recursive: bool
-                           ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
+                           recursive: bool,
+                           invisible_suffix: Optional[str] = None
+                           ) -> Generator:
         """
         Get all metadata paths that are matching the patterns in
         pattern_list.
+
+        If an invisible suffix is provided, the
+        matching paths are filtered further by having the invisible
+        suffix. That is useful, for example, to search for dataset
+        roots.
 
         - Leading "/" are removed from patterns, since metadata
           paths are not absolute.
 
         - Empty pattern-specifications, i.e. '', are interpreted
           as root-dataset or root-file-tree nodes.
+
+        Yields Tuple[bool, Union[MatchRecord, MetadataPath], where
+        if the first element is True, the second element is a match record
+        that describes a match. If the first element is false, the
+        second element is a metadata path that was not found in the
+        tree (or did not have the correct invisible suffix)
         """
         pattern_elements_list = [
             MetadataPath(pattern)
             for pattern in set(pattern_list)
         ]
-        matching, failed = self._get_matching_nodes(pattern_elements_list)
+
+        matching, failed = self._get_matching_nodes(pattern_elements_list, invisible_suffix)
 
         if recursive:
-            matching = self._list_recursive(matching[:])
-        return matching, failed
+            for matching in self._list_recursive(matching[:], invisible_suffix):
+                yield True, matching
+        else:
+            for match in matching:
+                yield True, match
+
+        for fail in failed:
+            yield False, fail
 
     def _get_matching_nodes(self,
                             pattern_list: List[MetadataPath],
+                            invisible_suffix: Optional[str]
                             ) -> Tuple[List[MatchRecord], List[MetadataPath]]:
 
         match_records: List[MatchRecord] = []
@@ -72,7 +98,12 @@ class TreeSearch:
                     MetadataPath(""))
 
                 if matching_path_records:
-                    match_records.extend(matching_path_records)
+                    if invisible_suffix is None:
+                        match_records.extend(matching_path_records)
+                    else:
+                        for record in matching_path_records:
+                            if not record.path.parts[-1] == invisible_suffix:
+                                match_records.append(record)
                 else:
                     failed_patterns.append(pattern)
 
@@ -84,7 +115,7 @@ class TreeSearch:
     def _search_matches(self,
                         pattern_parts: Tuple[str],
                         tree: MTreeNode,
-                        accumulated_path: MetadataPath
+                        accumulated_path: MetadataPath,
                         ) -> List[MatchRecord]:
 
         if not isinstance(tree, MTreeNode):
@@ -111,7 +142,8 @@ class TreeSearch:
         return match_records
 
     def _list_recursive(self,
-                        starting_points: List[MatchRecord]
+                        starting_points: List[MatchRecord],
+                        invisible_suffix: Optional[str]
                         ) -> List[MatchRecord]:
 
         record_list = [
@@ -119,7 +151,8 @@ class TreeSearch:
             for starting_point in starting_points
             for record in self._rec_list_recursive(
                 starting_point.node,
-                starting_point.path)]
+                starting_point.path,
+                invisible_suffix)]
 
         # remove duplicates which might stem from
         # starting points that are contained in other
@@ -134,23 +167,32 @@ class TreeSearch:
 
     def _rec_list_recursive(self,
                             starting_point: Any,
-                            starting_point_path: MetadataPath
-                            ) -> List[MatchRecord]:
+                            starting_point_path: MetadataPath,
+                            invisible_suffix: Optional[str]
+                            ) -> Generator:
 
         if starting_point is None:
-            return []
+            return
 
         if starting_point.ensure_mapped():
             self.mapped_objects.append(starting_point)
 
-        if not isinstance(starting_point, MTreeNode):
-            return [MatchRecord(starting_point_path, starting_point)]
+        if invisible_suffix is None and not isinstance(starting_point, MTreeNode):
+            yield MatchRecord(starting_point_path, starting_point)
 
-        result = [
-            MatchRecord(starting_point_path / path, mappable_object)
-            for path, mappable_object in starting_point.get_paths_recursive()
-        ]
-        return result
+        if invisible_suffix is None:
+            for path, mappable_object in starting_point.get_paths_recursive():
+                purge_required = mappable_object.ensure_mapped()
+                yield MatchRecord(starting_point_path / path, mappable_object)
+                if purge_required:
+                    mappable_object.purge()
+        else:
+            for path, mappable_object in starting_point.get_paths_recursive(show_intermediate=True):
+                purge_required = mappable_object.ensure_mapped()
+                if isinstance(mappable_object, MTreeNode) and mappable_object.contains_child(invisible_suffix):
+                    yield MatchRecord(starting_point_path / path, mappable_object)
+                if purge_required:
+                    mappable_object.purge()
 
     def purge_mapped_objects(self):
         for obj in self.mapped_objects:
