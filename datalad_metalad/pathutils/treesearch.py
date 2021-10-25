@@ -29,6 +29,7 @@ class TreeSearch:
                  ):
         assert isinstance(tree, MTreeNode)
         self.tree = tree
+        self.mapped_objects = []
 
     def get_matching_paths(self,
                            pattern_list: List[str],
@@ -88,8 +89,12 @@ class TreeSearch:
 
         if not isinstance(tree, MTreeNode):
             if not pattern_parts:
+                tree.ensure_mapped()
                 return [MatchRecord(MetadataPath(accumulated_path), tree)]
             return []
+
+        if tree.ensure_mapped():
+            self.mapped_objects.append(tree)
 
         if not pattern_parts:
             return [MatchRecord(MetadataPath(accumulated_path), tree)]
@@ -135,6 +140,9 @@ class TreeSearch:
         if starting_point is None:
             return []
 
+        if starting_point.ensure_mapped():
+            self.mapped_objects.append(starting_point)
+
         if not isinstance(starting_point, MTreeNode):
             return [MatchRecord(starting_point_path, starting_point)]
 
@@ -143,3 +151,7 @@ class TreeSearch:
             for path, mappable_object in starting_point.get_paths_recursive()
         ]
         return result
+
+    def purge_mapped_objects(self):
+        for obj in self.mapped_objects:
+            obj.purge()

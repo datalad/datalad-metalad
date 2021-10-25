@@ -304,7 +304,7 @@ def dump_from_dataset_tree(mapper: str,
     # Create a tree search object to search for the specified datasets
     tree_search = TreeSearch(dataset_tree.mtree)
     matches, not_found_paths = tree_search.get_matching_paths(
-        pattern_list=[str(metadata_url.dataset_path)],
+        pattern_list=[str(metadata_url.dataset_path / datalad_root_record_name)],
         recursive=recursive)
 
     for missing_path in not_found_paths:
@@ -335,8 +335,11 @@ def dump_from_dataset_tree(mapper: str,
             str(metadata_url.local_path),
             recursive)
 
+    # Clean up objects that were loaded during search
+    tree_search.purge_mapped_objects()
     if purge_root_mrr:
         root_mrr.purge()
+
     return
 
 
@@ -376,6 +379,7 @@ def dump_from_uuid_set(mapper: str,
         return
 
     assert isinstance(metadata_root_record, MetadataRootRecord)
+    purge_mrr = metadata_root_record.ensure_mapped()
 
     # Show dataset-level metadata
     yield from show_dataset_metadata(
@@ -396,6 +400,9 @@ def dump_from_uuid_set(mapper: str,
         metadata_root_record,
         str(path.local_path),
         recursive)
+
+    if purge_mrr:
+        metadata_root_record.purge()
 
     return
 

@@ -6,6 +6,7 @@ from typing import (
 
 from dataladmetadatamodel.metadata import Metadata
 from dataladmetadatamodel.metadatapath import MetadataPath
+from dataladmetadatamodel.datasettree import datalad_root_record_name
 from dataladmetadatamodel.mtreenode import MTreeNode
 
 from ..treesearch import (
@@ -26,20 +27,20 @@ class TestTreeSearchBase(unittest.TestCase):
 
     def setUp(self) -> None:
         self.path_list = [
-            MetadataPath(".datalad_metadata"),
-            MetadataPath("s1/s1.1/d1.1.1/.datalad_metadata"),
-            MetadataPath("s1/s1.2/d1.2.1/.datalad_metadata"),
-            MetadataPath("s2/d2.1/.datalad_metadata"),
-            MetadataPath("d3/.datalad_metadata"),
+            MetadataPath(datalad_root_record_name),
+            MetadataPath("s1/s1.1/d1.1.1") / datalad_root_record_name,
+            MetadataPath("s1/s1.2/d1.2.1") / datalad_root_record_name,
+            MetadataPath("s2/d2.1") / datalad_root_record_name,
+            MetadataPath("d3") / datalad_root_record_name,
             MetadataPath("d3/some_file"),
-            MetadataPath("dataset_0.0/.mrr"),
-            MetadataPath("dataset_0.0/dataset_0.0.0/.mrr"),
-            MetadataPath("dataset_0.0/dataset_0.0.1/.mrr"),
-            MetadataPath("dataset_0.0/dataset_0.0.2/.mrr"),
-            MetadataPath("dataset_0.1/.mrr"),
-            MetadataPath("dataset_0.1/dataset_0.1.0/.mrr"),
-            MetadataPath("dataset_0.1/dataset_0.1.1/.mrr"),
-            MetadataPath("dataset_0.1/dataset_0.1.2/.mrr")
+            MetadataPath("dataset_0.0") / datalad_root_record_name,
+            MetadataPath("dataset_0.0/dataset_0.0.0") / datalad_root_record_name,
+            MetadataPath("dataset_0.0/dataset_0.0.1") / datalad_root_record_name,
+            MetadataPath("dataset_0.0/dataset_0.0.2") / datalad_root_record_name,
+            MetadataPath("dataset_0.1") / datalad_root_record_name,
+            MetadataPath("dataset_0.1/dataset_0.1.0") / datalad_root_record_name,
+            MetadataPath("dataset_0.1/dataset_0.1.1") / datalad_root_record_name,
+            MetadataPath("dataset_0.1/dataset_0.1.2") / datalad_root_record_name
         ]
 
         self.tree_search = self.create_tree_search_from_paths(
@@ -66,9 +67,12 @@ class TestTreeSearchMatching(TestTreeSearchBase):
     def _show_result(found, failed):
         if found:
             print("\n".join(
-                map(lambda record: f"{record.path}\t{'f' if record.node.is_leaf_node() else 'd'}", found)))
+                map(lambda record:
+                    f"{record.path}\t{'f' if record.node.is_leaf_node() else 'd'}",
+                    found)))
         if failed:
-            print("\n".join(map(lambda n: f"no such dataset or directory: {n}", failed)))
+            print("\n".join(
+                map(lambda n: f"no such dataset or directory: {n}", failed)))
         return found, failed
 
     def _test_pattern(self,
@@ -103,7 +107,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self.assertPathsInResult(
             found,
             [
-                MetadataPath(".datalad_metadata"),
+                MetadataPath(datalad_root_record_name),
                 MetadataPath("s1"),
                 MetadataPath("s2"),
                 MetadataPath("d3"),
@@ -153,7 +157,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self._test_pattern(
             ["*"],
             [
-                MetadataPath(".datalad_metadata"),
+                MetadataPath(datalad_root_record_name),
                 MetadataPath("s1"),
                 MetadataPath("s2"),
                 MetadataPath("d3"),
@@ -192,7 +196,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self._test_pattern(
             ["d3/*"],
             [
-                MetadataPath("d3/.datalad_metadata"),
+                MetadataPath("d3") / datalad_root_record_name,
                 MetadataPath("d3/some_file")
             ],
             self.tree_search)
@@ -221,7 +225,7 @@ class TestTreeSearchMatching(TestTreeSearchBase):
         self._test_pattern(
             pattern_list=["d3"],
             expected_matches=[
-                MetadataPath("d3/.datalad_metadata"),
+                MetadataPath("d3") / datalad_root_record_name,
                 MetadataPath("d3/some_file")],
             tree_search=self.tree_search,
             recursive=True)
