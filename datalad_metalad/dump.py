@@ -82,6 +82,11 @@ def _create_result_record(mapper: str,
     }
 
 
+def _shortened_by(path: MetadataPath, count: int) -> MetadataPath:
+    assert count > 0
+    return MetadataPath(*(path.parts[:-count]))
+
+
 def _get_common_properties(root_dataset_identifier: UUID,
                            root_dataset_version: str,
                            metadata_root_record: MetadataRootRecord,
@@ -91,7 +96,7 @@ def _get_common_properties(root_dataset_identifier: UUID,
         root_info = {
             "root_dataset_id": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": str(dataset_path)[:-len("/" + datalad_root_record_name)]}
+            "dataset_path": str(_shortened_by(dataset_path, 1))}
     else:
         root_info = {}
 
@@ -158,7 +163,7 @@ def show_dataset_metadata(mapper: str,
                     **common_properties,
                     **instance_properties
                 },
-                element_path=dataset_path,
+                element_path=_shortened_by(dataset_path, 1),
                 report_type="dataset")
 
     if purge_metadata_root_record:
