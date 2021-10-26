@@ -11,7 +11,7 @@ from dataladmetadatamodel.mtreenode import MTreeNode
 
 from ..mtreesearch import (
     MTreeSearch,
-    TraversalType,
+    TraversalOrder,
 )
 
 
@@ -74,12 +74,12 @@ class TestTreeSearchMatching(TestMTreeSearchBase):
             list(
                 self.mtree_search.search_pattern(
                     pattern=MetadataPath("*/dataset_0*"),
-                    traversal_type=traversal_type
+                    traversal_order=traversal_type
                 )
             )
             for traversal_type in (
-                TraversalType.breadth_first_search,
-                TraversalType.depth_first_search
+                TraversalOrder.breadth_first_search,
+                TraversalOrder.depth_first_search
             )
         ]
 
@@ -91,3 +91,11 @@ class TestTreeSearchMatching(TestMTreeSearchBase):
         self.assertNotEqual(results[0], results[1])
         for result in results[0]:
             self.assertIn(result, results[1])
+
+    def test_item_detection(self):
+        results = list(
+            self.mtree_search.search_pattern(
+                pattern=MetadataPath("*/dataset_0*"),
+                item_indicator=datalad_root_record_name))
+        for result in results:
+            print(result)

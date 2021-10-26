@@ -32,9 +32,14 @@ class StackItem:
     needs_purge: bool
 
 
-class TraversalType(enum.Enum):
+class TraversalOrder(enum.Enum):
     depth_first_search = 0
     breadth_first_search = 1
+
+
+class MatchType(enum.Enum):
+    full_match = 0
+    item_match = 1
 
 
 class MTreeSearch:
@@ -44,26 +49,38 @@ class MTreeSearch:
 
     def search_pattern(self,
                        pattern: MetadataPath,
-                       traversal_type: TraversalType = TraversalType.depth_first_search,
-                       required_child: Optional[str] = None,
+                       traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
+                       item_indicator: Optional[str] = None,
                        ) -> Generator:
         """
-        Search the tree. If required child is None, return nodes
-        that match the pattern.
-        If required child is not None, return nodes
-        that match a pattern and contain the required
-        child, are are reached by recursion from a
-        matching pattern and contain the required child.
+        Search the tree und yield nodes that match the pattern.
 
         Parameters
         ----------
-        pattern
-        traversal_type
-        required_child
+        pattern: file name with shell-style wildcards
+        traversal_order: specify whether to use depth-first-order
+                         or breadth-first-order in search
+        item_indicator: a string that indicates that the current
+                        mtree-node is an item in an enclosing context,
+                        for example: ".datalad_metadata-root-record"
+                        could indicate a dataset-node.
 
         Returns
         -------
+        Yields a 3-tuple, which describes a full-match, or an item-match.
+        A full-match is a tree-node
+        whose path matches the complete pattern. An item-match is a
+        tree-node that is an item-node and which is matched by a prefix
+        of the pattern. Item-matches are only generated, when item_indicator
+        is not None.
 
+        In a full-match the first element is the MetadataPath of the matched
+        node, the second element is the matched node, and the third
+        element is always None.
+
+        In an item match, the first element is the MetadataPath of the
+        item-node, the second element is the item node, and the third
+        element is a MetadataPath containing the remaining pattern.
         """
 
         pattern_elements = pattern.parts
@@ -76,7 +93,7 @@ class MTreeSearch:
                 self.mtree.ensure_mapped())])
 
         while to_process:
-            if traversal_type == TraversalType.depth_first_search:
+            if traversal_order == TraversalOrder.depth_first_search:
                 current_item = to_process.pop()
             else:
                 current_item = to_process.popleft()
@@ -85,12 +102,19 @@ class MTreeSearch:
             # pattern elements, i.e. all pattern element were matched
             # earlier, the current item is a valid match.
             if len(pattern_elements) == current_item.item_level:
-                yield current_item.item_path, current_item.node
+                yield current_item.item_path, current_item.node, None
 
                 # There will be no further matches below the
                 # current item, because the pattern elements are
                 # exhausted. Go to the next item.
                 continue
+
+            # Check for item-node, if item indicator is not None
+            if item_indicator is not None:
+                if isinstance(current_item.node, MTreeNode):
+                    if item_indicator in current_item.node.child_nodes:
+                        yield current_item.item_path, current_item.node, MetadataPath(
+                                *pattern_elements[current_item.item_level:])
 
             # There is at least one more pattern element, try to
             # match it against the current nodes children.
@@ -101,7 +125,7 @@ class MTreeSearch:
 
             # Check whether the current pattern matches any children,
             # if it does, add the children to `to_process`.
-            for child_name in current_item.node.child_nodes.keys():
+            for child_name in current_item.node.child_nodes:
                 if fnmatch.fnmatch(child_name, pattern_elements[current_item.item_level]):
                     child_mtree = current_item.node.get_child(child_name)
                     to_process.append(
