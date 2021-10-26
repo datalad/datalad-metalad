@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import (
     Generator,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -136,6 +137,68 @@ class MTreeSearch:
                             child_mtree.ensure_mapped()
                         )
                     )
+
+            # We are done with this node. Purge it, if it was
+            # not present in memory before this search.
+            if current_item.needs_purge:
+                current_item.node.purge()
+
+    def search_pattern_recursive(self,
+                                 pattern: MetadataPath,
+                                 traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
+                                 item_indicator: Optional[str] = None,
+                                 ) -> Generator:
+
+        for result in self.search_pattern(pattern,
+                                          traversal_order,
+                                          item_indicator):
+            if result[2] is not None:
+                yield result
+            else:
+                yield from self._list_recursive(result[0],
+                                                result[1],
+                                                traversal_order,
+                                                item_indicator)
+
+    def _list_recursive(self,
+                        start_path: MetadataPath,
+                        start_node: MTreeNode,
+                        traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
+                        item_indicator: Optional[str] = None,
+                        ):
+
+        to_process = deque([
+            StackItem(
+                start_path,
+                0,
+                start_node,
+                start_node.ensure_mapped())])
+
+        while to_process:
+            if traversal_order == TraversalOrder.depth_first_search:
+                current_item = to_process.pop()
+            else:
+                current_item = to_process.popleft()
+
+            # Check for item-node, if item indicator is not None
+            if isinstance(current_item.node, MTreeNode):
+                if item_indicator is not None:
+                    if item_indicator in current_item.node.child_nodes:
+                        yield current_item.item_path, current_item.node
+
+                for child_name, child_node in current_item.node.child_nodes.items():
+                    to_process.append(
+                        StackItem(
+                            current_item.item_path / child_name,
+                            current_item.item_level + 1,
+                            child_node,
+                            child_node.ensure_mapped()
+                        )
+                    )
+            else:
+                if item_indicator is None:
+                    yield current_item.item_path, current_item.node
+                continue
 
             # We are done with this node. Purge it, if it was
             # not present in memory before this search.
