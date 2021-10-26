@@ -3,7 +3,7 @@ Search through MTreeNode based trees.
 
 This implementation tries to keep memory usage low by:
  - using generators
- - purging MTreeNode-objects, what is not needed anymore
+ - purging MTreeNode-objects, that are not needed anymore
 
 """
 import enum
@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from typing import (
     Generator,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -197,6 +196,8 @@ class MTreeSearch:
                     )
             else:
                 if item_indicator is None:
+                    # If we are at a leaf and there is no item_indicator,
+                    # yield the leave.
                     yield current_item.item_path, current_item.node
                 continue
 

@@ -54,7 +54,7 @@ class TestTreeSearchMatching(TestMTreeSearchBase):
                 pattern=MetadataPath("")))
         self.assertEqual(
             result[0],
-            (MetadataPath(""), self.mtree_search.mtree))
+            (MetadataPath(""), self.mtree_search.mtree, None))
 
     def test_globbing(self):
         results = list(
