@@ -1,19 +1,18 @@
 """
-Search through mtrees. Either for leave nodes
-or for nodes with a specific child.
+Search through MTreeNode based trees.
 
-Try to keep memory low:
- use generators
- unmap what is not needed anymore
+This implementation tries to keep memory usage low by:
+ - using generators
+ - purging MTreeNode-objects, what is not needed anymore
+
 """
+import enum
 import fnmatch
+from collections import deque
 from dataclasses import dataclass
 from typing import (
     Generator,
-    Iterable,
-    List,
     Optional,
-    Tuple,
     Union,
 )
 
@@ -33,6 +32,11 @@ class StackItem:
     needs_purge: bool
 
 
+class TraversalType(enum.Enum):
+    depth_first_search = 0
+    breadth_first_search = 1
+
+
 class MTreeSearch:
     def __init__(self,
                  mtree: MTreeNode):
@@ -40,13 +44,12 @@ class MTreeSearch:
 
     def search_pattern(self,
                        pattern: MetadataPath,
-                       recursive: bool = False,
+                       traversal_type: TraversalType = TraversalType.depth_first_search,
                        required_child: Optional[str] = None,
                        ) -> Generator:
         """
-        Search the tree. If required child is None,
-        return leaves that match the pattern or are
-        reached by recursion from a matching pattern.
+        Search the tree. If required child is None, return nodes
+        that match the pattern.
         If required child is not None, return nodes
         that match a pattern and contain the required
         child, are are reached by recursion from a
@@ -55,7 +58,7 @@ class MTreeSearch:
         Parameters
         ----------
         pattern
-        recursive
+        traversal_type
         required_child
 
         Returns
@@ -65,15 +68,18 @@ class MTreeSearch:
 
         pattern_elements = pattern.parts
 
-        to_process = [
+        to_process = deque([
             StackItem(
                 MetadataPath(""),
                 0,
                 self.mtree,
-                self.mtree.ensure_mapped())]
+                self.mtree.ensure_mapped())])
 
         while to_process:
-            current_item = to_process.pop()
+            if traversal_type == TraversalType.depth_first_search:
+                current_item = to_process.pop()
+            else:
+                current_item = to_process.popleft()
 
             # If the current item level is equal to the number of
             # pattern elements, i.e. all pattern element were matched

@@ -9,7 +9,10 @@ from dataladmetadatamodel.metadata import Metadata
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mtreenode import MTreeNode
 
-from ..mtreesearch import MTreeSearch
+from ..mtreesearch import (
+    MTreeSearch,
+    TraversalType,
+)
 
 
 class TestMTreeSearchBase(unittest.TestCase):
@@ -65,3 +68,26 @@ class TestTreeSearchMatching(TestMTreeSearchBase):
                 MetadataPath("dataset_0.1/dataset_0.1.1"),
                 MetadataPath("dataset_0.1/dataset_0.1.2")]:
             self.assertIn(expected_path, [result[0] for result in results])
+
+    def test_traversal_type(self):
+        results = [
+            list(
+                self.mtree_search.search_pattern(
+                    pattern=MetadataPath("*/dataset_0*"),
+                    traversal_type=traversal_type
+                )
+            )
+            for traversal_type in (
+                TraversalType.breadth_first_search,
+                TraversalType.depth_first_search
+            )
+        ]
+
+        # Ensure that both results contain the expected elements
+        # but are not equal w.r.t. order. That does not verify
+        # correctness of the orders though.
+        self.assertEqual(len(results[0]), 6)
+        self.assertEqual(len(results[0]), len(results[1]))
+        self.assertNotEqual(results[0], results[1])
+        for result in results[0]:
+            self.assertIn(result, results[1])
