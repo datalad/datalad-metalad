@@ -203,7 +203,8 @@ def show_file_tree_metadata(mapper: str,
     # Determine matching file paths
     tree_search = MTreeSearch(file_tree.mtree)
     result_count = 0
-    for path, metadata in tree_search.search_pattern_recursive(pattern=search_pattern):
+    for path, metadata, _ in tree_search.search_pattern(pattern=search_pattern,
+                                                        recursive=recursive):
 
         result_count += 1
 
@@ -301,9 +302,10 @@ def dump_from_dataset_tree(mapper: str,
     # Create a tree search object to search for the specified datasets
     tree_search = MTreeSearch(dataset_tree.mtree)
     result_count = 0
-    for path, node in tree_search.search_pattern_recursive(pattern=metadata_url.dataset_path,
-                                                           item_indicator=datalad_root_record_name):
-
+    for path, node, remaining_pattern in tree_search.search_pattern(
+                                    pattern=metadata_url.dataset_path,
+                                    recursive=recursive,
+                                    item_indicator=datalad_root_record_name):
         result_count += 1
 
         mrr = node.get_child(datalad_root_record_name)

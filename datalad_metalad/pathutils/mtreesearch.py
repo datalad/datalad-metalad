@@ -6,6 +6,7 @@ This implementation tries to keep memory usage low by:
  - purging MTreeNode-objects, that are not needed anymore
 
 """
+# TODO: unify recursive and non-recursive calls
 import enum
 import fnmatch
 from collections import deque
@@ -13,6 +14,7 @@ from dataclasses import dataclass
 from typing import (
     Generator,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -32,6 +34,13 @@ class StackItem:
     needs_purge: bool
 
 
+@dataclass(frozen=True)
+class SearchResult:
+    element_path: MetadataPath
+    mtree_node: MTreeNode
+    possible_contained_element_path: MetadataPath
+
+
 class TraversalOrder(enum.Enum):
     depth_first_search = 0
     breadth_first_search = 1
@@ -49,9 +58,22 @@ class MTreeSearch:
 
     def search_pattern(self,
                        pattern: MetadataPath,
+                       recursive: bool = False,
                        traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
                        item_indicator: Optional[str] = None,
-                       ) -> Generator:
+                       ) -> Generator[Tuple[MetadataPath, MTreeNode, Optional[MetadataPath]], None, None]:
+
+        if recursive is True:
+            generator_function = self._search_pattern_recursive
+        else:
+            generator_function = self._search_pattern
+        yield from generator_function(pattern, traversal_order, item_indicator)
+
+    def _search_pattern(self,
+                        pattern: MetadataPath,
+                        traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
+                        item_indicator: Optional[str] = None,
+                        ) -> Generator[Tuple[MetadataPath, MTreeNode, Optional[MetadataPath]], None, None]:
         """
         Search the tree und yield nodes that match the pattern.
 
@@ -65,14 +87,16 @@ class MTreeSearch:
                         for example: ".datalad_metadata-root-record"
                         could indicate a dataset-node.
 
-        Returns
+        Returns:
         -------
+
         Yields a 3-tuple, which describes a full-match, or an item-match.
-        A full-match is a tree-node
-        whose path matches the complete pattern. An item-match is a
-        tree-node that is an item-node and which is matched by a prefix
-        of the pattern. Item-matches are only generated, when item_indicator
-        is not None.
+
+        A full-match is a tree-node whose path matches the complete pattern.
+
+        An item-match is a tree-node that is an item-node, i.e. it has an item
+        indicator as child, which is matched by a prefix of the pattern.
+        Item-matches are only generated, when item_indicator is not None.
 
         In a full-match the first element is the MetadataPath of the matched
         node, the second element is the matched node, and the third
@@ -142,16 +166,23 @@ class MTreeSearch:
             if current_item.needs_purge:
                 current_item.node.purge()
 
-    def search_pattern_recursive(self,
-                                 pattern: MetadataPath,
-                                 traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
-                                 item_indicator: Optional[str] = None,
-                                 ) -> Generator:
+    def _search_pattern_recursive(self,
+                                  pattern: MetadataPath,
+                                  traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
+                                  item_indicator: Optional[str] = None,
+                                  ) -> Generator[Tuple[MetadataPath, MTreeNode, Optional[MetadataPath]], None, None]:
+        """
+        Find nodes that match the given pattern and list all nodes
+        recursively from them
 
+        See search_pattern for a description of the parameters and result
+        elements
+        """
         for result in self.search_pattern(pattern,
                                           traversal_order,
                                           item_indicator):
             if result[2] is not None:
+                # Do not recursively list item-matches.
                 yield result
             else:
                 yield from self._list_recursive(result[0],
@@ -183,7 +214,7 @@ class MTreeSearch:
             if isinstance(current_item.node, MTreeNode):
                 if item_indicator is not None:
                     if item_indicator in current_item.node.child_nodes:
-                        yield current_item.item_path, current_item.node
+                        yield current_item.item_path, current_item.node, None
 
                 for child_name, child_node in current_item.node.child_nodes.items():
                     to_process.append(
@@ -198,7 +229,7 @@ class MTreeSearch:
                 if item_indicator is None:
                     # If we are at a leaf and there is no item_indicator,
                     # yield the leave.
-                    yield current_item.item_path, current_item.node
+                    yield current_item.item_path, current_item.node, None
                 continue
 
             # We are done with this node. Purge it, if it was
