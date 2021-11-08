@@ -21,6 +21,7 @@ from typing import (
     cast,
     Any,
     Generator,
+    Union,
 )
 from uuid import UUID
 
@@ -37,6 +38,7 @@ from datalad.ui import ui
 from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import datalad_root_record_name
+from dataladmetadatamodel.mapper.reference import Reference
 from dataladmetadatamodel.metadata import (
     Metadata,
     MetadataInstance
@@ -57,6 +59,7 @@ from .pathutils.metadataurlparser import (
 from .pathutils.mtreesearch import MTreeSearch
 
 
+
 default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.dump')
@@ -71,10 +74,20 @@ def _file_report_matcher(node: Any) -> bool:
 
 
 def _create_result_record(mapper: str,
-                          metadata_store: Path,
+                          metadata_store: Union[Path, str],
                           metadata_record: JSONObject,
                           element_path: MetadataPath,
                           report_type: str):
+
+    # Display remote metadata stores properly
+    if isinstance(metadata_store, str):
+        if Reference.is_remote(metadata_store):
+            path = metadata_store + ":/" + str(element_path)
+        else:
+            path = (Path(metadata_store) / element_path).absolute()
+    else:
+        path = (metadata_store / element_path).absolute()
+
     return {
         "status": "ok",
         "action": "meta_dump",
@@ -82,7 +95,7 @@ def _create_result_record(mapper: str,
         "metadata_source": metadata_store,
         "type": report_type,
         "metadata": metadata_record,
-        "path": str((metadata_store / element_path).absolute())
+        "path": path,
     }
 
 
@@ -469,22 +482,23 @@ class Dump(Interface):
             args=("-d", "--dataset"),
             metavar="DATASET",
             doc="""Dataset for which metadata should be dumped. If no 
-            directory name is provided, the current working directory is 
-            used."""),
+                   directory name is provided, the current working directory is 
+                   used.""",
+            nargs="?"),
         path=Parameter(
             args=("path",),
-            metavar="DATASET_FILE_PATH_PATTERN",
+            #metavar="DATASET_FILE_PATH_PATTERN",
             doc="path to query metadata for",
-            constraints=EnsureStr() | EnsureNone(),
-            nargs='?'),
+            constraints=EnsureStr() | EnsureNone()),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
-            doc="""if set, recursively report on any matching metadata based
-            on given paths or reference dataset. Note, setting this option
-            does not cause any recursion into potential subdatasets on the
-            filesystem. It merely determines what metadata is being reported
-            from the given/discovered reference dataset."""))
+            doc="""If set, recursively report on any matching metadata based
+                   on given paths or reference dataset. Note, setting this
+                   option does not cause any recursion into potential
+                   subdatasets on the filesystem. It merely determines what
+                   metadata is being reported from the given/discovered
+                   reference dataset."""))
 
     @staticmethod
     @datasetmethod(name='meta_dump')
