@@ -114,13 +114,15 @@ class MTreeSearch:
                 MetadataPath(""),
                 0,
                 self.mtree,
-                self.mtree.ensure_mapped())])
+                False)])
 
         while to_process:
             if traversal_order == TraversalOrder.depth_first_search:
                 current_item = to_process.pop()
             else:
                 current_item = to_process.popleft()
+
+            needs_purge = current_item.node.ensure_mapped()
 
             # If the current item level is equal to the number of
             # pattern elements, i.e. all pattern element were matched
@@ -131,6 +133,8 @@ class MTreeSearch:
                 # There will be no further matches below the
                 # current item, because the pattern elements are
                 # exhausted. Go to the next item.
+                if needs_purge:
+                    current_item.node.purge()
                 continue
 
             # Check for item-node, if item indicator is not None
@@ -145,13 +149,14 @@ class MTreeSearch:
             if not isinstance(current_item.node, MTreeNode):
                 # If the current node has no children, we cannot
                 # match anything and go to the next item
+                if needs_purge:
+                    current_item.node.purge()
                 continue
 
             # Check whether the current pattern matches any children,
             # if it does, add the children to `to_process`.
-            for child_name in current_item.node.child_nodes:
+            for child_name, child_mtree in current_item.node.child_nodes.items():
                 if fnmatch.fnmatch(child_name, pattern_elements[current_item.item_level]):
-                    child_mtree = current_item.node.get_child(child_name)
                     to_process.append(
                         StackItem(
                             current_item.item_path / child_name,
@@ -161,9 +166,7 @@ class MTreeSearch:
                         )
                     )
 
-            # We are done with this node. Purge it, if it was
-            # not present in memory before this search.
-            if current_item.needs_purge:
+            if needs_purge:
                 current_item.node.purge()
 
     def _search_pattern_recursive(self,
@@ -178,9 +181,9 @@ class MTreeSearch:
         See search_pattern for a description of the parameters and result
         elements
         """
-        for result in self.search_pattern(pattern,
-                                          traversal_order,
-                                          item_indicator):
+        for result in self._search_pattern(pattern,
+                                           traversal_order,
+                                           item_indicator):
             if result[2] is not None:
                 # Do not recursively list item-matches.
                 yield result
@@ -202,13 +205,15 @@ class MTreeSearch:
                 start_path,
                 0,
                 start_node,
-                start_node.ensure_mapped())])
+                False)])
 
         while to_process:
             if traversal_order == TraversalOrder.depth_first_search:
                 current_item = to_process.pop()
             else:
                 current_item = to_process.popleft()
+
+            needs_purge = current_item.node.ensure_mapped()
 
             # Check for item-node, if item indicator is not None
             if isinstance(current_item.node, MTreeNode):
@@ -222,7 +227,7 @@ class MTreeSearch:
                             current_item.item_path / child_name,
                             current_item.item_level + 1,
                             child_node,
-                            child_node.ensure_mapped()
+                            False
                         )
                     )
             else:
@@ -230,9 +235,8 @@ class MTreeSearch:
                     # If we are at a leaf and there is no item_indicator,
                     # yield the leave.
                     yield current_item.item_path, current_item.node, None
-                continue
 
             # We are done with this node. Purge it, if it was
             # not present in memory before this search.
-            if current_item.needs_purge:
+            if needs_purge:
                 current_item.node.purge()

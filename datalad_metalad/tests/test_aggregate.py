@@ -107,8 +107,8 @@ def test_basic_aggregation():
             zero_version = version_base.format(index=0)
             check_parameters = [
                 dict(dataset_path=None, root_dataset_id=None),
+                dict(dataset_path="subdataset_1", root_dataset_id=str(root_id)),
                 dict(dataset_path="subdataset_0", root_dataset_id=str(root_id)),
-                dict(dataset_path="subdataset_1", root_dataset_id=str(root_id))
             ]
 
             for index, result in enumerate(result_objects):
@@ -121,17 +121,23 @@ def test_basic_aggregation():
 
                 eq_(result_object["dataset_id"], [
                     str(root_id),
+                    str(sub_1_id),
                     str(sub_0_id),
-                    str(sub_1_id)
                 ][index])
 
                 eq_(
-                    result_object["dataset_version"],
-                    version_base.format(index=index))
+                    result_object["dataset_version"], [
+                        version_base.format(index=0),
+                        version_base.format(index=2),
+                        version_base.format(index=1),
+                    ][index])
 
                 eq_(result_object["extractor_name"], "test_dataset")
-                eq_(result_object["extracted_metadata"]["content"],
-                    f"metadata-content_{index}")
+                eq_(result_object["extracted_metadata"]["content"], [
+                    "metadata-content_0",
+                    "metadata-content_2",
+                    "metadata-content_1",
+                ][index])
 
             # Test a second aggregation
             result = meta_aggregate(
@@ -210,8 +216,8 @@ def test_basic_aggregation_into_empty_store():
 
             a_version = version_base.format(index="a")
             check_parameters = [
+                dict(dataset_path="subdataset_1", root_dataset_id="<unknown>"),
                 dict(dataset_path="subdataset_0", root_dataset_id="<unknown>"),
-                dict(dataset_path="subdataset_1", root_dataset_id="<unknown>")
             ]
 
             for index, result in enumerate(result_objects):
@@ -222,16 +228,19 @@ def test_basic_aggregation_into_empty_store():
                     root_dataset_version=a_version,
                     **(check_parameters[index]))
 
-                eq_(result_object["dataset_id"],
-                    [
+                eq_(result_object["dataset_id"], [
+                        str(sub_1_id),
                         str(sub_0_id),
-                        str(sub_1_id)
                     ][index])
 
                 eq_(
-                    result_object["dataset_version"],
-                    version_base.format(index=index))
+                    result_object["dataset_version"], [
+                        version_base.format(index=1),
+                        version_base.format(index=0),
+                    ][index])
 
                 eq_(result_object["extractor_name"], "test_dataset")
-                eq_(result_object["extracted_metadata"]["content"],
-                    f"metadata-content_{index}")
+                eq_(result_object["extracted_metadata"]["content"], [
+                    "metadata-content_1",
+                    "metadata-content_0",
+                ][index])

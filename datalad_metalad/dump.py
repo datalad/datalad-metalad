@@ -52,7 +52,9 @@ from .pathutils.metadataurlparser import (
     TreeMetadataURL,
     UUIDMetadataURL
 )
+
 from .pathutils.mtreesearch import MTreeSearch
+
 
 default_mapper_family = "git"
 
@@ -88,11 +90,11 @@ def _get_common_properties(root_dataset_identifier: UUID,
                            metadata_root_record: MetadataRootRecord,
                            dataset_path: MetadataPath) -> dict:
 
-    if dataset_path != MetadataPath(datalad_root_record_name):
+    if dataset_path != MetadataPath(""):
         root_info = {
             "root_dataset_id": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": str(dataset_path)[:-len("/" + datalad_root_record_name)]}
+            "dataset_path": str(dataset_path)}
     else:
         root_info = {}
 
@@ -221,7 +223,7 @@ def show_file_tree_metadata(mapper: str,
             metadata_root_record,
             dataset_path)
 
-        metadata.read_in()
+        purge_metadata = metadata.ensure_mapped()
         for extractor_name, extractor_runs in metadata.extractor_runs():
             for instance in extractor_runs:
 
@@ -241,8 +243,8 @@ def show_file_tree_metadata(mapper: str,
                     element_path=dataset_path / path,
                     report_type="dataset")
 
-        # Remove metadata object after all instances are reported
-        metadata.purge()
+        if purge_metadata:
+            metadata.purge()
 
     if result_count == 0:
         lgr.warning(
