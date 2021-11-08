@@ -18,8 +18,9 @@ import json
 import logging
 from pathlib import Path
 from typing import (
+    cast,
     Any,
-    Generator
+    Generator,
 )
 from uuid import UUID
 
@@ -308,7 +309,7 @@ def dump_from_dataset_tree(mapper: str,
                                     item_indicator=datalad_root_record_name):
         result_count += 1
 
-        mrr = node.get_child(datalad_root_record_name)
+        mrr = cast(MetadataRootRecord, node.get_child(datalad_root_record_name))
         yield from show_dataset_metadata(
             mapper,
             metadata_store,
@@ -335,7 +336,7 @@ def dump_from_dataset_tree(mapper: str,
             f"{metadata_store})")
 
     if purge_root_mrr:
-            root_mrr.purge()
+        root_mrr.purge()
     return
 
 
@@ -393,7 +394,7 @@ def dump_from_uuid_set(mapper: str,
         requested_dataset_version,
         dataset_path,
         metadata_root_record,
-        str(path.local_path),
+        path.local_path,
         recursive)
 
     return
