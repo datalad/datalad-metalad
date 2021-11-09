@@ -18,8 +18,9 @@ import json
 import logging
 from pathlib import Path
 from typing import (
+    cast,
     Any,
-    Generator
+    Generator,
 )
 from uuid import UUID
 
@@ -51,7 +52,9 @@ from .pathutils.metadataurlparser import (
     TreeMetadataURL,
     UUIDMetadataURL
 )
-from .pathutils.treesearch import TreeSearch
+
+from .pathutils.mtreesearch import MTreeSearch
+
 
 default_mapper_family = "git"
 
@@ -87,11 +90,11 @@ def _get_common_properties(root_dataset_identifier: UUID,
                            metadata_root_record: MetadataRootRecord,
                            dataset_path: MetadataPath) -> dict:
 
-    if dataset_path != MetadataPath(datalad_root_record_name):
+    if dataset_path != MetadataPath(""):
         root_info = {
             "root_dataset_id": str(root_dataset_identifier),
             "root_dataset_version": root_dataset_version,
-            "dataset_path": str(dataset_path)[:-len("/" + datalad_root_record_name)]}
+            "dataset_path": str(dataset_path)}
     else:
         root_info = {}
 
@@ -171,7 +174,7 @@ def show_file_tree_metadata(mapper: str,
                             root_dataset_version: str,
                             dataset_path: MetadataPath,
                             metadata_root_record: MetadataRootRecord,
-                            search_pattern: str,
+                            search_pattern: MetadataPath,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
@@ -201,21 +204,12 @@ def show_file_tree_metadata(mapper: str,
         return
 
     # Determine matching file paths
-    tree_search = TreeSearch(file_tree.mtree)
-    matches, not_found_paths = tree_search.get_matching_paths(
-        pattern_list=[search_pattern],
-        recursive=recursive)
+    tree_search = MTreeSearch(file_tree.mtree)
+    result_count = 0
+    for path, metadata, _ in tree_search.search_pattern(pattern=search_pattern,
+                                                        recursive=recursive):
 
-    for missing_path in not_found_paths:
-        lgr.warning(
-            f"could not locate file path {missing_path} "
-            f"in dataset {metadata_root_record.dataset_identifier}"
-            f"@{metadata_root_record.dataset_version} in "
-            f"metadata_store {mapper}:{metadata_store}")
-
-    for match_record in matches:
-        path = match_record.path
-        metadata = match_record.node
+        result_count += 1
 
         # Ignore empty datasets
         if metadata is None:
@@ -229,7 +223,7 @@ def show_file_tree_metadata(mapper: str,
             metadata_root_record,
             dataset_path)
 
-        metadata.read_in()
+        purge_metadata = metadata.ensure_mapped()
         for extractor_name, extractor_runs in metadata.extractor_runs():
             for instance in extractor_runs:
 
@@ -249,8 +243,15 @@ def show_file_tree_metadata(mapper: str,
                     element_path=dataset_path / path,
                     report_type="dataset")
 
-        # Remove metadata object after all instances are reported
-        metadata.purge()
+        if purge_metadata:
+            metadata.purge()
+
+    if result_count == 0:
+        lgr.warning(
+            f"pattern '{str(search_pattern)}' does not match any element "
+            f"in file-tree of dataset {metadata_root_record.dataset_identifier}"
+            f"@{metadata_root_record.dataset_version} (stored on "
+            f"{mapper}:{metadata_store})")
 
     if purge_file_tree:
         file_tree.purge()
@@ -302,38 +303,39 @@ def dump_from_dataset_tree(mapper: str,
         root_dataset_identifier = root_mrr.dataset_identifier
 
     # Create a tree search object to search for the specified datasets
-    tree_search = TreeSearch(dataset_tree.mtree)
-    matches, not_found_paths = tree_search.get_matching_paths(
-        pattern_list=[str(metadata_url.dataset_path)],
-        recursive=recursive)
+    tree_search = MTreeSearch(dataset_tree.mtree)
+    result_count = 0
+    for path, node, remaining_pattern in tree_search.search_pattern(
+                                    pattern=metadata_url.dataset_path,
+                                    recursive=recursive,
+                                    item_indicator=datalad_root_record_name):
+        result_count += 1
 
-    for missing_path in not_found_paths:
-        lgr.error(
-            f"could not locate metadata for dataset path {missing_path} "
-            f"in tree version {metadata_url.version} in "
-            f"metadata_store {mapper}:{metadata_store}")
-
-    for match_record in matches:
-
-        assert isinstance(match_record.node, MetadataRootRecord)
-
+        mrr = cast(MetadataRootRecord, node.get_child(datalad_root_record_name))
         yield from show_dataset_metadata(
             mapper,
             metadata_store,
             root_dataset_identifier,
             root_dataset_version,
-            match_record.path,
-            match_record.node)
+            path,
+            mrr)
 
         yield from show_file_tree_metadata(
             mapper,
             metadata_store,
             root_dataset_identifier,
             root_dataset_version,
-            MetadataPath(match_record.path),
-            match_record.node,
-            str(metadata_url.local_path),
+            path,
+            mrr,
+            metadata_url.local_path,
             recursive)
+
+    if result_count == 0:
+        lgr.error(
+            f"search pattern '{str(metadata_url.dataset_path)}' does not match "
+            f"any dataset in dataset-tree of dataset {root_dataset_identifier}"
+            f"@{root_dataset_version} (stored on {mapper}:"
+            f"{metadata_store})")
 
     if purge_root_mrr:
         root_mrr.purge()
@@ -394,7 +396,7 @@ def dump_from_uuid_set(mapper: str,
         requested_dataset_version,
         dataset_path,
         metadata_root_record,
-        str(path.local_path),
+        path.local_path,
         recursive)
 
     return
