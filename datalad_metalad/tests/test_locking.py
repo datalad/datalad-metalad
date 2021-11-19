@@ -1,4 +1,5 @@
 import concurrent.futures
+import os
 import tempfile
 from typing import (
     Dict,
@@ -14,7 +15,10 @@ from datalad.api import (
     meta_dump,
 )
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.utils import eq_
+from datalad.tests.utils import (
+    eq_,
+    skip_if,
+)
 
 from .utils import create_dataset
 
@@ -87,6 +91,7 @@ def verify_locking_adds(git_repo: GitRepo, test_process_number: int):
     eq_(len(metadata_records), test_process_number)
 
 
+@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
 def test_meta_add_locking_impact_end_to_end():
 
     test_process_number = 100
