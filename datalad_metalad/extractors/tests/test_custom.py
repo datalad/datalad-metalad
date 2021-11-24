@@ -109,7 +109,10 @@ def test_custom_dsmeta(path):
         'nothere',
         where='dataset')
     ds.save()
-    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
+    res = ds.meta_extract(
+        extractorname='metalad_custom',
+        on_failure='ignore',
+        result_renderer="disabled")
     assert_result_count(
         res, 1, action='meta_extract', type='dataset', status='impossible',
         path=ds.path,
@@ -126,7 +129,10 @@ def test_custom_dsmeta(path):
         'down/customloc',
         where='dataset')
     ds.save()
-    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
+    res = ds.meta_extract(
+        extractorname='metalad_custom',
+        on_failure='ignore',
+        result_renderer="disabled")
     assert_result_count(res, 1)
     eq_(testmeta, res[0]['metadata_record']['extracted_metadata'])
 
@@ -137,7 +143,10 @@ def test_custom_dsmeta(path):
         '.metadata/dataset.json',
         where='dataset')
     ds.save()
-    res = ds.meta_extract(extractorname='metalad_custom', on_failure='ignore')
+    res = ds.meta_extract(
+        extractorname='metalad_custom',
+        on_failure='ignore',
+        result_renderer="disabled")
     assert_result_count(res, 1)
     eq_(
         # merge order: testmeta <- sample_jsonld
@@ -161,7 +170,11 @@ def test_custom_contentmeta(path):
                   '{freldir}/_{fname}.dl.json',
                   where='dataset')
     ds.save()
-    res = ds.meta_extract(extractorname='metalad_custom', path="sub/one")
+    res = ds.meta_extract(
+        extractorname='metalad_custom',
+        path="sub/one",
+        result_renderer="disabled")
+
     assert_result_count(
         res, 1,
         path=text_type(ds.pathobj / 'sub' / 'one'),
@@ -191,9 +204,11 @@ def test_custom_contentmeta(path):
 def test_custom_content_broken(path):
     ds = Dataset(path).create(force=True)
     ds.save()
-    res = ds.meta_extract(extractorname='metalad_custom',
-                          path='sub/one',
-                          on_failure='ignore')
+    res = ds.meta_extract(
+        extractorname='metalad_custom',
+        path='sub/one',
+        on_failure='ignore',
+        result_renderer="disabled")
     assert_result_count(res, 1)
     assert_result_count(
         res, 1,
