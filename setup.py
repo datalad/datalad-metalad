@@ -13,7 +13,7 @@ SETUP_REQUIRES += ['wheel'] if 'bdist_wheel' in sys.argv else []
 
 setup(
     name="datalad_metalad",
-    version="0.3.0a1", #versioneer.get_version(),
+    version=versioneer.get_version(),
     #cmdclass=versioneer.get_cmdclass(),
     setup_requires=SETUP_REQUIRES,
     package_data={
