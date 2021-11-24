@@ -95,7 +95,7 @@ def verify_locking_adds(git_repo: GitRepo, test_process_number: int):
     eq_(len(metadata_records), test_process_number)
 
 
-#@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
+@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
 def test_meta_add_locking_impact_end_to_end():
 
     test_process_number = 100
@@ -116,6 +116,7 @@ def test_meta_add_locking_impact_end_to_end():
         verify_locking_adds(git_repo, test_process_number)
 
 
+@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
 def test_meta_add_locking_end_to_end():
 
     test_process_number = 100
