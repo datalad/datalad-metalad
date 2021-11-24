@@ -95,7 +95,8 @@ def test_dataset_extraction_result(path):
 
     res = meta_extract(
         extractorname=extractor_name,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -134,7 +135,8 @@ def test_file_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         path=file_path,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -173,7 +175,8 @@ def test_legacy1_dataset_extraction_result(ds_path):
 
     res = meta_extract(
         extractorname=extractor_name,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -209,7 +212,8 @@ def test_legacy2_dataset_extraction_result(ds_path):
 
     res = meta_extract(
         extractorname=extractor_name,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -245,7 +249,8 @@ def test_legacy1_file_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         path=file_path,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -284,7 +289,8 @@ def test_legacy2_file_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         path=file_path,
-        dataset=ds)
+        dataset=ds,
+        result_renderer="disabled")
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -339,8 +345,8 @@ def test_path_parameter_recognition(ds_path):
         meta_extract(
             extractorname="metalad_core_file",
             dataset=ds,
-            path="sub/one"
-        )
+            path="sub/one",
+            result_renderer="disabled")
         eq_(fe.call_count, 1)
         eq_(de.call_count, 0)
 
@@ -363,8 +369,9 @@ def test_extra_parameter_recognition(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             path="--",
-            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
-        )
+            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
+            result_renderer="disabled")
+
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
         eq_(
@@ -394,8 +401,9 @@ def test_path_and_extra_parameter_recognition(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             path="sub/one",
-            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"]
-        )
+            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
+            result_renderer="disabled")
+
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
         eq_(
@@ -425,8 +433,9 @@ def test_context_dict_parameter_handling(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             context={"dataset_version": "xyz"},
-            path="sub/one"
-        )
+            path="sub/one",
+            result_renderer="disabled")
+
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].source_dataset_version, "xyz")
         eq_(de.call_count, 0)
@@ -450,8 +459,9 @@ def test_context_str_parameter_handling(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             context='{"dataset_version": "rst"}',
-            path="sub/one"
-        )
+            path="sub/one",
+            result_renderer="disabled")
+
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].source_dataset_version, "rst")
         eq_(de.call_count, 0)
@@ -473,7 +483,8 @@ def test_get_context(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             get_context=True,
-            path="sub/one"))
+            path="sub/one",
+            result_renderer="disabled"))
 
     version = subprocess.run(
         [
@@ -507,8 +518,9 @@ def test_extractor_parameter_handling(ds_path):
             extractorname="metalad_core_dataset",
             dataset=ds,
             path="--",
-            extractorargs=["k0", "v0", "k1", "v1"]
-        )
+            extractorargs=["k0", "v0", "k1", "v1"],
+            result_renderer="disabled")
+
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
         eq_(de.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
@@ -520,8 +532,9 @@ def test_extractor_parameter_handling(ds_path):
             extractorname="metalad_core_file",
             dataset=ds,
             path="sub/one",
-            extractorargs=["k0", "v0", "k1", "v1"]
-        )
+            extractorargs=["k0", "v0", "k1", "v1"],
+            result_renderer="disabled")
+
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].file_tree_path, MetadataPath("sub/one"))
@@ -548,7 +561,8 @@ def test_external_extractor(ds_path):
                 "data-output-category", "IMMEDIATE",
                 "command", "python",
                 "0", "-c",
-                "1", "print('True')"])
+                "1", "print('True')"],
+            result_renderer="disabled")
         eq_(len(result), 1)
         eq_(result[0]["status"], "ok")
         eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
@@ -576,4 +590,5 @@ def test_external_extractor_categories(ds_path):
                     "data-output-category", output_category,
                     "command", "python",
                     "0", "-c",
-                    "1", "print('True')"])
+                    "1", "print('True')"],
+                result_renderer="disabled")
