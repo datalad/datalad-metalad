@@ -581,7 +581,9 @@ def test_current_dir_add_end_to_end(file_name):
 
         os.chdir(execute_directory)
 
-        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+        results = tuple(meta_dump(dataset=git_repo.pathobj,
+                                  recursive=True,
+                                  result_renderer="disabled"))
 
         assert_true(len(results), 1)
         result = results[0]["metadata"]
@@ -618,16 +620,6 @@ def test_add_file_dump_end_to_end(file_name):
         "path": test_path
     }, open(file_name, "tw"))
 
-    print(json.dumps({
-        **{
-            **metadata_template,
-            "dataset_id": str(another_id)
-        },
-        **additional_keys_template,
-        "type": "file",
-        "path": test_path
-    }, indent=4))
-
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
@@ -646,7 +638,9 @@ def test_add_file_dump_end_to_end(file_name):
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
 
-        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+        results = tuple(meta_dump(dataset=git_repo.pathobj,
+                                  recursive=True,
+                                  result_renderer="disabled"))
         assert_true(len(results), 1)
         result = results[0]["metadata"]
 
@@ -709,7 +703,9 @@ def check_multi_adding(metadata, file_count, metadata_count):
         if file_count * metadata_count == 0:
             return
 
-        results = tuple(meta_dump(dataset=git_repo.pathobj, recursive=True))
+        results = tuple(meta_dump(dataset=git_repo.pathobj,
+                                  recursive=True,
+                                  result_renderer="disabled"))
         assert_true(len(results), file_count * metadata_count)
 
 

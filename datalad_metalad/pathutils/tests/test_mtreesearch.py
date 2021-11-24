@@ -97,5 +97,16 @@ class TestTreeSearchMatching(TestMTreeSearchBase):
             self.mtree_search.search_pattern(
                 pattern=MetadataPath("*/dataset_0*"),
                 item_indicator=datalad_root_record_name))
-        for result in results:
-            print(result)
+
+        for expected_path in [
+                MetadataPath(""),
+                MetadataPath("dataset_0.0"),
+                MetadataPath("dataset_0.0/dataset_0.0.0"),
+                MetadataPath("dataset_0.0/dataset_0.0.1"),
+                MetadataPath("dataset_0.0/dataset_0.0.2"),
+                MetadataPath("dataset_0.1"),
+                MetadataPath("dataset_0.1/dataset_0.1.0"),
+                MetadataPath("dataset_0.1/dataset_0.1.1"),
+                MetadataPath("dataset_0.1/dataset_0.1.2"),
+                MetadataPath("dataset_0.1")]:
+            self.assertIn(expected_path, [result[0] for result in results])

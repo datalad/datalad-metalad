@@ -73,7 +73,7 @@ def perform_concurrent_adds(locked: bool,
                 call_meta_add,
                 locked=locked,
                 metadata=get_metadata(index),
-                dataset=git_repo.path
+                dataset=git_repo.path,
             )
             for index in range(count)
         ])
@@ -81,7 +81,11 @@ def perform_concurrent_adds(locked: bool,
 
 
 def get_all_metadata_records(git_repo: GitRepo) -> List[JSONObject]:
-    res = meta_dump(dataset=git_repo.path, path="*", recursive=True)
+    res = meta_dump(
+        dataset=git_repo.path,
+        path="*",
+        recursive=True,
+        result_renderer="disabled")
     return list(res)
 
 
@@ -91,7 +95,7 @@ def verify_locking_adds(git_repo: GitRepo, test_process_number: int):
     eq_(len(metadata_records), test_process_number)
 
 
-@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
+#@skip_if(cond='GITHUB_WORKFLOW' in os.environ)
 def test_meta_add_locking_impact_end_to_end():
 
     test_process_number = 100

@@ -162,7 +162,6 @@ def test_custom_contentmeta(path):
                   where='dataset')
     ds.save()
     res = ds.meta_extract(extractorname='metalad_custom', path="sub/one")
-    print(res)
     assert_result_count(
         res, 1,
         path=text_type(ds.pathobj / 'sub' / 'one'),

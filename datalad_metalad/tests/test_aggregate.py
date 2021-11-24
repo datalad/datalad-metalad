@@ -100,7 +100,8 @@ def test_basic_aggregation():
 
             result_objects = meta_dump(
                 dataset=str(root_dataset_dir),
-                recursive=True)
+                recursive=True,
+                result_renderer="disabled")
 
             assert_result_count(result_objects, 3)
 
@@ -146,7 +147,8 @@ def test_basic_aggregation():
 
             result_objects = meta_dump(
                 dataset=str(root_dataset_dir),
-                recursive=True)
+                recursive=True,
+                result_renderer="disabled")
 
             assert_result_count(result_objects, 3)
 
@@ -210,7 +212,8 @@ def test_basic_aggregation_into_empty_store():
 
             result_objects = meta_dump(
                 dataset=str(root_dataset_dir),
-                recursive=True)
+                recursive=True,
+                result_renderer="disabled")
 
             assert_result_count(result_objects, 2)
 
