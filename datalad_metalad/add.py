@@ -73,8 +73,6 @@ default_mapper_family = "git"
 
 lgr = logging.getLogger("datalad.metadata.add")
 
-g_top_node_cache = None
-
 
 @dataclass
 class AddParameter:
@@ -98,6 +96,8 @@ class AddParameter:
     agent_email: str
 
     extracted_metadata: dict
+
+    top_node_cache: dict
 
 
 @build_doc
@@ -264,16 +264,10 @@ class Add(Interface):
             allow_unknown: bool = False,
             allow_id_mismatch: bool = False):
 
-        global g_top_node_cache
-
-        # Initialize the cache on each call, This is done here
-        # to yield correct results, if multiple calls are processed
-        # by the same module instance.
-        g_top_node_cache = dict()
-
         additional_values = additionalvalues or dict()
 
         # Get costly values
+        top_node_cache = dict()
         dataset = check_dataset(dataset or curdir, "add metadata")
         metadata_store = dataset.pathobj
         dataset_id = dataset.id
@@ -324,7 +318,9 @@ class Add(Interface):
                 agent_name=metadata["agent_name"],
                 agent_email=metadata["agent_email"],
 
-                extracted_metadata=metadata["extracted_metadata"])
+                extracted_metadata=metadata["extracted_metadata"],
+
+                top_node_cache=top_node_cache)
 
             error_result = check_dataset_ids(dataset.pathobj,
                                              UUID(dataset_id),
@@ -344,7 +340,7 @@ class Add(Interface):
             else:
                 yield from add_dataset_metadata(dataset.pathobj, add_parameter)
 
-        for value in g_top_node_cache.values():
+        for value in top_node_cache.values():
             tree_version_list, uuid_set = value[0:2]
             tree_version_list.write_out(str(metadata_store))
             uuid_set.write_out(str(metadata_store))
@@ -511,7 +507,7 @@ def _get_top_nodes(realm: Path,
 
 def get_tvl_uuid_mrr_metadata_file_tree(
     metadata_store: Path,
-    ap: AddParameter
+    ap: AddParameter,
 ) -> Tuple[TreeVersionList, UUIDSet, MetadataRootRecord, Metadata, FileTree]:
     """
     Read tree version list, uuid set, metadata root record, dataset-level
@@ -535,29 +531,28 @@ def get_tvl_uuid_mrr_metadata_file_tree(
         ap.dataset_version,
         ap.dataset_path)
 
-    if cache_key in g_top_node_cache:
-        return g_top_node_cache[cache_key]
+    if cache_key not in ap.top_node_cache:
 
-    tree_version_list, uuid_set, mrr = _get_top_nodes(metadata_store, ap)
+        tree_version_list, uuid_set, mrr = _get_top_nodes(metadata_store, ap)
 
-    dataset_level_metadata = mrr.get_dataset_level_metadata()
-    if dataset_level_metadata is None:
-        dataset_level_metadata = Metadata()
-        mrr.set_dataset_level_metadata(dataset_level_metadata)
+        dataset_level_metadata = mrr.get_dataset_level_metadata()
+        if dataset_level_metadata is None:
+            dataset_level_metadata = Metadata()
+            mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-    file_tree = mrr.get_file_tree()
-    if file_tree is None:
-        file_tree = FileTree()
-        mrr.set_file_tree(file_tree)
+        file_tree = mrr.get_file_tree()
+        if file_tree is None:
+            file_tree = FileTree()
+            mrr.set_file_tree(file_tree)
 
-    g_top_node_cache[cache_key] = (
-        tree_version_list,
-        uuid_set,
-        mrr,
-        dataset_level_metadata,
-        file_tree)
+        ap.top_node_cache[cache_key] = (
+            tree_version_list,
+            uuid_set,
+            mrr,
+            dataset_level_metadata,
+            file_tree)
 
-    return g_top_node_cache[cache_key]
+    return ap.top_node_cache[cache_key]
 
 
 def add_file_metadata(metadata_store: Path, ap: AddParameter):
