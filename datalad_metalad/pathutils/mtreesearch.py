@@ -157,14 +157,17 @@ class MTreeSearch:
             # if it does, add the children to `to_process`.
             for child_name, child_mtree in current_item.node.child_nodes.items():
                 if fnmatch.fnmatch(child_name, pattern_elements[current_item.item_level]):
-                    to_process.append(
-                        StackItem(
-                            current_item.item_path / child_name,
-                            current_item.item_level + 1,
-                            child_mtree,
-                            child_mtree.ensure_mapped()
+                    # If we have an item indicator, do not append the item
+                    # indicator node
+                    if item_indicator is None or item_indicator != child_name:
+                        to_process.append(
+                            StackItem(
+                                current_item.item_path / child_name,
+                                current_item.item_level + 1,
+                                child_mtree,
+                                child_mtree.ensure_mapped()
+                            )
                         )
-                    )
 
             if needs_purge:
                 current_item.node.purge()
@@ -222,14 +225,17 @@ class MTreeSearch:
                         yield current_item.item_path, current_item.node, None
 
                 for child_name, child_node in current_item.node.child_nodes.items():
-                    to_process.append(
-                        StackItem(
-                            current_item.item_path / child_name,
-                            current_item.item_level + 1,
-                            child_node,
-                            False
+                    # If we have an item indicator, do not append the item
+                    # indicator node
+                    if item_indicator is None or item_indicator != child_name:
+                        to_process.append(
+                            StackItem(
+                                current_item.item_path / child_name,
+                                current_item.item_level + 1,
+                                child_node,
+                                False
+                            )
                         )
-                    )
             else:
                 if item_indicator is None:
                     # If we are at a leaf and there is no item_indicator,

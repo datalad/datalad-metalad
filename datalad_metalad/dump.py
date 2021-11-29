@@ -43,6 +43,7 @@ from dataladmetadatamodel.metadata import (
 )
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
+from dataladmetadatamodel.mtreenode import MTreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
@@ -208,11 +209,11 @@ def show_file_tree_metadata(mapper: str,
     result_count = 0
     for path, metadata, _ in tree_search.search_pattern(pattern=search_pattern,
                                                         recursive=recursive):
-
         result_count += 1
 
-        # Ignore empty datasets
-        if metadata is None:
+        # Ignore empty datasets and ignore paths that do not
+        # described metadata, but a directory
+        if metadata is None or isinstance(metadata, MTreeNode):
             continue
 
         assert isinstance(metadata, Metadata)
