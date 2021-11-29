@@ -16,9 +16,14 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     setup_requires=SETUP_REQUIRES,
-    package_data={
-        'pipelines': ['datalad_metalad/pipelines/*.json']
-    },
+    packages=['datalad_metalad',
+              'datalad_metalad.extractors',
+              'datalad_metalad.indexers',
+              'datalad_metalad.pathutils',
+              'datalad_metalad.processor',
+              'datalad_metalad.provider',
+              'datalad_metalad.tests'],
+    package_data={'datalad_metalad': ['pipelines/*.json']},
     entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
