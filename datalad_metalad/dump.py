@@ -275,72 +275,78 @@ def dump_from_dataset_tree(mapper: str,
     if not metadata_url or metadata_url.dataset_path is None:
         metadata_url = TreeMetadataURL(MetadataPath(""), MetadataPath(""))
 
-    # Get specified version, if none is specified, take the first from the
-    # tree version list.
-    requested_root_dataset_version = metadata_url.version
-    if requested_root_dataset_version is None:
-        requested_root_dataset_version = (
-            # TODO: add an item() method to VersionList
-            tuple(tree_version_list.versions())[0]
-            if metadata_url.version is None
-            else metadata_url.version)
+    # Get specified version, if none is specified, take all versions.
+    requested_versions = ([metadata_url.version]
+                          if metadata_url.version is not None
+                          else list(tree_version_list.versions()))
 
-    # Fetch dataset tree for the specified version
-    time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
-        requested_root_dataset_version)
+    for version in requested_versions:
 
-    root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
-    if root_mrr is None:
-        lgr.warning(
-            f"no root dataset record found for version "
-            f"{requested_root_dataset_version} in metadata store "
-            f"{metadata_store}, cannot determine root dataset id")
-        root_dataset_version = requested_root_dataset_version
-        root_dataset_identifier = "<unknown>"
-        purge_root_mrr = False
-    else:
-        purge_root_mrr = root_mrr.ensure_mapped()
-        root_dataset_version = root_mrr.dataset_version
-        root_dataset_identifier = root_mrr.dataset_identifier
+        try:
+            # Fetch dataset tree for the specified version
+            time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
+                version)
+        except KeyError:
+            lgr.error(
+                f"could not locate metadata for version {version} of "
+                f"{metadata_url.dataset_path} in metadata_store "
+                f"{mapper}:{metadata_store}")
+            continue
 
-    # Create a tree search object to search for the specified datasets
-    tree_search = MTreeSearch(dataset_tree.mtree)
-    result_count = 0
-    for path, node, remaining_pattern in tree_search.search_pattern(
-                                    pattern=metadata_url.dataset_path,
-                                    recursive=recursive,
-                                    item_indicator=datalad_root_record_name):
-        result_count += 1
+        root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
+        if root_mrr is None:
+            lgr.debug(
+                f"no root dataset record found for version "
+                f"{version} in metadata store "
+                f"{metadata_store}, cannot determine root dataset id")
+            purge_root_mrr = False
+            root_dataset_version = version
+            root_dataset_identifier = "<unknown>"
+        else:
+            purge_root_mrr = root_mrr.ensure_mapped()
+            root_dataset_version = root_mrr.dataset_version
+            root_dataset_identifier = root_mrr.dataset_identifier
 
-        mrr = cast(MetadataRootRecord, node.get_child(datalad_root_record_name))
-        yield from show_dataset_metadata(
-            mapper,
-            metadata_store,
-            root_dataset_identifier,
-            root_dataset_version,
-            path,
-            mrr)
+        # Create a tree search object to search for the specified datasets
+        tree_search = MTreeSearch(dataset_tree.mtree)
+        result_count = 0
+        for path, node, remaining_pattern in tree_search.search_pattern(
+                                      pattern=metadata_url.dataset_path,
+                                      recursive=recursive,
+                                      item_indicator=datalad_root_record_name):
+            result_count += 1
 
-        yield from show_file_tree_metadata(
-            mapper,
-            metadata_store,
-            root_dataset_identifier,
-            root_dataset_version,
-            path,
-            mrr,
-            metadata_url.local_path,
-            recursive)
+            mrr = cast(
+                MetadataRootRecord,
+                node.get_child(datalad_root_record_name))
 
-    if result_count == 0:
-        lgr.error(
-            f"search pattern '{str(metadata_url.dataset_path)}' does not match "
-            f"any dataset in dataset-tree of dataset {root_dataset_identifier}"
-            f"@{root_dataset_version} (stored on {mapper}:"
-            f"{metadata_store})")
+            yield from show_dataset_metadata(
+                mapper,
+                metadata_store,
+                root_dataset_identifier,
+                root_dataset_version,
+                path,
+                mrr)
 
-    if purge_root_mrr:
-        root_mrr.purge()
-    return
+            yield from show_file_tree_metadata(
+                mapper,
+                metadata_store,
+                root_dataset_identifier,
+                root_dataset_version,
+                path,
+                mrr,
+                metadata_url.local_path,
+                recursive)
+
+        if result_count == 0:
+            lgr.error(
+                f"search pattern '{str(metadata_url.dataset_path)}' does not "
+                f"match any dataset in dataset-tree of dataset "
+                f"{root_dataset_identifier}@{root_dataset_version} (stored on "
+                f"{mapper}:{metadata_store})")
+
+        if purge_root_mrr:
+            root_mrr.purge()
 
 
 def dump_from_uuid_set(mapper: str,
@@ -351,8 +357,6 @@ def dump_from_uuid_set(mapper: str,
 
     """ Dump UUID-identified dataset elements that are referenced in path """
 
-    # Get specified version, if none is specified, take the first from the
-    # UUID version list.
     try:
         version_list = uuid_set.get_version_list(path.uuid)
     except KeyError:
@@ -361,44 +365,43 @@ def dump_from_uuid_set(mapper: str,
             f"metadata_store {mapper}:{metadata_store}")
         return
 
-    requested_dataset_version = path.version
-    if requested_dataset_version is None:
-        requested_dataset_version = (
-            tuple(version_list.versions())[0]
-            if path.version is None
-            else path.version)
+    # Get specified version, if none is specified, take all versions.
+    requested_dataset_version = ([path.version]
+                                 if path.version is not None
+                                 else list(version_list.versions()))
 
-    try:
-        time_stamp, dataset_path, metadata_root_record = \
-            version_list.get_versioned_element(requested_dataset_version)
-    except KeyError:
-        lgr.error(
-            f"could not locate metadata for version "
-            f"{requested_dataset_version} for dataset with "
-            f"UUID {path.uuid} in metadata_store {mapper}:{metadata_store}")
-        return
+    for dataset_version in requested_dataset_version:
+        try:
+            time_stamp, dataset_path, metadata_root_record = \
+                version_list.get_versioned_element(dataset_version)
+        except KeyError:
+            lgr.error(
+                f"could not locate metadata for version {dataset_version} for "
+                f"dataset with UUID {path.uuid} in metadata_store "
+                f"{mapper}:{metadata_store}")
+            continue
 
-    assert isinstance(metadata_root_record, MetadataRootRecord)
+        assert isinstance(metadata_root_record, MetadataRootRecord)
 
-    # Show dataset-level metadata
-    yield from show_dataset_metadata(
-        mapper,
-        metadata_store,
-        path.uuid,
-        requested_dataset_version,
-        dataset_path,
-        metadata_root_record)
+        # Show dataset-level metadata
+        yield from show_dataset_metadata(
+            mapper,
+            metadata_store,
+            path.uuid,
+            dataset_version,
+            dataset_path,
+            metadata_root_record)
 
-    # Show file-level metadata
-    yield from show_file_tree_metadata(
-        mapper,
-        metadata_store,
-        path.uuid,
-        requested_dataset_version,
-        dataset_path,
-        metadata_root_record,
-        path.local_path,
-        recursive)
+        # Show file-level metadata
+        yield from show_file_tree_metadata(
+            mapper,
+            metadata_store,
+            path.uuid,
+            dataset_version,
+            dataset_path,
+            metadata_root_record,
+            path.local_path,
+            recursive)
 
     return
 
