@@ -483,13 +483,13 @@ class Dump(Interface):
             metavar="DATASET",
             doc="""Dataset for which metadata should be dumped. If no 
                    directory name is provided, the current working directory is 
-                   used.""",
-            nargs="?"),
+                   used."""),
         path=Parameter(
             args=("path",),
-            #metavar="DATASET_FILE_PATH_PATTERN",
+            metavar="DATASET_FILE_PATH_PATTERN",
             doc="path to query metadata for",
-            constraints=EnsureStr() | EnsureNone()),
+            constraints=EnsureStr() | EnsureNone(),
+            nargs="?"),
         recursive=Parameter(
             args=("-r", "--recursive",),
             action="store_true",
@@ -508,7 +508,9 @@ class Dump(Interface):
             path="",
             recursive=False):
 
-        metadata_store_path = Path(dataset or ".")
+        metadata_store_path = dataset \
+            if Reference.is_remote(str(dataset or ".")) \
+            else Path(dataset or ".")
 
         backend = default_mapper_family
         tree_version_list, uuid_set = get_top_level_metadata_objects(
