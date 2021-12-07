@@ -781,19 +781,20 @@ def legacy_extract_file(ep: ExtractionParameter) -> Iterable[dict]:
         if ep.extractor_class.NEEDS_CONTENT:
             ensure_legacy_path_availability(ep, path)
 
-        extractor = ep.extractor_class(ep.source_dataset, [path])
+        extractor = ep.extractor_class(ep.source_dataset, [str(ep.file_tree_path)])
         _, file_result = extractor.get_metadata(False, True)
 
-        for path, metadata in file_result:
+        for extracted_path, metadata in file_result:
             yield dict(
                 action="meta_extract",
                 status="ok",
                 type="file",
+                path=path,
                 metadata_record=dict(
                     type="file",
                     dataset_id=ep.source_dataset_id,
                     dataset_version=ep.source_dataset_version,
-                    path=MetadataPath(path),
+                    path=MetadataPath(extracted_path),
                     extractor_name=ep.extractor_name,
                     extractor_version="un-versioned",
                     extraction_parameter=ep.extractor_arguments,
