@@ -147,8 +147,14 @@ install:
   # deploy git-annex, if desired
   - cmd: IF DEFINED INSTALL_GITANNEX datalad-installer --sudo ok %INSTALL_GITANNEX%
   - sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer --sudo ok ${INSTALL_GITANNEX}"
-  # Install gnupg for windows
+  # Install gnupg and md5sums for windows
+  - ps: |
+          $path = [Environment]::GetEnvironmentVariable("path", "machine")
+          $newPath = ($path.Split(';') | Where-Object { $_ -eq 'C:\ProgramData\chocolatey\bin' }) -join ';'
+          [Environment]::SetEnvironmentVariable("path", $newPath, "machine")
+  #- cmd: appveyor-retry choco install gpg4win
   - cmd: choco install gnupg
+  - cmd: choco install md5sums
 
 #before_build:
 #
@@ -179,24 +185,29 @@ test_script:
 
 
 after_test:
-  # Import public codecov key to verify uploader signatures
-  - sh: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
-  - cmd: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
   # move coverage into the project dir to make default handling applicable
   - cmd: move .coverage ..
   - sh: mv .coverage ..
   - cd ..
   - python -m coverage xml
+  # Import public codecov key to verify uploader signatures
+  - sh: pwd
+  - sh: ls
+  - sh: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
+  - cmd: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
   # Fetch latest uploader for linux and macos
-  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov
-  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov.SHA256SUM
-  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov.SHA256SUM.sig
+  - sh: curl -Os https://uploader.codecov.io/latest/${CODECOV_PLATFORM}/codecov
+  - sh: curl -Os https://uploader.codecov.io/latest/${CODECOV_PLATFORM}/codecov.SHA256SUM
+  - sh: curl -Os https://uploader.codecov.io/latest/${CODECOV_PLATFORM}/codecov.SHA256SUM.sig
+  - sh: gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
   - sh: chmod +x codecov
   - sh: ./codecov
   # Fetch latest windows codecov.exe
-  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe -Outfile codecov.exe
-  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe.SHA256SUM -Outfile codecov.exe.SHA256SUM
-  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe.SHA256SUM.sig -Outfile codecov.exe.SHA256SUM.sig
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe -Outfile codecov.exe
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM -Outfile codecov.exe.SHA256SUM
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM.sig -Outfile codecov.exe.SHA256SUM.sig
+  # TODO: gpgv is able to verify the signature but fails with gpgv : gpgv: can't allocate lock for '/c/Users/appveyor/.gnupg/trustedkeys.gpg'
+  #- ps: gpgv codecov.exe.SHA256SUM.sig codecov.exe.SHA256SUM
   - ps: .\codecov.exe
 
 
