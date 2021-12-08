@@ -147,7 +147,8 @@ install:
   # deploy git-annex, if desired
   - cmd: IF DEFINED INSTALL_GITANNEX datalad-installer --sudo ok %INSTALL_GITANNEX%
   - sh: "[ -n \"${INSTALL_GITANNEX}\" ] && datalad-installer --sudo ok ${INSTALL_GITANNEX}"
-
+  # Install gnupg for windows
+  - cmd: choco install gnupg
 
 #before_build:
 #
@@ -178,17 +179,24 @@ test_script:
 
 
 after_test:
+  # Import public codecov key to verify uploader signatures
+  - sh: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
+  - cmd: gpg --no-default-keyring --keyring trustedkeys.gpg --import .codecov.pgp_keys.asc
   # move coverage into the project dir to make default handling applicable
   - cmd: move .coverage ..
   - sh: mv .coverage ..
   - cd ..
   - python -m coverage xml
   # Fetch latest uploader for linux and macos
-  - sh: curl -Os https://uploader.codecov.io/latest/${CODECOV_PLATFORM}/codecov
+  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov
+  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov.SHA256SUM
+  - sh: curl -Os https://uploader.codecov.io/${CODECOV_PLATFORM}/latest/codecov.SHA256SUM.sig
   - sh: chmod +x codecov
   - sh: ./codecov
-  # Fetch latest windows codecov.exe (TODO: integrity check?)
-  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe -Outfile codecov.exe
+  # Fetch latest windows codecov.exe
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe -Outfile codecov.exe
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe.SHA256SUM -Outfile codecov.exe.SHA256SUM
+  - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/windows/latest/codecov.exe.SHA256SUM.sig -Outfile codecov.exe.SHA256SUM.sig
   - ps: .\codecov.exe
 
 
