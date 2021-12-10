@@ -201,14 +201,14 @@ after_test:
   - sh: curl -Os https://uploader.codecov.io/latest/${CODECOV_PLATFORM}/codecov.SHA256SUM.sig
   - sh: gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
   - sh: chmod +x codecov
-  - sh: ./codecov
+  - sh: ./codecov -f "coverage.xml"
   # Fetch latest windows codecov.exe
   - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe -Outfile codecov.exe
   - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM -Outfile codecov.exe.SHA256SUM
   - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM.sig -Outfile codecov.exe.SHA256SUM.sig
   # TODO: gpgv is able to verify the signature but fails with gpgv : gpgv: can't allocate lock for '/c/Users/appveyor/.gnupg/trustedkeys.gpg'
   #- ps: gpgv codecov.exe.SHA256SUM.sig codecov.exe.SHA256SUM
-  - ps: .\codecov.exe
+  - ps: .\codecov.exe -f "coverage.xml"
 
 
 #on_success:
