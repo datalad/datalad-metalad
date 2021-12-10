@@ -173,7 +173,10 @@ def test_extract():
     logging.basicConfig(level=logging.DEBUG)
 
     with tempfile.TemporaryDirectory() as root_dataset_dir_str:
-        create_dataset_proper(root_dataset_dir_str, ["subdataset_0", "subdataset_1"])
+        create_dataset_proper(
+            root_dataset_dir_str,
+            ["subdataset_0", "subdataset_1"])
+
         pipeline_results = list(
             meta_conduct(
                 arguments=[
