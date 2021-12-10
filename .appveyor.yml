@@ -153,7 +153,7 @@ install:
           $newPath = ($path.Split(';') | Where-Object { $_ -eq 'C:\ProgramData\chocolatey\bin' }) -join ';'
           [Environment]::SetEnvironmentVariable("path", $newPath, "machine")
   #- cmd: appveyor-retry choco install gpg4win
-  - cmd: choco install gnupg
+  - cmd: choco install gpg4win
   - cmd: choco install md5sums
 
 #before_build:
@@ -207,7 +207,7 @@ after_test:
   - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM -Outfile codecov.exe.SHA256SUM
   - ps: Invoke-WebRequest -Uri https://uploader.codecov.io/latest/windows/codecov.exe.SHA256SUM.sig -Outfile codecov.exe.SHA256SUM.sig
   # TODO: gpgv is able to verify the signature but fails with gpgv : gpgv: can't allocate lock for '/c/Users/appveyor/.gnupg/trustedkeys.gpg'
-  #- ps: gpgv codecov.exe.SHA256SUM.sig codecov.exe.SHA256SUM
+  - ps: gpgv codecov.exe.SHA256SUM.sig codecov.exe.SHA256SUM
   - ps: .\codecov.exe
 
 
