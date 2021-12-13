@@ -49,9 +49,16 @@ command_suite = (
             'meta-filter',
             'meta_filter'
         ),
+        (
+            'datalad_metalad.export',
+            'Export',
+            'meta-export',
+            'meta_export'
+        ),
     ]
 )
 
+aggregate_layout_version = 1
 
 # relative paths which to exclude from any metadata processing
 # including anything underneath them
