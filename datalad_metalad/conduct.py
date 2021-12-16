@@ -20,7 +20,7 @@ from typing import (
     Iterable,
     List,
     Union,
-    Optional
+    Optional,
 )
 
 from datalad.distribution.dataset import datasetmethod
@@ -39,6 +39,7 @@ from .pipelineelement import (
     PipelineElement,
     PipelineElementState
 )
+from .consumer.base import Consumer
 from .processor.base import Processor
 from .provider.base import Provider
 
@@ -156,11 +157,30 @@ class Conduct(Interface):
         element_names = [
             element["name"] for element in chain(
                 [conduct_configuration["provider"]],
-                conduct_configuration["processors"])]
+                conduct_configuration["processors"],
+                [conduct_configuration.get("consumer", None)])
+            if element is not None]
 
         additional_arguments = get_additional_arguments(
             arguments,
             element_names)
+
+        consumer_name = conduct_configuration.get("consumer", None)
+        if consumer_name:
+            consumer_instance = get_class_instance(conduct_configuration["consumer"])(
+                dataset="/home/cristian/datalad/inm7-studies/superset")
+            x = """
+            *(
+                conduct_configuration["consumer"]["arguments"] +
+                additional_arguments[consumer_name]["positional_arguments"]
+            ),
+            **{
+                **conduct_configuration["consumer"]["keyword_arguments"],
+                **additional_arguments[consumer_name]["keyword_arguments"]
+            })
+            """
+        else:
+            consumer_instance = None
 
         provider_name = conduct_configuration["provider"]["name"]
         provider_instance = get_class_instance(conduct_configuration["provider"])(
@@ -186,7 +206,8 @@ class Conduct(Interface):
         if processing_mode == "sequential":
             yield from process_sequential(
                 provider_instance,
-                processor_instances)
+                processor_instances,
+                consumer_instance)
             return
         elif processing_mode == "thread":
             executor = concurrent.futures.ThreadPoolExecutor(max_workers)
@@ -196,20 +217,23 @@ class Conduct(Interface):
             raise ValueError(f"unsupported processing mode: {processing_mode}")
 
         yield from process_parallel(
-            executor,
-            provider_instance,
-            processor_instances)
-        return
+                executor,
+                provider_instance,
+                processor_instances,
+                consumer_instance)
 
 
 def process_parallel(executor,
-                     provider_instance,
-                     processor_instances) -> Iterable:
+                     provider_instance: Provider,
+                     processor_instances: List[Processor],
+                     consumer_instance: Optional[Consumer] = None
+                     ) -> Iterable:
 
     running = set()
 
-    # This thread iterates over the provider result and
-    # starts a new pipeline element to process the result
+    # This thread iterates over the provider result,
+    # starts a new pipeline element to process the result,
+    # and feeds the result of every pipeline into the consumer.
     for pipeline_element in provider_instance.next_object():
 
         if not processor_instances:
@@ -242,6 +266,9 @@ def process_parallel(executor,
                     f"Processor[{source_index}] returned {pipeline_element} "
                     f"[provider not yet exhausted]")
                 if next_index >= len(processor_instances):
+                    if consumer_instance:
+                        pipeline_element = consumer_instance.consume(pipeline_element)
+
                     path = pipeline_element.get_result("path")
                     if path is not None:
                         yield dict(
@@ -286,9 +313,12 @@ def process_parallel(executor,
                     f"Processor[{source_index}] returned {pipeline_element}")
 
                 if next_index >= len(processor_instances):
+                    if consumer_instance:
+                        pipeline_element = consumer_instance.consume(pipeline_element)
                     lgr.debug(
-                        f"No more elements in pipeline, "
-                        f"returning {pipeline_element}")
+                        f"No more elements in pipeline, returning "
+                        f"{pipeline_element}")
+
                     path = pipeline_element.get_result("path")
                     if path is not None:
                         yield dict(
@@ -318,17 +348,17 @@ def process_parallel(executor,
 
 
 def process_sequential(provider_instance: Provider,
-                       processor_instances: List[Processor]) -> Iterable:
+                       processor_instances: List[Processor],
+                       consumer_instance: Optional[Consumer]) -> Iterable:
 
     for pipeline_element in provider_instance.next_object():
-
         lgr.debug(f"Provider yielded: {pipeline_element}")
-        yield from process_downstream(pipeline_element, processor_instances)
-    return
+        yield from process_downstream(pipeline_element, processor_instances, consumer_instance)
 
 
 def process_downstream(pipeline_element: PipelineElement,
-                       processor_instances: List[Processor]) -> Iterable:
+                       processor_instances: List[Processor],
+                       consumer_instance: Optional[Consumer]) -> Iterable:
 
     if pipeline_element.state == PipelineElementState.STOP:
         path = pipeline_element.get_result("path")
@@ -355,6 +385,18 @@ def process_downstream(pipeline_element: PipelineElement,
                 status="error",
                 logger=lgr,
                 message=f"Exception in processor {processor}",
+                base_error=traceback.format_exc())
+            return
+
+    if consumer_instance:
+        try:
+            pipeline_element = consumer_instance.consume(pipeline_element)
+        except Exception as e:
+            yield dict(
+                action="meta_conduct",
+                status="error",
+                logger=lgr,
+                message=f"Exception in consumer {consumer_instance}",
                 base_error=traceback.format_exc())
             return
 

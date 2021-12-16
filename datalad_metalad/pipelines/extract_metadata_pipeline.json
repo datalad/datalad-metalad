@@ -13,13 +13,13 @@
       "name": "extractor",
       "arguments": [],
       "keyword_arguments": {}
-    },
-    {
-      "module": "datalad_metalad.processor.add",
-      "class": "MetadataAdder",
-      "name": "adder",
-      "arguments": [],
-      "keyword_arguments": {}
     }
-  ]
+  ],
+  "consumer": {
+    "module": "datalad_metalad.consumer.add",
+    "class": "BatchAdder",
+    "name": "adder",
+    "arguments": [],
+    "keyword_arguments": {}
+  }
 }
