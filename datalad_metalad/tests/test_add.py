@@ -10,6 +10,7 @@
 """Test metadata adding"""
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import List
@@ -20,6 +21,7 @@ from datalad.api import (
     meta_add,
     meta_dump
 )
+from datalad.cmd import BatchedCommand
 from datalad.support.exceptions import IncompleteResultsError
 from datalad.tests.utils import (
     assert_dict_equal,
@@ -34,7 +36,10 @@ from datalad.tests.utils import (
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.metadatapath import MetadataPath
 
-from .utils import create_dataset
+from .utils import (
+    create_dataset,
+    create_dataset_proper,
+)
 from ..exceptions import MetadataKeyException
 
 
@@ -748,3 +753,30 @@ def test_add_multiple_file_records_end_to_end():
 @with_tempfile
 def test_add_multiple_metadata_records_end_to_end(file_name: str):
     _check_file_multiple_end_to_end_test(1, 1000, file_name)
+
+
+@with_tempfile(mkdir=True)
+def test_batch_mode(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
+    bc = BatchedCommand(
+        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"])
+
+    for json_object in json_objects:
+        result = bc(json.dumps(json_object))
+        result_object = json.loads(result)
+        eq_(result_object["status"], "ok")
+        eq_(result_object["action"], "meta_add")
+        eq_(result_object["destination"], temp_dir)
+        eq_(
+            Path(result_object["path"]).parts,
+            (
+                    Path(temp_dir)
+                    / json_object["dataset_path"]
+                    / json_object["path"]
+            ).parts
+        )
+
+    bc("\n")
+    bc.close()

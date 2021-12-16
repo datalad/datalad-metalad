@@ -13,11 +13,13 @@ can also be created by other means.
 """
 import json
 import logging
+import sys
 from itertools import chain
 from os import curdir
 from pathlib import Path
 from typing import (
     Dict,
+    Generator,
     List,
     Optional,
     Tuple,
@@ -192,7 +194,7 @@ class Add(Interface):
             dictionary). The file may contain a single metadata-record or
             a JSON-array with multiple metadata-records.
 
-            If the path is "-", metadata is read from standard input.
+            If the path is "-", the metadata file is read from standard input.
 
             The dictionary must contain the following keys:
 
@@ -251,6 +253,14 @@ class Add(Interface):
             doc="""Allow insertion of metadata, even if the "dataset-id" in
             the metadata source does not match the ID of the target
             dataset.""",
+            default=False),
+        batch_mode=Parameter(
+            args=("-b", "--batch-mode",),
+            action='store_true',
+            doc="""Enable batch mode. In batch mode metadata-records are read
+            from stdin, one record per line, and a result is written to stdout,
+            one result per line. Batch mode can be exited by sending an empty
+            line. The metadata file name has to be "-" (minus).""",
             default=False))
 
     @staticmethod
@@ -262,7 +272,8 @@ class Add(Interface):
             dataset: Optional[Union[str, Dataset]] = None,
             allow_override: bool = False,
             allow_unknown: bool = False,
-            allow_id_mismatch: bool = False):
+            allow_id_mismatch: bool = False,
+            batch_mode: bool = False):
 
         additional_values = additionalvalues or dict()
 
@@ -273,7 +284,14 @@ class Add(Interface):
         dataset_id = dataset.id
         additional_values_object = get_json_object(additional_values)
 
-        all_metadata_objects = read_json_objects(metadata)
+        if batch_mode is False:
+            all_metadata_objects = read_json_objects(metadata)
+        else:
+            if metadata != "-":
+                raise ValueError(
+                    "batch mode requires metadata parameter to"
+                    "be '-' (minus).")
+            all_metadata_objects = _stdin_reader()
 
         lock_backend(metadata_store)
 
@@ -327,7 +345,11 @@ class Add(Interface):
                                              add_parameter)
             if error_result:
                 if not allow_id_mismatch:
-                    yield error_result
+                    if batch_mode is True:
+                        print(error_result)
+                        sys.stdout.write(json.dumps(error_result) + "\n")
+                    else:
+                        yield error_result
                     continue
                 lgr.warning(error_result["message"])
 
@@ -336,9 +358,15 @@ class Add(Interface):
             # file-level metadata. Otherwise, we assume that the
             # metadata-dictionary contains dataset-level metadata.
             if add_parameter.file_path:
-                yield from add_file_metadata(dataset.pathobj, add_parameter)
+                result = tuple(add_file_metadata(dataset.pathobj, add_parameter))
             else:
-                yield from add_dataset_metadata(dataset.pathobj, add_parameter)
+                result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
+
+            assert len(result) == 1
+            if batch_mode is False:
+                yield result[0]
+            else:
+                sys.stdout.write(json.dumps(result[0]) + "\n")
 
         for value in top_node_cache.values():
             tree_version_list, uuid_set = value[0:2]
@@ -447,7 +475,7 @@ def check_dataset_ids(dataset_path: Path,
             return dict(
                 action="meta_add",
                 status="error",
-                path=add_parameter.result_path,
+                path=str(add_parameter.result_path),
                 message=f'value of "root-dataset-id" '
                         f'({add_parameter.root_dataset_id}) does not match '
                         f'ID of dataset at {dataset_path} ({dataset_id})')
@@ -456,7 +484,7 @@ def check_dataset_ids(dataset_path: Path,
             return dict(
                 action="meta_add",
                 status="error",
-                path=add_parameter.result_path,
+                path=str(add_parameter.result_path),
                 message=f'value of "dataset-id" '
                         f'({add_parameter.dataset_id}) does not match '
                         f'ID of dataset at {dataset_path} ({dataset_id})')
@@ -572,8 +600,8 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
         "status": "ok",
         "action": "meta_add",
         "type": "file",
-        "path": ap.result_path,
-        "destination": ap.destination_path,
+        "path": str(ap.result_path),
+        "destination": str(ap.destination_path),
         "message": f"added file metadata to {ap.destination_path}"
     }
     return
@@ -590,8 +618,8 @@ def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
         "status": "ok",
         "action": "meta_add",
         "type": "dataset",
-        "path": ap.result_path,
-        "destination": ap.destination_path,
+        "path": str(ap.result_path),
+        "destination": str(ap.destination_path),
         "message": f"added dataset metadata to {ap.destination_path}"
     }
     return
@@ -607,3 +635,17 @@ def add_metadata_content(metadata: Metadata, ap: AddParameter):
             ap.extractor_version,
             ap.extraction_parameter),
         ap.extracted_metadata)
+
+
+def _stdin_reader() -> Generator:
+    for line in sys.stdin:
+        if line == "\n":
+            sys.stdout.write("\n")
+            return
+        try:
+            yield json.loads(line)
+        except json.JSONDecodeError:
+            sys.stdout.write(
+                json.dumps({
+                    "status": "error",
+                    "message": f"not a JSON string: {line}"}) + "\n")
