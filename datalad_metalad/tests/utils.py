@@ -24,6 +24,8 @@ def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
     git_repo_path = Path(git_repo.path)
     datalad_dir = git_repo_path / ".datalad"
     datalad_dir.mkdir()
+    datalad_lock_dir = datalad_dir / "locks"
+    datalad_lock_dir.mkdir()
 
     datalad_config = datalad_dir / "config"
     datalad_config.write_text(
