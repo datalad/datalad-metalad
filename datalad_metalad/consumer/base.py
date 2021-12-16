@@ -1,7 +1,8 @@
 import abc
+import queue
 from typing import (
     Any,
-    Tuple,
+    Optional,
 )
 
 from ..pipelineelement import PipelineElement
@@ -17,32 +18,20 @@ class Consumer(metaclass=abc.ABCMeta):
     they consume data. An example is a metadata-adder that receives metadata
     from a queue and adds it to a datastore.
     """
-    def __init__(self, queue: Any):
-        """ Initialize a consumer with an input queue
-
-        :param Any queue: a queue-like object that supports get
-        """
-        self.queue = queue
-
-    def execute(self,
-                context: Any,
-                pipeline_element: PipelineElement
-                ) -> Tuple[Any, PipelineElement]:
-        """
-        Execute the processor. If we want to use process worker pools,
-        we cannot return an iterator or generator as a result.
-        Therefore this method will collect all results from self.process
-        and return them in a list of tuples, which consist of the passed
-        context and .
-        """
-        return context, self.process(pipeline_element)
 
     @abc.abstractmethod
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
-        """
-        Overwrite this method in derived classes to implement
-        the functionality of the processor. Return-values are
-        feed into the next processor in the pipeline or returned
-        as result of a datalad command, usually "meta-conduct".
+    def consume(self, pipeline_element: PipelineElement) -> bool:
+        """ Consume the pipeline element.
+
+        Consume the pipeline element and return `True` if it was successfully
+        consumed, `False` otherwise.
+
+        Overwrite this method in derived classes to implement the functionality
+        of the consumer.
+
+        :param PipelineElement pipeline_element: The pipeline element that
+            shall be consumed.
+        :return: Return `True` if the element was consumed, `False` otherwise
+        :rtype: bool
         """
         raise NotImplementedError
