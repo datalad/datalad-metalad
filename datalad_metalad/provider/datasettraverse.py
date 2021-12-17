@@ -64,7 +64,10 @@ class DatasetTraverser(Provider):
                  traverse_sub_datasets: bool = False
                  ):
 
-        assert item_type.lower() in ("file", "dataset", "both")
+        known_types = tuple(DatasetTraverser.name_to_item_set.keys())
+        if item_type.lower() not in known_types:
+            raise ValueError(f"{item_type.lower()} is not a known item_type. "
+                             f"Known types are: {', '.join(known_types)}")
 
         super().__init__()
 

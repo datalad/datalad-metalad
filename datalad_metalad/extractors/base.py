@@ -54,6 +54,8 @@ class DataOutputCategory(enum.Enum):
 
 
 class MetadataExtractorBase(metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
     def extract(self,
                 output_location: Optional[Union[IO, str]] = None
                 ) -> ExtractorResult:
@@ -64,10 +66,10 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         category for this extractor.
 
         DataOutputCategory.IMMEDIATE:
-        The value of output_location is None
+        The value of output_location is None.
 
         DataOutputCategory.FILE:
-        The value of output_location is file descriptor for a
+        The value of output_location is file descriptor for an
         empty binary file opened in read/write mode. The extractor
         should write all the metadata it outputs to the file.
         The content of the file will be added to the metadata.
@@ -77,18 +79,21 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         The extractor should write all its output to files or
         subdirectories in the directory.
         The content of the directory will be added to the
-        metadata
+        metadata.
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_id(self) -> UUID:
         """ Report the universally unique ID of the extractor """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_version(self) -> str:       # TODO shall we remove this and regard it as part of the state?
         """ Report the version of the extractor """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_data_output_category(self) -> DataOutputCategory:
         raise NotImplementedError
 
@@ -107,7 +112,7 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         object instance is passed via the method's `dataset` argument.
 
         The state information will be recorded together with the parameters
-        that the extractor used and assiciated with the emitted metadata.
+        that the extractor used and associated with the emitted metadata.
 
         Primarily, this is useful for reporting
         per-extractor version information (such as a version for the extractor
