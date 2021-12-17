@@ -260,7 +260,10 @@ class Add(Interface):
             doc="""Enable batch mode. In batch mode metadata-records are read
             from stdin, one record per line, and a result is written to stdout,
             one result per line. Batch mode can be exited by sending an empty
-            line. The metadata file name has to be "-" (minus).""",
+            line that just consists of a newline. Meta-add will return an empty
+            line that just consists of a newline to confirm the exit request.
+            When this flag is given, the metadata file name should be set to 
+            "-" (minus).""",
             default=False))
 
     @staticmethod
@@ -288,9 +291,9 @@ class Add(Interface):
             all_metadata_objects = read_json_objects(metadata)
         else:
             if metadata != "-":
-                raise ValueError(
-                    "batch mode requires metadata parameter to"
-                    "be '-' (minus).")
+                lgr.warning(
+                    f"Metadata parameter in batch mode is {metadata} instead "
+                    f"of '-' (minus), ignoring it.")
             all_metadata_objects = _stdin_reader()
 
         lock_backend(metadata_store)
