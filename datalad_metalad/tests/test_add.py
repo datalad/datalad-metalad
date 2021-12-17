@@ -10,6 +10,7 @@
 """Test metadata adding"""
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -760,11 +761,19 @@ def test_batch_mode(temp_dir: str):
     create_dataset_proper(temp_dir)
 
     json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
-    bc = BatchedCommand(
-        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"])
+    request = "".join([
+        json.dumps(json_object) + "\n"
+        for json_object in json_objects
+    ]) + "\n"
 
-    for json_object in json_objects:
-        result = bc(json.dumps(json_object))
+    p = subprocess.Popen(
+        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"],
+        bufsize=1,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE)
+
+    stdout_content, stderr_content = p.communicate(input=request.encode())
+    for json_object, result in zip(json_objects, stdout_content.decode().splitlines()):
         result_object = json.loads(result)
         eq_(result_object["status"], "ok")
         eq_(result_object["action"], "meta_add")
@@ -777,6 +786,3 @@ def test_batch_mode(temp_dir: str):
                     / json_object["path"]
             ).parts
         )
-
-    eq_(bc("\n"), "")
-    bc.close()
