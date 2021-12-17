@@ -778,5 +778,5 @@ def test_batch_mode(temp_dir: str):
             ).parts
         )
 
-    bc("\n")
+    eq_(bc("\n"), "")
     bc.close()
