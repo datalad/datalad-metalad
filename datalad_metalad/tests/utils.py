@@ -47,7 +47,7 @@ def create_dataset_proper(directory: Union[str, Path],
         where='dataset')
     ds.save()
     assert_repo_status(ds.path)
-    datalad_lock_dir = ds.path / "locks"
+    datalad_lock_dir = ds.pathobj / "locks"
     datalad_lock_dir.mkdir()
 
     sub_dataset_names = sub_dataset_names or []

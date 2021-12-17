@@ -362,11 +362,12 @@ class Add(Interface):
             else:
                 result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
 
-            assert len(result) == 1
-            if batch_mode is False:
-                yield result[0]
-            else:
-                sys.stdout.write(json.dumps(result[0]) + "\n")
+            assert len(result) <= 1, f"expected result length <= 1, got: {len(result)}"
+            if len(result) == 1:
+                if batch_mode is False:
+                    yield result[0]
+                else:
+                    sys.stdout.write(json.dumps(result[0]) + "\n")
 
         for value in top_node_cache.values():
             tree_version_list, uuid_set = value[0:2]
