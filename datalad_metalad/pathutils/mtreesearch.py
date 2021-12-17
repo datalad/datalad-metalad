@@ -24,6 +24,8 @@ from dataladmetadatamodel.mtreenode import MTreeNode
 from ..utils import ensure_mapped
 
 
+__docformat__ = "restructuredtext"
+
 root_path = MetadataPath("")
 
 
@@ -75,21 +77,7 @@ class MTreeSearch:
                         traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
                         item_indicator: Optional[str] = None,
                         ) -> Generator[Tuple[MetadataPath, MTreeNode, Optional[MetadataPath]], None, None]:
-        """
-        Search the tree und yield nodes that match the pattern.
-
-        Parameters
-        ----------
-        pattern: file name with shell-style wildcards
-        traversal_order: specify whether to use depth-first-order
-                         or breadth-first-order in search
-        item_indicator: a string that indicates that the current
-                        mtree-node is an item in an enclosing context,
-                        for example: ".datalad_metadata-root-record"
-                        could indicate a dataset-node.
-
-        Returns:
-        -------
+        """ Search the tree und yield nodes that match the pattern.
 
         Yields a 3-tuple, which describes a full-match, or an item-match.
 
@@ -106,17 +94,20 @@ class MTreeSearch:
         In an item match, the first element is the MetadataPath of the
         item-node, the second element is the item node, and the third
         element is a MetadataPath containing the remaining pattern.
+
+        :param MetadataPath pattern: file name with shell-style wildcards.
+        :param TraversalOrder traversal_order: specify whether to use
+            depth-first-order or breadth-first-order in search
+        :param Optional[str] item_indicator: a string that indicates that the
+            current mtree-node is an item in an enclosing context, for example:
+            ".datalad_metadata-root-record" could indicate a dataset-node.
+        :return: Yields a 3-tuple, which describes a full-match or an item-match
+        :rtype: Generator
         """
 
         pattern_elements = pattern.parts
 
-        to_process = deque([
-            StackItem(
-                MetadataPath(""),
-                0,
-                self.mtree,
-                False)])
-
+        to_process = deque([StackItem(MetadataPath(""), 0, self.mtree, False)])
         while to_process:
             if traversal_order == TraversalOrder.depth_first_search:
                 current_item = to_process.pop()
@@ -170,12 +161,10 @@ class MTreeSearch:
                                   traversal_order: TraversalOrder = TraversalOrder.depth_first_search,
                                   item_indicator: Optional[str] = None,
                                   ) -> Generator[Tuple[MetadataPath, MTreeNode, Optional[MetadataPath]], None, None]:
-        """
-        Find nodes that match the given pattern and list all nodes
-        recursively from them
+        """ Find nodes that match the given pattern and list all sub-nodes
 
-        See search_pattern for a description of the parameters and result
-        elements
+        See _search_pattern for a description of the parameters and result
+        elements.
         """
         for result in self._search_pattern(pattern,
                                            traversal_order,
@@ -196,13 +185,7 @@ class MTreeSearch:
                         item_indicator: Optional[str] = None,
                         ):
 
-        to_process = deque([
-            StackItem(
-                start_path,
-                0,
-                start_node,
-                False)])
-
+        to_process = deque([StackItem(start_path, 0, start_node, False)])
         while to_process:
             if traversal_order == TraversalOrder.depth_first_search:
                 current_item = to_process.pop()
@@ -210,7 +193,6 @@ class MTreeSearch:
                 current_item = to_process.popleft()
 
             with ensure_mapped(current_item.node):
-                # Check for item-node, if item indicator is not None
                 if isinstance(current_item.node, MTreeNode):
                     if item_indicator is not None:
                         if item_indicator in current_item.node.child_nodes:
@@ -225,9 +207,7 @@ class MTreeSearch:
                                     current_item.item_path / child_name,
                                     current_item.item_level + 1,
                                     child_node,
-                                    False
-                                )
-                            )
+                                    False))
                 else:
                     if item_indicator is None:
                         # If we are at a leaf and there is no item_indicator,
