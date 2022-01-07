@@ -76,7 +76,6 @@ from dataladmetadatamodel.datasettree import DatasetTree
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
-from dataladmetadatamodel.mapper.reference import Reference
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
     flush_object_references)
 from dataladmetadatamodel.mapper.gitmapper.utils import (

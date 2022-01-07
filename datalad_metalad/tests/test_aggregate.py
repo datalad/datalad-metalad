@@ -17,18 +17,18 @@ from uuid import UUID
 
 from datalad.api import (
     meta_aggregate,
-    meta_dump
+    meta_dump,
 )
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.tests.utils import (
     assert_not_in,
     assert_raises,
     assert_result_count,
-    eq_
+    eq_,
 )
 from .utils import (
     add_dataset_level_metadata,
-    create_dataset
+    create_dataset,
 )
 
 
