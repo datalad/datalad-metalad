@@ -719,13 +719,17 @@ def annex_status(annex_repo, paths=None):
 def legacy_get_file_info(dataset: Dataset,
                          path: Path
                          ) -> Dict:
+
+    status = None
+    if isinstance(dataset.repo, AnnexRepo):
+        status = annex_status(dataset.repo, [path])
+    if not status:
+        status =  dataset.repo.status([path], untracked="no")
+    if not status:
+        raise ValueError(f"untracked file: {path}")
     return {
         "path": str(path),
-        **(
-            annex_status(dataset.repo, [path])[path]
-            if isinstance(dataset.repo, AnnexRepo)
-            else dataset.repo.status([path], untracked="no")[path]
-        )
+        **(status[path])
     }
 
 
