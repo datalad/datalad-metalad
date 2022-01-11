@@ -54,10 +54,7 @@ from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_references
-from dataladmetadatamodel.mapper.gitmapper.utils import (
-    lock_backend,
-    unlock_backend,
-)
+from dataladmetadatamodel.mapper.gitmapper.utils import locked_backend
 
 from .exceptions import MetadataKeyException
 from .utils import (
@@ -296,90 +293,89 @@ class Add(Interface):
                     f"of '-' (minus), ignoring it.")
             all_metadata_objects = _stdin_reader()
 
-        lock_backend(metadata_store)
+        with locked_backend(metadata_store):
+            for metadata_object in all_metadata_objects:
+                metadata = process_parameters(
+                    metadata=metadata_object,
+                    additional_values=additional_values_object,
+                    allow_override=allow_override,
+                    allow_unknown=allow_unknown)
 
-        for metadata_object in all_metadata_objects:
-            metadata = process_parameters(
-                metadata=metadata_object,
-                additional_values=additional_values_object,
-                allow_override=allow_override,
-                allow_unknown=allow_unknown)
+                lgr.debug(
+                    f"attempting to add metadata: '{json.dumps(metadata)}' to "
+                    f"metadata store {metadata_store}")
 
-            lgr.debug(
-                f"attempting to add metadata: '{json.dumps(metadata)}' to "
-                f"metadata store {metadata_store}")
+                add_parameter = AddParameter(
+                    result_path=(
+                        metadata_store
+                        / Path(metadata.get("dataset_path", "."))
+                        / Path(metadata.get("path", ""))),
+                    destination_path=metadata_store,
+                    allow_id_mismatch=allow_id_mismatch,
 
-            add_parameter = AddParameter(
-                result_path=(
-                    metadata_store
-                    / Path(metadata.get("dataset_path", "."))
-                    / Path(metadata.get("path", ""))),
-                destination_path=metadata_store,
-                allow_id_mismatch=allow_id_mismatch,
+                    dataset_id=UUID(metadata["dataset_id"]),
+                    dataset_version=metadata["dataset_version"],
+                    file_path=(
+                        MetadataPath(metadata["path"])
+                        if "path" in metadata
+                        else None),
 
-                dataset_id=UUID(metadata["dataset_id"]),
-                dataset_version=metadata["dataset_version"],
-                file_path=(
-                    MetadataPath(metadata["path"])
-                    if "path" in metadata
-                    else None),
+                    root_dataset_id=(
+                        UUID(metadata["root_dataset_id"])
+                        if "root_dataset_id" in metadata
+                        else None),
+                    root_dataset_version=metadata.get("root_dataset_version", None),
+                    dataset_path=MetadataPath(
+                        metadata.get("dataset_path", "")),
 
-                root_dataset_id=(
-                    UUID(metadata["root_dataset_id"])
-                    if "root_dataset_id" in metadata
-                    else None),
-                root_dataset_version=metadata.get("root_dataset_version", None),
-                dataset_path=MetadataPath(
-                    metadata.get("dataset_path", "")),
+                    extractor_name=metadata["extractor_name"],
+                    extractor_version=metadata["extractor_version"],
+                    extraction_time=metadata["extraction_time"],
+                    extraction_parameter=metadata["extraction_parameter"],
+                    agent_name=metadata["agent_name"],
+                    agent_email=metadata["agent_email"],
 
-                extractor_name=metadata["extractor_name"],
-                extractor_version=metadata["extractor_version"],
-                extraction_time=metadata["extraction_time"],
-                extraction_parameter=metadata["extraction_parameter"],
-                agent_name=metadata["agent_name"],
-                agent_email=metadata["agent_email"],
+                    extracted_metadata=metadata["extracted_metadata"],
 
-                extracted_metadata=metadata["extracted_metadata"],
+                    top_node_cache=top_node_cache)
 
-                top_node_cache=top_node_cache)
+                error_result = check_dataset_ids(dataset.pathobj,
+                                                 UUID(dataset_id),
+                                                 add_parameter)
+                if error_result:
+                    if not allow_id_mismatch:
+                        if batch_mode is True:
+                            sys.stdout.write(json.dumps(error_result) + "\n")
+                            sys.stdout.flush()
+                        else:
+                            yield error_result
+                        continue
+                    lgr.warning(error_result["message"])
 
-            error_result = check_dataset_ids(dataset.pathobj,
-                                             UUID(dataset_id),
-                                             add_parameter)
-            if error_result:
-                if not allow_id_mismatch:
+                # If the key "path" is present in the metadata
+                # dictionary, we assume that the metadata-dictionary describes
+                # file-level metadata. Otherwise, we assume that the
+                # metadata-dictionary contains dataset-level metadata.
+                if add_parameter.file_path:
+                    result = tuple(add_file_metadata(dataset.pathobj, add_parameter))
+                else:
+                    result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
+
+                assert len(result) <= 1, f"expected result length <= 1, got: {len(result)}"
+                if len(result) == 1:
                     if batch_mode is True:
-                        sys.stdout.write(json.dumps(error_result) + "\n")
+                        sys.stdout.write(json.dumps(result[0]) + "\n")
                         sys.stdout.flush()
                     else:
-                        yield error_result
-                    continue
-                lgr.warning(error_result["message"])
+                        yield result[0]
 
-            # If the key "path" is present in the metadata
-            # dictionary, we assume that the metadata-dictionary describes
-            # file-level metadata. Otherwise, we assume that the
-            # metadata-dictionary contains dataset-level metadata.
-            if add_parameter.file_path:
-                result = tuple(add_file_metadata(dataset.pathobj, add_parameter))
-            else:
-                result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
+            for value in top_node_cache.values():
+                tree_version_list, uuid_set = value[0:2]
+                tree_version_list.write_out(str(metadata_store))
+                uuid_set.write_out(str(metadata_store))
 
-            assert len(result) <= 1, f"expected result length <= 1, got: {len(result)}"
-            if len(result) == 1:
-                if batch_mode is True:
-                    sys.stdout.write(json.dumps(result[0]) + "\n")
-                    sys.stdout.flush()
-                else:
-                    yield result[0]
+            flush_object_references(metadata_store)
 
-        for value in top_node_cache.values():
-            tree_version_list, uuid_set = value[0:2]
-            tree_version_list.write_out(str(metadata_store))
-            uuid_set.write_out(str(metadata_store))
-
-        flush_object_references(metadata_store)
-        unlock_backend(metadata_store)
         return
 
 

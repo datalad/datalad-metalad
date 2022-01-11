@@ -57,9 +57,7 @@ def call_meta_add(locked: bool,
     if locked:
         return list(meta_add(*args, **kwargs))
     else:
-        with patch("datalad_metalad.add.lock_backend"), \
-             patch("datalad_metalad.add.unlock_backend"):
-
+        with patch("datalad_metalad.add.locked_backend"):
             return list(meta_add(*args, **kwargs))
 
 
