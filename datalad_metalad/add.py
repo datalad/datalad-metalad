@@ -349,8 +349,8 @@ class Add(Interface):
             if error_result:
                 if not allow_id_mismatch:
                     if batch_mode is True:
-                        print(error_result)
                         sys.stdout.write(json.dumps(error_result) + "\n")
+                        sys.stdout.flush()
                     else:
                         yield error_result
                     continue
@@ -367,10 +367,11 @@ class Add(Interface):
 
             assert len(result) <= 1, f"expected result length <= 1, got: {len(result)}"
             if len(result) == 1:
-                if batch_mode is False:
-                    yield result[0]
-                else:
+                if batch_mode is True:
                     sys.stdout.write(json.dumps(result[0]) + "\n")
+                    sys.stdout.flush()
+                else:
+                    yield result[0]
 
         for value in top_node_cache.values():
             tree_version_list, uuid_set = value[0:2]
@@ -645,6 +646,7 @@ def _stdin_reader() -> Generator:
     for line in sys.stdin:
         if line == "\n":
             sys.stdout.write("\n")
+            sys.stdout.flush()
             return
         try:
             yield json.loads(line)
@@ -653,3 +655,4 @@ def _stdin_reader() -> Generator:
                 json.dumps({
                     "status": "error",
                     "message": f"not a JSON string: {line}"}) + "\n")
+            sys.stdout.flush()
