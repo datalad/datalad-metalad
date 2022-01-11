@@ -90,7 +90,7 @@ def test_unknown_key_reporting(file_name):
 
     with \
             patch("datalad_metalad.add.check_dataset"), \
-            patch("datalad_metalad.add.lock_backend"):
+            patch("datalad_metalad.add.locked_backend"):
 
         _assert_raise_mke_with_keys(
             ["strange_key_name"],
@@ -159,7 +159,7 @@ def test_incomplete_non_mandatory_key_handling(file_name):
 
     with \
             patch("datalad_metalad.add.check_dataset"), \
-            patch("datalad_metalad.add.lock_backend"):
+            patch("datalad_metalad.add.locked_backend"):
 
         _assert_raise_mke_with_keys(
             ["root_dataset_version", "dataset_path"],
@@ -177,7 +177,7 @@ def test_override_key_reporting(file_name):
 
     with \
             patch("datalad_metalad.add.check_dataset"), \
-            patch("datalad_metalad.add.lock_backend"):
+            patch("datalad_metalad.add.locked_backend"):
         _assert_raise_mke_with_keys(
             ["dataset_id"],
             metadata=file_name,
