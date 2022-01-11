@@ -78,9 +78,7 @@ from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
     flush_object_references)
-from dataladmetadatamodel.mapper.gitmapper.utils import (
-    lock_backend,
-    unlock_backend)
+from dataladmetadatamodel.mapper.gitmapper.utils import locked_backend
 from .utils import check_dataset
 
 
@@ -203,34 +201,32 @@ class Aggregate(Interface):
             raise InsufficientArgumentsError(
                 "No valid metadata stores were specified for aggregation")
 
-        lock_backend(root_dataset.pathobj)
+        with locked_backend(root_dataset.pathobj):
 
-        tree_version_list, uuid_set = get_top_level_metadata_objects(
-            backend,
-            root_realm)
+            tree_version_list, uuid_set = get_top_level_metadata_objects(
+                backend,
+                root_realm)
 
-        if tree_version_list is None:
-            lgr.warning(
-                f"no tree version list found in {root_realm}, "
-                f"creating an empty tree version list")
-            tree_version_list = TreeVersionList()
-        if uuid_set is None:
-            lgr.warning(
-                f"no uuid set found in {root_realm}, "
-                f"creating an empty set")
-            uuid_set = UUIDSet()
+            if tree_version_list is None:
+                lgr.warning(
+                    f"no tree version list found in {root_realm}, "
+                    f"creating an empty tree version list")
+                tree_version_list = TreeVersionList()
+            if uuid_set is None:
+                lgr.warning(
+                    f"no uuid set found in {root_realm}, "
+                    f"creating an empty set")
+                uuid_set = UUIDSet()
 
-        perform_aggregation(
-            root_realm,
-            tree_version_list,
-            uuid_set,
-            aggregate_items)
+            perform_aggregation(
+                root_realm,
+                tree_version_list,
+                uuid_set,
+                aggregate_items)
 
-        tree_version_list.write_out(root_realm)
-        uuid_set.write_out(root_realm)
-        flush_object_references(root_dataset.pathobj)
-
-        unlock_backend(root_dataset.pathobj)
+            tree_version_list.write_out(root_realm)
+            uuid_set.write_out(root_realm)
+            flush_object_references(root_dataset.pathobj)
 
         yield dict(
             action="meta_aggregate",
