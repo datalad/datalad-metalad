@@ -18,7 +18,10 @@ from typing import (
     Union,
 )
 
-from dataladmetadatamodel.mappableobject import MappableObject
+from dataladmetadatamodel.mappableobject import (
+    MappableObject,
+    ensure_mapped,
+)
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mtreenode import MTreeNode
 
@@ -122,55 +125,48 @@ class MTreeSearch:
             else:
                 current_item = to_process.popleft()
 
-            needs_purge = current_item.node.ensure_mapped()
+            with ensure_mapped(current_item.node):
 
-            # If the current item level is equal to the number of
-            # pattern elements, i.e. all pattern element were matched
-            # earlier, the current item is a valid match.
-            if len(pattern_elements) == current_item.item_level:
-                yield current_item.item_path, current_item.node, None
+                # If the current item level is equal to the number of
+                # pattern elements, i.e. all pattern element were matched
+                # earlier, the current item is a valid match.
+                if len(pattern_elements) == current_item.item_level:
+                    yield current_item.item_path, current_item.node, None
 
-                # There will be no further matches below the
-                # current item, because the pattern elements are
-                # exhausted. Go to the next item.
-                if needs_purge:
-                    current_item.node.purge()
-                continue
+                    # There will be no further matches below the
+                    # current item, because the pattern elements are
+                    # exhausted. Go to the next item.
+                    continue
 
-            # Check for item-node, if item indicator is not None
-            if item_indicator is not None:
-                if isinstance(current_item.node, MTreeNode):
-                    if item_indicator in current_item.node.child_nodes:
-                        yield current_item.item_path, current_item.node, MetadataPath(
-                                *pattern_elements[current_item.item_level:])
+                # Check for item-node, if item indicator is not None
+                if item_indicator is not None:
+                    if isinstance(current_item.node, MTreeNode):
+                        if item_indicator in current_item.node.child_nodes:
+                            yield current_item.item_path, current_item.node, MetadataPath(
+                                    *pattern_elements[current_item.item_level:])
 
-            # There is at least one more pattern element, try to
-            # match it against the current nodes children.
-            if not isinstance(current_item.node, MTreeNode):
-                # If the current node has no children, we cannot
-                # match anything and go to the next item
-                if needs_purge:
-                    current_item.node.purge()
-                continue
+                # There is at least one more pattern element, try to
+                # match it against the current nodes children.
+                if not isinstance(current_item.node, MTreeNode):
+                    # If the current node has no children, we cannot
+                    # match anything and go to the next item
+                    continue
 
-            # Check whether the current pattern matches any children,
-            # if it does, add the children to `to_process`.
-            for child_name, child_mtree in current_item.node.child_nodes.items():
-                if fnmatch.fnmatch(child_name, pattern_elements[current_item.item_level]):
-                    # If we have an item indicator, do not append the item
-                    # indicator node
-                    if item_indicator is None or item_indicator != child_name:
-                        to_process.append(
-                            StackItem(
-                                current_item.item_path / child_name,
-                                current_item.item_level + 1,
-                                child_mtree,
-                                child_mtree.ensure_mapped()
+                # Check whether the current pattern matches any children,
+                # if it does, add the children to `to_process`.
+                for child_name, child_mtree in current_item.node.child_nodes.items():
+                    if fnmatch.fnmatch(child_name, pattern_elements[current_item.item_level]):
+                        # If we have an item indicator, do not append the item
+                        # indicator node
+                        if item_indicator is None or item_indicator != child_name:
+                            to_process.append(
+                                StackItem(
+                                    current_item.item_path / child_name,
+                                    current_item.item_level + 1,
+                                    child_mtree,
+                                    child_mtree.ensure_mapped()
+                                )
                             )
-                        )
-
-            if needs_purge:
-                current_item.node.purge()
 
     def _search_pattern_recursive(self,
                                   pattern: MetadataPath,
@@ -216,33 +212,27 @@ class MTreeSearch:
             else:
                 current_item = to_process.popleft()
 
-            needs_purge = current_item.node.ensure_mapped()
+            with ensure_mapped(current_item.node):
+                # Check for item-node, if item indicator is not None
+                if isinstance(current_item.node, MTreeNode):
+                    if item_indicator is not None:
+                        if item_indicator in current_item.node.child_nodes:
+                            yield current_item.item_path, current_item.node, None
 
-            # Check for item-node, if item indicator is not None
-            if isinstance(current_item.node, MTreeNode):
-                if item_indicator is not None:
-                    if item_indicator in current_item.node.child_nodes:
-                        yield current_item.item_path, current_item.node, None
-
-                for child_name, child_node in current_item.node.child_nodes.items():
-                    # If we have an item indicator, do not append the item
-                    # indicator node
-                    if item_indicator is None or item_indicator != child_name:
-                        to_process.append(
-                            StackItem(
-                                current_item.item_path / child_name,
-                                current_item.item_level + 1,
-                                child_node,
-                                False
+                    for child_name, child_node in current_item.node.child_nodes.items():
+                        # If we have an item indicator, do not append the item
+                        # indicator node
+                        if item_indicator is None or item_indicator != child_name:
+                            to_process.append(
+                                StackItem(
+                                    current_item.item_path / child_name,
+                                    current_item.item_level + 1,
+                                    child_node,
+                                    False
+                                )
                             )
-                        )
-            else:
-                if item_indicator is None:
-                    # If we are at a leaf and there is no item_indicator,
-                    # yield the leave.
-                    yield current_item.item_path, current_item.node, None
-
-            # We are done with this node. Purge it, if it was
-            # not present in memory before this search.
-            if needs_purge:
-                current_item.node.purge()
+                else:
+                    if item_indicator is None:
+                        # If we are at a leaf and there is no item_indicator,
+                        # yield the leave.
+                        yield current_item.item_path, current_item.node, None

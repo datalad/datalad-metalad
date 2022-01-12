@@ -39,6 +39,7 @@ from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import datalad_root_record_name
 from dataladmetadatamodel.mapper.reference import Reference
+from dataladmetadatamodel.mappableobject import ensure_mapped
 from dataladmetadatamodel.metadata import (
     Metadata,
     MetadataInstance
@@ -140,46 +141,40 @@ def show_dataset_metadata(mapper: str,
                           metadata_root_record: MetadataRootRecord
                           ) -> Generator[dict, None, None]:
 
-    purge_metadata_root_record = metadata_root_record.ensure_mapped()
-    dataset_level_metadata = \
-        metadata_root_record.dataset_level_metadata.read_in()
+    with ensure_mapped(metadata_root_record):
+        dataset_level_metadata = metadata_root_record.dataset_level_metadata.read_in()
 
-    if dataset_level_metadata is None:
-        lgr.warning(
-            f"no dataset level metadata for dataset "
-            f"uuid:{root_dataset_identifier}@{root_dataset_version}")
-        if purge_metadata_root_record:
-            metadata_root_record.purge()
-        return
+        if dataset_level_metadata is None:
+            lgr.warning(
+                f"no dataset level metadata for dataset "
+                f"uuid:{root_dataset_identifier}@{root_dataset_version}")
+            return
 
-    common_properties = _get_common_properties(
-        root_dataset_identifier,
-        root_dataset_version,
-        metadata_root_record,
-        dataset_path)
+        common_properties = _get_common_properties(
+            root_dataset_identifier,
+            root_dataset_version,
+            metadata_root_record,
+            dataset_path)
 
-    assert isinstance(dataset_level_metadata, Metadata)
+        assert isinstance(dataset_level_metadata, Metadata)
 
-    for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs:
-        for instance in extractor_runs:
+        for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs:
+            for instance in extractor_runs:
 
-            instance_properties = _get_instance_properties(
-                extractor_name,
-                instance)
+                instance_properties = _get_instance_properties(
+                    extractor_name,
+                    instance)
 
-            yield _create_result_record(
-                mapper=mapper,
-                metadata_store=metadata_store,
-                metadata_record={
-                    "type": "dataset",
-                    **common_properties,
-                    **instance_properties
-                },
-                element_path=dataset_path,
-                report_type="dataset")
-
-    if purge_metadata_root_record:
-        metadata_root_record.purge()
+                yield _create_result_record(
+                    mapper=mapper,
+                    metadata_store=metadata_store,
+                    metadata_record={
+                        "type": "dataset",
+                        **common_properties,
+                        **instance_properties
+                    },
+                    element_path=dataset_path,
+                    report_type="dataset")
 
 
 def show_file_tree_metadata(mapper: str,
@@ -192,89 +187,64 @@ def show_file_tree_metadata(mapper: str,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
 
-    purge_mrr = metadata_root_record.ensure_mapped()
+    with ensure_mapped(metadata_root_record):
 
-    dataset_level_metadata = metadata_root_record.dataset_level_metadata
-    file_tree = metadata_root_record.file_tree
+        dataset_level_metadata = metadata_root_record.dataset_level_metadata
+        file_tree = metadata_root_record.file_tree
 
-    if dataset_level_metadata is not None:
-        purge_dataset_level_metadata = dataset_level_metadata.ensure_mapped()
-    else:
-        purge_dataset_level_metadata = False
+        with ensure_mapped(dataset_level_metadata):
+            with ensure_mapped(file_tree):
 
-    if file_tree is not None:
-        purge_file_tree = file_tree.ensure_mapped()
-    else:
-        purge_file_tree = False
+                # Do not try to search anything if the file tree is empty
+                if not file_tree or not file_tree.mtree.child_nodes:
+                    return
 
-    # Do not try to search anything if the file tree is empty
-    if not file_tree or not file_tree.mtree.child_nodes:
-        if purge_file_tree:
-            file_tree.purge()
-        if purge_dataset_level_metadata:
-            dataset_level_metadata.purge()
-        if purge_mrr:
-            metadata_root_record.purge()
-        return
+                # Determine matching file paths
+                tree_search = MTreeSearch(file_tree.mtree)
+                result_count = 0
+                for path, metadata, _ in tree_search.search_pattern(pattern=search_pattern,
+                                                                    recursive=recursive):
+                    result_count += 1
 
-    # Determine matching file paths
-    tree_search = MTreeSearch(file_tree.mtree)
-    result_count = 0
-    for path, metadata, _ in tree_search.search_pattern(pattern=search_pattern,
-                                                        recursive=recursive):
-        result_count += 1
+                    # Ignore empty datasets and ignore paths that do not
+                    # described metadata, but a directory
+                    if metadata is None or isinstance(metadata, MTreeNode):
+                        continue
 
-        # Ignore empty datasets and ignore paths that do not
-        # described metadata, but a directory
-        if metadata is None or isinstance(metadata, MTreeNode):
-            continue
+                    assert isinstance(metadata, Metadata)
 
-        assert isinstance(metadata, Metadata)
+                    common_properties = _get_common_properties(
+                        root_dataset_identifier,
+                        root_dataset_version,
+                        metadata_root_record,
+                        dataset_path)
 
-        common_properties = _get_common_properties(
-            root_dataset_identifier,
-            root_dataset_version,
-            metadata_root_record,
-            dataset_path)
+                    with ensure_mapped(metadata):
+                        for extractor_name, extractor_runs in metadata.extractor_runs:
+                            for instance in extractor_runs:
 
-        purge_metadata = metadata.ensure_mapped()
-        for extractor_name, extractor_runs in metadata.extractor_runs:
-            for instance in extractor_runs:
+                                instance_properties = _get_instance_properties(
+                                    extractor_name,
+                                    instance)
 
-                instance_properties = _get_instance_properties(
-                    extractor_name,
-                    instance)
+                                yield _create_result_record(
+                                    mapper=mapper,
+                                    metadata_store=metadata_store,
+                                    metadata_record={
+                                        "type": "file",
+                                        "path": str(path),
+                                        **common_properties,
+                                        **instance_properties
+                                    },
+                                    element_path=dataset_path / path,
+                                    report_type="dataset")
 
-                yield _create_result_record(
-                    mapper=mapper,
-                    metadata_store=metadata_store,
-                    metadata_record={
-                        "type": "file",
-                        "path": str(path),
-                        **common_properties,
-                        **instance_properties
-                    },
-                    element_path=dataset_path / path,
-                    report_type="dataset")
-
-        if purge_metadata:
-            metadata.purge()
-
-    if result_count == 0:
-        lgr.warning(
-            f"pattern '{str(search_pattern)}' does not match any element "
-            f"in file-tree of dataset {metadata_root_record.dataset_identifier}"
-            f"@{metadata_root_record.dataset_version} (stored on "
-            f"{mapper}:{metadata_store})")
-
-    if purge_file_tree:
-        file_tree.purge()
-
-    if purge_dataset_level_metadata:
-        dataset_level_metadata.purge()
-
-    if purge_mrr:
-        metadata_root_record.purge()
+                if result_count == 0:
+                    lgr.warning(
+                        f"pattern '{str(search_pattern)}' does not match any element "
+                        f"in file-tree of dataset {metadata_root_record.dataset_identifier}"
+                        f"@{metadata_root_record.dataset_version} (stored on "
+                        f"{mapper}:{metadata_store})")
 
 
 def dump_from_dataset_tree(mapper: str,
@@ -307,59 +277,56 @@ def dump_from_dataset_tree(mapper: str,
             continue
 
         root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
-        if root_mrr is None:
-            lgr.debug(
-                f"no root dataset record found for version "
-                f"{version} in metadata store "
-                f"{metadata_store}, cannot determine root dataset id")
-            purge_root_mrr = False
-            root_dataset_version = version
-            root_dataset_identifier = "<unknown>"
-        else:
-            purge_root_mrr = root_mrr.ensure_mapped()
-            root_dataset_version = root_mrr.dataset_version
-            root_dataset_identifier = root_mrr.dataset_identifier
 
-        # Create a tree search object to search for the specified datasets
-        tree_search = MTreeSearch(dataset_tree.mtree)
-        result_count = 0
-        for path, node, remaining_pattern in tree_search.search_pattern(
-                                      pattern=metadata_url.dataset_path,
-                                      recursive=recursive,
-                                      item_indicator=datalad_root_record_name):
-            result_count += 1
+        with ensure_mapped(root_mrr):
+            if root_mrr is None:
+                lgr.debug(
+                    f"no root dataset record found for version "
+                    f"{version} in metadata store "
+                    f"{metadata_store}, cannot determine root dataset id")
+                root_dataset_version = version
+                root_dataset_identifier = "<unknown>"
+            else:
+                root_dataset_version = root_mrr.dataset_version
+                root_dataset_identifier = root_mrr.dataset_identifier
 
-            mrr = cast(
-                MetadataRootRecord,
-                node.get_child(datalad_root_record_name))
+            # Create a tree search object to search for the specified datasets
+            tree_search = MTreeSearch(dataset_tree.mtree)
+            result_count = 0
+            for path, node, remaining_pattern in tree_search.search_pattern(
+                                          pattern=metadata_url.dataset_path,
+                                          recursive=recursive,
+                                          item_indicator=datalad_root_record_name):
+                result_count += 1
 
-            yield from show_dataset_metadata(
-                mapper,
-                metadata_store,
-                root_dataset_identifier,
-                root_dataset_version,
-                path,
-                mrr)
+                mrr = cast(
+                    MetadataRootRecord,
+                    node.get_child(datalad_root_record_name))
 
-            yield from show_file_tree_metadata(
-                mapper,
-                metadata_store,
-                root_dataset_identifier,
-                root_dataset_version,
-                path,
-                mrr,
-                metadata_url.local_path,
-                recursive)
+                yield from show_dataset_metadata(
+                    mapper,
+                    metadata_store,
+                    root_dataset_identifier,
+                    root_dataset_version,
+                    path,
+                    mrr)
 
-        if result_count == 0:
-            lgr.error(
-                f"search pattern '{str(metadata_url.dataset_path)}' does not "
-                f"match any dataset in dataset-tree of dataset "
-                f"{root_dataset_identifier}@{root_dataset_version} (stored on "
-                f"{mapper}:{metadata_store})")
+                yield from show_file_tree_metadata(
+                    mapper,
+                    metadata_store,
+                    root_dataset_identifier,
+                    root_dataset_version,
+                    path,
+                    mrr,
+                    metadata_url.local_path,
+                    recursive)
 
-        if purge_root_mrr:
-            root_mrr.purge()
+            if result_count == 0:
+                lgr.error(
+                    f"search pattern '{str(metadata_url.dataset_path)}' does not "
+                    f"match any dataset in dataset-tree of dataset "
+                    f"{root_dataset_identifier}@{root_dataset_version} (stored on "
+                    f"{mapper}:{metadata_store})")
 
 
 def dump_from_uuid_set(mapper: str,

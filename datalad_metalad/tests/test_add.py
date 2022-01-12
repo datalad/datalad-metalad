@@ -34,6 +34,7 @@ from datalad.tests.utils import (
 
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.metadatapath import MetadataPath
+from dataladmetadatamodel.mappableobject import ensure_mapped
 
 from .utils import (
     create_dataset,
