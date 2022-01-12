@@ -10,8 +10,6 @@
 """Test metadata adding"""
 import json
 import os
-import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from typing import List
@@ -20,7 +18,7 @@ from uuid import UUID
 
 from datalad.api import (
     meta_add,
-    meta_dump
+    meta_dump,
 )
 from datalad.cmd import BatchedCommand
 from datalad.support.exceptions import IncompleteResultsError
@@ -31,7 +29,7 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_true,
     eq_,
-    with_tempfile
+    with_tempfile,
 )
 
 from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
@@ -761,19 +759,11 @@ def test_batch_mode(temp_dir: str):
     create_dataset_proper(temp_dir)
 
     json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
-    request = "".join([
-        json.dumps(json_object) + "\n"
-        for json_object in json_objects
-    ]) + "\n"
+    bc = BatchedCommand(
+        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"])
 
-    p = subprocess.Popen(
-        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"],
-        bufsize=1,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE)
-
-    stdout_content, stderr_content = p.communicate(input=request.encode())
-    for json_object, result in zip(json_objects, stdout_content.decode().splitlines()):
+    for json_object in json_objects:
+        result = bc(json.dumps(json_object))
         result_object = json.loads(result)
         eq_(result_object["status"], "ok")
         eq_(result_object["action"], "meta_add")
@@ -786,3 +776,6 @@ def test_batch_mode(temp_dir: str):
                     / json_object["path"]
             ).parts
         )
+
+    eq_(bc("\n"), "")
+    bc.close()
