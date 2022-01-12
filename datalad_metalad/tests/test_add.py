@@ -391,13 +391,13 @@ def _get_metadata_content(metadata):
     assert_is_not_none(metadata)
 
     metadata.ensure_mapped()
-    metadata_instances = tuple(metadata.extractor_runs())
+    metadata_instances = tuple(metadata.extractor_runs)
     assert_true(len(metadata_instances) == 1)
 
     extractor_name, extractor_runs = metadata_instances[0]
     eq_(extractor_name, metadata_template["extractor_name"])
 
-    instances = tuple(extractor_runs.get_instances())
+    instances = tuple(extractor_runs.instances)
     assert_true(len(instances), 1)
 
     return instances[0].metadata_content

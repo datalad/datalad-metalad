@@ -160,7 +160,7 @@ def show_dataset_metadata(mapper: str,
 
     assert isinstance(dataset_level_metadata, Metadata)
 
-    for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs():
+    for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs:
         for instance in extractor_runs:
 
             instance_properties = _get_instance_properties(
@@ -238,7 +238,7 @@ def show_file_tree_metadata(mapper: str,
             dataset_path)
 
         purge_metadata = metadata.ensure_mapped()
-        for extractor_name, extractor_runs in metadata.extractor_runs():
+        for extractor_name, extractor_runs in metadata.extractor_runs:
             for instance in extractor_runs:
 
                 instance_properties = _get_instance_properties(
