@@ -7,6 +7,7 @@ from typing import (
     List,
     Tuple,
     Union,
+    cast,
 )
 from uuid import UUID
 
@@ -98,29 +99,25 @@ def create_dataset_tree(descriptions: List[DatasetDescription],
     return dataset_tree
 
 
-def create_uuid_set(descriptions: List[DatasetDescription],
-                    mrr_set: MRRSet
-                    ) -> UUIDSet:
+def create_uuid_set(tree_version_list: TreeVersionList) -> UUIDSet:
 
-    uuids = {description.uuid for description in descriptions}
-    instances = {
-        uuid: [
-            description
-            for description in descriptions
-            if description.uuid == uuid
-        ]
-        for uuid in uuids
-    }
+    instances = {}
+    for version, (time_stamp, path, dataset_tree) in tree_version_list.versioned_elements:
+        dataset_tree = cast(DatasetTree, dataset_tree)
+        for dataset_path, mrr in dataset_tree.dataset_paths:
+            if mrr.dataset_identifier not in instances:
+                instances[mrr.dataset_identifier] = dict()
+            instances[mrr.dataset_identifier][mrr.dataset_version] = mrr
 
     uuid_set = UUIDSet()
-    for uuid, descriptions in instances.items():
+    for uuid, mrr_dict in instances.items():
         version_list = VersionList()
-        for description in descriptions:
+        for version, mrr in mrr_dict.items():
             version_list.set_versioned_element(
-                description.version,
+                version,
                 str(time.time()),
-                description.path,
-                mrr_set[(uuid, description.version)]
+                MetadataPath(""),
+                mrr
             )
         uuid_set.set_version_list(uuid, version_list)
     return uuid_set
@@ -153,17 +150,33 @@ def main():
         ),
     ]
 
-    metadata_root_records = create_metadata_root_records(descriptions)
-    dataset_tree = create_dataset_tree(descriptions, metadata_root_records)
+    # Add a first version
+    metadata_root_records_1 = create_metadata_root_records(descriptions)
+    dataset_tree_1 = create_dataset_tree(descriptions, metadata_root_records_1)
 
     tree_version_list = TreeVersionList(realm=path)
     tree_version_list.set_dataset_tree(
         descriptions[0].version,
         str(time.time()),
-        dataset_tree
+        dataset_tree_1
     )
 
-    uuid_set = create_uuid_set(descriptions, metadata_root_records)
+    # Add a second version
+    descriptions[0] = DatasetDescription(
+        UUID("00010203-1011-2021-3031-404142434400"),
+        "0000000000000000000000000000000000000010",
+        MetadataPath("")
+    )
+
+    metadata_root_records_2 = create_metadata_root_records(descriptions)
+    dataset_tree_2 = create_dataset_tree(descriptions, metadata_root_records_2)
+    tree_version_list.set_dataset_tree(
+        descriptions[0].version,
+        str(time.time()),
+        dataset_tree_2
+    )
+
+    uuid_set = create_uuid_set(tree_version_list)
 
     tree_version_list.write_out(destination_realm=path)
     uuid_set.write_out(destination_realm=path)

@@ -496,7 +496,7 @@ def export_uuid(root: Path, uuid: str, uuid_set: UUIDSet):
     uuid_path = uuid_path / uuid_file
 
     version_list = uuid_set.get_version_list(uuid)
-    for version, (time_stamp, dataset_path, mappable_object) in version_list.get_versioned_elements():
+    for version, (time_stamp, dataset_path, mappable_object) in version_list.versioned_elements:
 
         mrr = cast(MetadataRootRecord, mappable_object)
 
