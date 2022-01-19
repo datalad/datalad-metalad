@@ -22,7 +22,7 @@ exported data.
 
 1. Dataset ID (UUID) (with 3-level de-clogging)
 2. Dataset Version (commit-hash) (with 2-level de-clogging)
-   2.1.  Subdataset-Tree info (json-file with path <=> (UUID, version))
+   2.1.  Subdataset-Tree info (json-file with path <=> (UUID, version) or null)
    2.2.  Dataset-level metadata object
    2.3.  File-Tree info (xm-file with path <=> metadata-object-id)
          File-objects:
