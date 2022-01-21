@@ -398,7 +398,7 @@ def _get_metadata_content(metadata):
         extractor_name, extractor_runs = metadata_instances[0]
         eq_(extractor_name, metadata_template["extractor_name"])
 
-        instances = tuple(extractor_runs.instances)
+        instances = extractor_runs.instances
         assert_true(len(instances), 1)
 
         return instances[0].metadata_content
