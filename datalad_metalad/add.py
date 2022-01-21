@@ -295,11 +295,26 @@ class Add(Interface):
 
         with locked_backend(metadata_store):
             for metadata_object in all_metadata_objects:
-                metadata = process_parameters(
-                    metadata=metadata_object,
-                    additional_values=additional_values_object,
-                    allow_override=allow_override,
-                    allow_unknown=allow_unknown)
+                try:
+                    metadata = process_parameters(
+                        metadata=metadata_object,
+                        additional_values=additional_values_object,
+                        allow_override=allow_override,
+                        allow_unknown=allow_unknown)
+                except MetadataKeyException as mke:
+                    if batch_mode:
+                        sys.stdout.write(
+                            json.dumps(
+                                dict(
+                                    status="error",
+                                    message=mke.message + " " + ",".join(mke.keys)
+                                )
+                            ) + "\n"
+                        )
+                        sys.stdout.flush()
+                        continue
+                    else:
+                        raise mke
 
                 lgr.debug(
                     f"attempting to add metadata: '{json.dumps(metadata)}' to "

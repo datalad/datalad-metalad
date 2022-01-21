@@ -780,3 +780,22 @@ def test_batch_mode(temp_dir: str):
 
     eq_(bc("\n"), "")
     bc.close()
+
+
+@with_tempfile(mkdir=True)
+def test_batch_mode_error(temp_dir: str):
+    create_dataset_proper(temp_dir)
+    bc = BatchedCommand(
+        ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"]
+    )
+
+    result = bc(json.dumps({"some": "key", "another": "key"}))
+    print(repr(result))
+
+    #result_object = json.loads(result)
+    #eq_(result_object["status"], "error")
+    #eq_(result_object["action"], "meta_add")
+    #eq_(result_object["destination"], temp_dir)
+
+    eq_(bc("\n"), "")
+    bc.close()
