@@ -1,0 +1,23 @@
+version = 1
+
+test_patterns = [
+  "**/test_*.py",
+  "tests/test_*.py"
+]
+
+exclude_patterns = [
+  "**/_version.py",
+  "tools/**"
+]
+
+[[analyzers]]
+name = "shell"
+enabled = true
+
+[[analyzers]]
+name = "python"
+enabled = true
+
+  [analyzers.meta]
+  runtime_version = "3.x.x"
+
