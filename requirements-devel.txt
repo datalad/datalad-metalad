@@ -1,5 +1,6 @@
 .
 
+six
 datalad>=0.15
 nose
 coverage
