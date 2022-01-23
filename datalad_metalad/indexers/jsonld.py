@@ -1,5 +1,11 @@
 import os
-from typing import Any, Dict, List, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Union,
+    cast
+)
 
 from datalad.metadata.indexers.base import MetadataIndexer
 
@@ -73,7 +79,7 @@ class JsonLdIndexer(MetadataIndexer):
             return
 
         # We know now that json_ld_object is a dict.
-        assert isinstance(json_ld_object, dict)
+        json_ld_object = cast(dict, json_ld_object)
 
         if IndexerJsonLdTags.LIST in json_ld_object:
 

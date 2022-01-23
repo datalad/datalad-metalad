@@ -30,7 +30,6 @@ from six import (
 import logging
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core')
 from datalad.log import log_progress
-import datalad.distribution.subdatasets
 from datalad.support.constraints import EnsureBool
 import datalad.support.network as dsn
 from datalad.dochelpers import exc_str
@@ -198,7 +197,7 @@ class DataladCoreExtractor(MetadataExtractor):
                         # if not URLs are around
                         if r['uuid'] not in known_uuids:
                             distributions.append({'@id': r['uuid']})
-            if len(distributions):
+            if distributions:
                 meta['distribution'] = sorted(
                     distributions,
                     key=lambda x: x.get('@id', x.get('url', None))

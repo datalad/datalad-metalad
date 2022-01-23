@@ -422,7 +422,7 @@ def test_add_dataset_end_to_end(file_name):
         assert_result_count(res, 0, type='file')
 
         # Verify dataset level metadata was added
-        tree_version_list, uuid_set, mrr = _get_top_nodes(
+        tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             UUID(metadata_template["dataset_id"]),
             metadata_template["dataset_version"])
@@ -452,7 +452,7 @@ def test_add_file_end_to_end(file_name):
         assert_result_count(res, 0, type='dataset')
 
         # Verify file level metadata was added
-        tree_version_list, uuid_set, mrr = _get_top_nodes(
+        _, _, mrr = _get_top_nodes(
             git_repo,
             UUID(metadata_template["dataset_id"]),
             metadata_template["dataset_version"])
@@ -493,7 +493,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         dataset_tree_path = MetadataPath(
             additional_keys_template["dataset_path"])
 
-        tree_version_list, uuid_set, mrr = _get_top_nodes(
+        tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
             root_dataset_version)
@@ -539,7 +539,7 @@ def test_subdataset_add_file_end_to_end(file_name):
         dataset_tree_path = MetadataPath(
             additional_keys_template["dataset_path"])
 
-        tree_version_list, uuid_set, mrr = _get_top_nodes(
+        tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
             root_dataset_version)

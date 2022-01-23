@@ -156,15 +156,16 @@ def get_ds_aggregate_db_locations(dspath, version='default', warn_absent=True):
             if op.exists(old_metadata_file):
                 msg += " Found metadata generated with pre-0.10 version of " \
                        "DataLad, but it will not be used."
-            upgrade_msg = ""
+            upgrade_msg = False
             if info_files:
                 msg += " Found following info files, which might have been " \
                        "generated with newer version(s) of datalad: %s." \
                        % (', '.join(info_files))
-                upgrade_msg = ", upgrade datalad"
-            msg += " You will likely need to either update the dataset from its " \
-                   "original location%s or reaggregate metadata locally." \
-                   % upgrade_msg
+                upgrade_msg = True
+            if upgrade_msg:
+                msg += " Please upgrade dataland."
+            msg += " You will likely need to either update the dataset from " \
+                   "its original location or re-aggregate metadata locally."
             lgr.warning(msg)
     return info_fpath, agg_base_path
 

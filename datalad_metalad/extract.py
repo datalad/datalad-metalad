@@ -265,7 +265,7 @@ class Extract(Interface):
             return
 
         extractor_class = get_extractor_class(extractor_name)
-        dataset_tree_path, file_tree_path = get_path_info(
+        _, file_tree_path = get_path_info(
             source_dataset,
             Path(path) if path else None,
             None)

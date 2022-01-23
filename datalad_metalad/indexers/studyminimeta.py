@@ -20,8 +20,8 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
     Parameters
     ----------
-    metadata : Dict or List
-      Metadata created by an extractor.
+    metadata_format_name : str
+      name of metadata format the should be extracted
 
     Returns
     -------
@@ -32,7 +32,11 @@ class StudyMiniMetaIndexer(MetadataIndexer):
 
     def __init__(self, metadata_format_name: str):
         super(StudyMiniMetaIndexer, self).__init__(metadata_format_name)
-        assert metadata_format_name == STUDYMINIMETA_FORMAT_NAME
+        if metadata_format_name != STUDYMINIMETA_FORMAT_NAME:
+            raise ValueError(
+                f"Indexer: {type(self).__name__} does not support "
+                f"metadata format: {metadata_format_name}"
+            )
 
     def create_index(self,
                      study_mini_meta: Union[Dict, List]

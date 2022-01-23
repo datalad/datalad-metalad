@@ -361,7 +361,10 @@ class Add(Interface):
                 else:
                     result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
 
-                assert len(result) <= 1, f"expected result length <= 1, got: {len(result)}"
+                if len(result) > 1:
+                    raise ValueError(
+                        f"expected result length <= 1, got: {len(result)}")
+
                 if len(result) == 1:
                     if batch_mode is True:
                         sys.stdout.write(json.dumps(result[0]) + "\n")
@@ -586,7 +589,7 @@ def get_tvl_uuid_mrr_metadata_file_tree(
 
 def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
-    tree_version_list, uuid_set, mrr, metadata, file_tree = \
+    _, _, mrr, _, file_tree = \
         get_tvl_uuid_mrr_metadata_file_tree(metadata_store, ap)
 
     if ap.file_path in file_tree:
@@ -610,7 +613,7 @@ def add_file_metadata(metadata_store: Path, ap: AddParameter):
 
 def add_dataset_metadata(metadata_store: Path, ap: AddParameter):
 
-    tree_version_list, uuid_set, mrr, metadata, file_tree = \
+    _, _, _, metadata, file_tree = \
         get_tvl_uuid_mrr_metadata_file_tree(metadata_store, ap)
 
     add_metadata_content(metadata, ap)

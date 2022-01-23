@@ -391,7 +391,7 @@ def copy_tree_version_list(destination_metadata_store: str,
                     f"{root_pd_version}")
                 root_dataset_tree = DatasetTree()
 
-            time_stamp, source_dataset_tree = \
+            _, source_dataset_tree = \
                 source_tree_version_list.get_dataset_tree(source_pd_version)
 
             if destination_path in root_dataset_tree:

@@ -23,12 +23,20 @@ lgr = logging.getLogger('datalad.metadata.extractors.external')
 
 
 class ExternalExtractor:
+
+    known_extractor_types = ("dataset", "file")
+
     def __init__(self,
                  extractor_type: str,
                  parameter: Dict[str, Any]):
 
-        assert extractor_type in ("dataset", "file")
-        assert "command" in parameter
+        if extractor_type not in self.known_extractor_types:
+            raise ValueError(
+                f"Unknown extractor type: {extractor_type}, supported types: "
+                f"{self.known_extractor_types}")
+
+        if "command" not in parameter:
+            raise ValueError("missing parameter: 'command'")
 
         self.parameter = parameter
         self.external_command = self.parameter["command"]

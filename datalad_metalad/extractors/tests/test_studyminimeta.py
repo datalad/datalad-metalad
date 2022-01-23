@@ -339,7 +339,7 @@ def test_maximal_jsonld_creation():
         "a02312398324778972389472834",
         ".studyminimeta.yaml")
 
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(
+    success, jsonld_object, _, messages = ldc.create_ld_from_spec(
         STUDYMINIMETA_METADATA_MAXIMAL_SPEC)
 
     assert success is True, messages
@@ -421,7 +421,7 @@ def test_minimal_jsonld_creation():
         ]
     }
 
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec(
+    success, jsonld_object, _, messages = ldc.create_ld_from_spec(
         minimal_spec)
 
     assert success is True, messages
@@ -441,7 +441,7 @@ def test_error_key():
         "a02312398324778972389472834",
         ".studyminimeta.yaml")
 
-    success, jsonld_object, keys, messages = ldc.create_ld_from_spec({})
+    success, _, _, messages = ldc.create_ld_from_spec({})
     assert success is False
     assert messages == ["'person'"]
 
@@ -454,7 +454,7 @@ def test_error_type():
 
     message_pattern = "'{}' object has no attribute 'items'"
     for faulty_spec in ([], "", None, 1):
-        success, jsonld_object, keys, messages = ldc.create_ld_from_spec(faulty_spec)
+        success, _, _, messages = ldc.create_ld_from_spec(faulty_spec)
         assert success is False
         assert messages == [message_pattern.format(type(faulty_spec).__name__)]
 
