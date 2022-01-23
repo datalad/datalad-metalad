@@ -9,7 +9,7 @@ def test_studyminimeta_indexing():
     # Check proper indexing of JSON-LD study-minimeta description
 
     indexer = StudyMiniMetaIndexer(STUDYMINIMETA_FORMAT_NAME)
-    generated_dict = {k: v for k, v in indexer.create_index(MOCKED_STUDYMINIMETA_JSONLD)}
+    generated_dict = dict(indexer.create_index(MOCKED_STUDYMINIMETA_JSONLD))
     template_dict = {
         'dataset.author': 'Prof. Dr.  Alex Meyer, MD  Bernd Muller',
         'dataset.name': 'Datenddaslk',

@@ -78,11 +78,10 @@ class DataladCoreExtractor(MetadataExtractor):
                 'Extracted core metadata from %s', ds.path,
                 update=1,
                 increment=True)
-            dsmeta = [
-                r for r in self._yield_dsmeta(
-                    ds, status, refcommit, process_type,
-                    total_content_bytesize)
-            ]
+            dsmeta = list(self._yield_dsmeta(
+                ds, status, refcommit, process_type,
+                total_content_bytesize)
+            )
             yield dict(
                 metadata={
                     '@context': default_context,
