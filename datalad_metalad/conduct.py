@@ -349,7 +349,7 @@ def process_downstream(pipeline_element: PipelineElement,
     for processor in processor_instances:
         try:
             _, pipeline_element = processor.execute(None, pipeline_element)
-        except Exception as e:
+        except Exception:
             yield dict(
                 action="meta_conduct",
                 status="error",

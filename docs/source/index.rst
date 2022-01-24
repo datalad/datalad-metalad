@@ -44,6 +44,17 @@ To use any of the contained extractors their names needs to be prefixed with
    custom
    runprov
 
+
+Concepts and technologies
+-------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   design/index
+
+
+
 Acknowledgments
 ===============
 

@@ -30,7 +30,6 @@ from six import (
 import logging
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core')
 from datalad.log import log_progress
-import datalad.distribution.subdatasets
 from datalad.support.constraints import EnsureBool
 import datalad.support.network as dsn
 from datalad.dochelpers import exc_str
@@ -50,7 +49,7 @@ class DataladCoreExtractor(MetadataExtractor):
         log_progress(
             lgr.info,
             'extractordataladcore',
-            'Start core metadata extraction from %s', ds,
+            'Start core metadata extraction from %s', str(ds),
             total=len(status) + 1,
             label='Core metadata extraction',
             unit=' Files',
@@ -79,11 +78,10 @@ class DataladCoreExtractor(MetadataExtractor):
                 'Extracted core metadata from %s', ds.path,
                 update=1,
                 increment=True)
-            dsmeta = [
-                r for r in self._yield_dsmeta(
-                    ds, status, refcommit, process_type,
-                    total_content_bytesize)
-            ]
+            dsmeta = list(self._yield_dsmeta(
+                ds, status, refcommit, process_type,
+                total_content_bytesize)
+            )
             yield dict(
                 metadata={
                     '@context': default_context,
@@ -95,7 +93,7 @@ class DataladCoreExtractor(MetadataExtractor):
         log_progress(
             lgr.info,
             'extractordataladcore',
-            'Finished core metadata extraction from %s', ds
+            'Finished core metadata extraction from %s', str(ds)
         )
 
     def _yield_dsmeta(self, ds, status, refcommit, process_type,
@@ -198,7 +196,7 @@ class DataladCoreExtractor(MetadataExtractor):
                         # if not URLs are around
                         if r['uuid'] not in known_uuids:
                             distributions.append({'@id': r['uuid']})
-            if len(distributions):
+            if distributions:
                 meta['distribution'] = sorted(
                     distributions,
                     key=lambda x: x.get('@id', x.get('url', None))

@@ -156,7 +156,7 @@ def show_dataset_metadata(mapper: str,
             metadata_root_record,
             dataset_path)
 
-        assert isinstance(dataset_level_metadata, Metadata)
+        dataset_level_metadata = cast(Metadata, dataset_level_metadata)
 
         for extractor_name, extractor_runs in dataset_level_metadata.extractor_runs:
             for instance in extractor_runs:
@@ -211,7 +211,7 @@ def show_file_tree_metadata(mapper: str,
                     if metadata is None or isinstance(metadata, MTreeNode):
                         continue
 
-                    assert isinstance(metadata, Metadata)
+                    metadata = cast(Metadata, metadata)
 
                     common_properties = _get_common_properties(
                         root_dataset_identifier,
@@ -267,8 +267,7 @@ def dump_from_dataset_tree(mapper: str,
 
         try:
             # Fetch dataset tree for the specified version
-            time_stamp, dataset_tree = tree_version_list.get_dataset_tree(
-                version)
+            _, dataset_tree = tree_version_list.get_dataset_tree(version)
         except KeyError:
             lgr.error(
                 f"could not locate metadata for version {version} of "
@@ -293,10 +292,10 @@ def dump_from_dataset_tree(mapper: str,
             # Create a tree search object to search for the specified datasets
             tree_search = MTreeSearch(dataset_tree.mtree)
             result_count = 0
-            for path, node, remaining_pattern in tree_search.search_pattern(
-                                          pattern=metadata_url.dataset_path,
-                                          recursive=recursive,
-                                          item_indicator=datalad_root_record_name):
+            for path, node, _ in tree_search.search_pattern(
+                                      pattern=metadata_url.dataset_path,
+                                      recursive=recursive,
+                                      item_indicator=datalad_root_record_name):
                 result_count += 1
 
                 mrr = cast(
@@ -352,7 +351,7 @@ def dump_from_uuid_set(mapper: str,
 
     for dataset_version in requested_dataset_version:
         try:
-            time_stamp, dataset_path, metadata_root_record = \
+            _, dataset_path, metadata_root_record = \
                 version_list.get_versioned_element(dataset_version)
         except KeyError:
             lgr.error(
@@ -361,7 +360,7 @@ def dump_from_uuid_set(mapper: str,
                 f"{mapper}:{metadata_store}")
             continue
 
-        assert isinstance(metadata_root_record, MetadataRootRecord)
+        metadata_root_record = cast(MetadataRootRecord, metadata_root_record)
 
         # Show dataset-level metadata
         yield from show_dataset_metadata(

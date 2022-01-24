@@ -147,7 +147,7 @@ def get_refcommit(ds):
                 and p not in exclude_paths \
                 and not any(e in p.parents for e in exclude_paths)
             }
-        except ValueError as e:
+        except ValueError:
             # likely ran out of commits to check
             if precommit:
                 # end of things
