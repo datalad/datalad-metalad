@@ -49,7 +49,7 @@ class DataladCoreExtractor(MetadataExtractor):
         log_progress(
             lgr.info,
             'extractordataladcore',
-            'Start core metadata extraction from %s', ds,
+            'Start core metadata extraction from %s', str(ds),
             total=len(status) + 1,
             label='Core metadata extraction',
             unit=' Files',
@@ -93,7 +93,7 @@ class DataladCoreExtractor(MetadataExtractor):
         log_progress(
             lgr.info,
             'extractordataladcore',
-            'Finished core metadata extraction from %s', ds
+            'Finished core metadata extraction from %s', str(ds)
         )
 
     def _yield_dsmeta(self, ds, status, refcommit, process_type,

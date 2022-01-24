@@ -10,7 +10,14 @@
 import abc
 import dataclasses
 import enum
-from typing import Any, IO, Dict, Optional, Union
+from typing import (
+    Any,
+    IO,
+    Dict,
+    List,
+    Optional,
+    Union,
+)
 from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
@@ -66,7 +73,7 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         category for this extractor.
 
         DataOutputCategory.IMMEDIATE:
-        The value of output_location is None.
+        The value of output_location must be None.
 
         DataOutputCategory.FILE:
         The value of output_location is file descriptor for an
@@ -124,7 +131,7 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         return {}
 
 
-class DatasetMetadataExtractor(MetadataExtractorBase):
+class DatasetMetadataExtractor(MetadataExtractorBase, metaclass=abc.ABCMeta):
     def __init__(self,
                  dataset: Dataset,
                  ref_commit: str,
@@ -166,7 +173,7 @@ class DatasetMetadataExtractor(MetadataExtractorBase):
         return True
 
 
-class FileMetadataExtractor(MetadataExtractorBase):
+class FileMetadataExtractor(MetadataExtractorBase, metaclass=abc.ABCMeta):
     def __init__(self,
                  dataset: Dataset,
                  ref_commit: str,
@@ -232,11 +239,16 @@ class FileMetadataExtractor(MetadataExtractorBase):
 #
 #  Keep around for a bit more and then remove.
 #
-class MetadataExtractor(object):
+class MetadataExtractor(metaclass=abc.ABCMeta):
     # ATM this doesn't do anything, but inheritance from this class enables
     # detection of new-style extractor API
 
-    def __call__(self, dataset, refcommit, process_type, status):
+    @abc.abstractmethod
+    def __call__(self,
+                 dataset: Dataset,
+                 refcommit: str,
+                 process_type: str,
+                 status: List):
         """Run metadata extraction
 
         Any implementation gets a comprehensive description of a dataset
@@ -262,7 +274,7 @@ class MetadataExtractor(object):
           There are only records on content within the given dataset, not
           about content of any existing subdatasets.
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def get_required_content(self, dataset, process_type, status):
         """Report records for dataset content that must be available locally
@@ -324,7 +336,7 @@ class MetadataExtractor(object):
 
 # XXX this is the legacy-legacy interface, keep around for a bit more and then
 # remove
-class BaseMetadataExtractor(object):  # pragma: no cover
+class BaseMetadataExtractor(metaclass=abc.ABCMeta):
 
     NEEDS_CONTENT = True   # majority of the extractors need data content
 
@@ -354,6 +366,7 @@ class BaseMetadataExtractor(object):  # pragma: no cover
             self._get_dataset_metadata() if dataset else None, \
             ((k, v) for k, v in self._get_content_metadata()) if content else None
 
+    @abc.abstractmethod
     def _get_dataset_metadata(self):
         """
         Returns
@@ -363,6 +376,7 @@ class BaseMetadataExtractor(object):  # pragma: no cover
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def _get_content_metadata(self):
         """Get ALL metadata for all dataset content.
 
