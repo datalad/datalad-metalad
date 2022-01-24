@@ -12,4 +12,4 @@ The chapter describes the design of particular subsystems in DataLad.
 .. toctree::
    :maxdepth: 2
 
-    conduct
+   conduct

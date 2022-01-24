@@ -51,9 +51,6 @@ Concepts and technologies
 .. toctree::
    :maxdepth: 2
 
-The following chapters describe different aspects of the implemnentation
-of metalad
-
    design/index
 
 

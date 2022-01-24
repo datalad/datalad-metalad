@@ -14,7 +14,7 @@ Conduct
    its current implementation.
 
 Purpose and Design
-=======
+==================
 
 Meta-conduct allows to execute a number of metadata operations in a pipeline. Pipelines composed of:
 
