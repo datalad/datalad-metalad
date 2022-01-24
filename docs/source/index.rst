@@ -44,6 +44,20 @@ To use any of the contained extractors their names needs to be prefixed with
    custom
    runprov
 
+
+Concepts and technologies
+-------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+The following chapters describe different aspects of the implemnentation
+of metalad
+
+   design/index
+
+
+
 Acknowledgments
 ===============
 
