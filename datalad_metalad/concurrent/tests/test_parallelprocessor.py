@@ -1,39 +1,53 @@
-import concurrent.futures
 import os
 import time
-from pprint import pprint
-from typing import Dict
+import logging
+from typing import (
+    Any,
+    Dict,
+)
 
-from ..processor import FutureSet
-from ..parallelprocessor import ProcessorParallel
+from ..processor import (
+    Processor,
+    ProcessorResultType,
+)
+from ..parallelprocessor import ParallelProcessor
+from ..sequentialprocessor import SequentialProcessor
 
 
-def add_component(pe: Dict) -> Dict:
+def parallel_result_handler(result_type: ProcessorResultType, pe: Dict):
+    logging.debug(f"parallel_result_handler ENTER: {result_type}, {pe}")
     if "name_list" not in pe:
-        pe["name_list"] = f"{os.getpid()} {time.time()}"
+        pe["name_list"] = f"a {os.getpid()} {time.time()}"
     else:
-        pe["name_list"] += " x"
-    print(os.getpid(), pe)
-    return pe
+        pe["name_list"] += f" b {os.getpid()} {time.time()}"
+    logging.debug(f"parallel_result_handler EXIT: {os.getpid()}, {pe}")
+    print(f"FINAL {pe}")
 
 
-def test_basics():
-    executor = concurrent.futures.ProcessPoolExecutor(10)
-    result = dict()
-    future_set = FutureSet()
-    processors = [add_component] * 20
+def test_sp_par_basics():
 
-    par = ProcessorParallel(
-        processors=processors,
-        initial_result_object=result,
-        executor=executor,
-        future_set=future_set
-    )
+    def individual_worker(pipeline_element: Dict) -> Any:
+        logging.debug(f"individual_worker ENTER: {pipeline_element}")
+        if "name_list" not in pipeline_element:
+            pipeline_element["name_list"] = f"c {os.getpid()} {time.time()}"
+        else:
+            pipeline_element["name_list"] += f" d {os.getpid()} {time.time()}"
+        logging.debug(f"individual_worker EXIT: {os.getpid()}, {pipeline_element}")
+        return pipeline_element
 
-    print("main:", os.getpid())
-    par.start()
+    processors = [
+        SequentialProcessor([
+            Processor(individual_worker, f"worker[{p}.{w}]")
+            for w in range(4)
+        ])
+        for p in range(3)
+    ]
 
-    for done_future, done_processor in future_set.done:
-        result = done_processor.process_done(done_future)
-        if result is not None:
-            pprint(result)
+    par = ParallelProcessor(processors=processors)
+
+    print(f"main: {os.getpid()}")
+    pipeline_element = {"name_list": "input"}
+    par.start([pipeline_element], parallel_result_handler, [])
+
+    for done_future, done_processor in Processor.done():
+        done_processor.done_handler(done_future)

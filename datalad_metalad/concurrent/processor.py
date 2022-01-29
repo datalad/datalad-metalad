@@ -1,13 +1,17 @@
-import concurrent.futures
-import dataclasses
 import enum
-import queue
+import logging
+from concurrent.futures import (
+    CancelledError,
+    Future,
+    ProcessPoolExecutor,
+    as_completed,
+)
 from typing import (
     Any,
-    Union,
+    Callable,
+    List,
+    Optional,
 )
-
-from datalad_metalad.pipelineelement import PipelineResult
 
 
 __docformat__ = "restructuredtext"
@@ -19,48 +23,95 @@ class ProcessorResultType(enum.Enum):
     Cancelled = 2
 
 
-@dataclasses.dataclass
-class ProcessorResult:
-    result_type: ProcessorResultType
-    result: Union[Exception, Any]
-
-
-class ProcessorState(enum.Enum):
-    Created = 0
-    Running = 1
-    Finished = 2
-    Raised = 3
-    Cancelled = 4
-
-
-class Processor:
-    def __init__(self):
-        self.result_queue = queue.Queue()
-
-    def _add_result(self, result: PipelineResult):
-        if result is None:
-            raise ValueError("None-results are not allowed in processor")
-        self.result_queue.put(result)
-
-    def _add_end(self):
-        self.result_queue.put(None)
-
-
 class FutureSet:
     def __init__(self):
         self.futures = dict()
 
     def add_future(self,
-                   future: concurrent.futures.Future,
-                   processor: Processor):
+                   future: Future,
+                   processor: "Processor"):
         self.futures[future] = processor
 
-    def remove_future(self, future: concurrent.futures.Future):
+    def remove_future(self, future: Future):
         del self.futures[future]
 
     @property
     def done(self):
         while self.futures:
-            for future in concurrent.futures.as_completed(self.futures.keys()):
+            for future in as_completed(self.futures.keys()):
                 yield future, self.futures[future]
                 self.remove_future(future)
+
+
+class Processor:
+
+    executor = ProcessPoolExecutor(16)
+    future_set = FutureSet()
+
+    @staticmethod
+    def done():
+        while Processor.future_set:
+            for future in as_completed(Processor.future_set.futures.keys()):
+                yield future, Processor.future_set.futures[future]
+                Processor.future_set.remove_future(future)
+
+    def __init__(self,
+                 a_callable: Callable,
+                 name: Optional[str] = None):
+        """
+
+        :param a_callable:
+        :param name:
+        """
+        self.callable = a_callable
+        self.name = name or str(id(self))
+        self.result_processor = None
+        self.result_processor_args = None
+
+    def __repr__(self):
+        return f"<{type(self).__name__}[{self.name}], {self.callable}>"
+
+    def start(self,
+              arguments: List[Any],
+              result_processor: Callable,
+              result_processor_args: Optional[List[Any]] = None):
+        """
+
+        :param arguments:
+        :param result_processor:
+        :param result_processor_args:
+        :return:
+        """
+        self.result_processor = result_processor
+        self.result_processor_args = result_processor_args or []
+
+        logging.debug(f"{self}: start called with arguments: {arguments}")
+        future = self.executor.submit(self.callable, *arguments)
+        self.future_set.add_future(future, self)
+
+    def done_handler(self, done_future: Future):
+        """process a done future
+
+        Retrieve the result from the executor, check for exceptions,
+        enclose everything in a ProcessorResult.
+
+        Call the result handler method
+
+        :param done_future: the future that is done
+        """
+        try:
+            result = done_future.result()
+            logging.debug(f"{self} future returned with: {result}")
+            result_type = ProcessorResultType.Result
+
+        except CancelledError as exception:
+            logging.debug(f"{self} future raised: {exception}")
+            result_type = ProcessorResultType.Cancelled
+            result = exception
+
+        except Exception as exception:
+            logging.debug(f"{self} future raised: {exception}")
+            result_type = ProcessorResultType.Exception
+            result = exception
+
+        self.result_processor(result_type, result, *self.result_processor_args)

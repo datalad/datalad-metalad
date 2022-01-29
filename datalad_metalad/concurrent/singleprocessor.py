@@ -211,7 +211,7 @@ def add_component(result_type: ProcessorResultType, pe: Dict) -> Any:
 
 def add_b_component(result_type: ProcessorResultType, pe: Dict) -> Any:
     logging.debug(f"add_b_component ENTER: {result_type}, {pe}")
-    time.sleep(1)
+    time.sleep(2)
     if "name_list" not in pe:
         pe["name_list"] = f"c {os.getpid()} {time.time()}"
     else:
