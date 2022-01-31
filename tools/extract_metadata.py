@@ -93,7 +93,6 @@ argument_parser.add_argument("metalad_arguments", nargs="*")
 
 
 arguments: Namespace = argument_parser.parse_args(sys.argv[1:])
-print(arguments, file=sys.stderr)
 
 
 @dataclass
