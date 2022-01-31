@@ -41,6 +41,8 @@ class QueueProcessor(ProcessorInterface):
 
         self.result_processor = None
         self.result_processor_args = None
+        self.last_processor = None
+        self.last_result = None
 
     def __repr__(self):
         return f"<{type(self).__name__}[{self.name}], " \
@@ -55,15 +57,16 @@ class QueueProcessor(ProcessorInterface):
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
 
-        first_processor = self.processor_factories[0][0](
+        self.last_processor = self.processor_factories[0][0](
             *self.processor_factories[0][1],
             **self.processor_factories[0][2])
 
-        logging.debug(f"{self}: starting first: {first_processor}")
-        first_processor.start(arguments=arguments,
-                              result_processor=self._downstream_result_processor,
-                              result_processor_args=[1, sequential],
-                              sequential=sequential)
+        logging.debug(f"{self}: starting: {self.last_processor}")
+        self.last_processor.start(
+            arguments=arguments,
+            result_processor=self._downstream_result_processor,
+            result_processor_args=[1, sequential],
+            sequential=sequential)
 
     def _downstream_result_processor(self,
                                      sender: ProcessorInterface,
@@ -75,6 +78,9 @@ class QueueProcessor(ProcessorInterface):
         if result_type != ProcessorResultType.Result \
                 or index == len(self.processor_factories):
 
+            if result_type != ProcessorResultType.Result:
+                result = self.last_result
+
             logging.debug(
                 f"{self}: calling client result "
                 f"processor {self.result_processor}")
@@ -84,12 +90,15 @@ class QueueProcessor(ProcessorInterface):
                 result,
                 *self.result_processor_args)
         else:
-            processor = self.processor_factories[index][0](
+            self.last_result = result
+            self.last_processor = self.processor_factories[index][0](
                 *self.processor_factories[index][1],
                 **self.processor_factories[index][2])
 
-            logging.debug(f"{self}: starting next: {processor} with {[result]}")
-            processor.start(arguments=[result],
-                            result_processor=self._downstream_result_processor,
-                            result_processor_args=[index + 1, sequential],
-                            sequential=sequential)
+            logging.debug(f"{self}: starting: "
+                          f"{self.last_processor} with {[result]}")
+            self.last_processor.start(
+                arguments=[result],
+                result_processor=self._downstream_result_processor,
+                result_processor_args=[index + 1, sequential],
+                sequential=sequential)
