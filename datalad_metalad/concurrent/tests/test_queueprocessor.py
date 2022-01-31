@@ -25,8 +25,6 @@ def queue_result_handler(sender: QueueProcessor,
         else:
             pe["name_list"] += f" final.{sender.name}"
         logging.debug(f"queue_result_handler EXIT: {sender.name}, {pe}")
-    else:
-        print(result_type, pe)
     result_store.append(pe)
 
 
