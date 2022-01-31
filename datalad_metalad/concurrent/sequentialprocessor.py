@@ -40,6 +40,7 @@ class SequentialProcessor:
                f"processors[{len(self.processors)}]>"
 
     def _downstream_result_processor(self,
+                                     sender: Processor,
                                      result_type: ProcessorResultType,
                                      result: Any,
                                      index: int,
@@ -52,6 +53,7 @@ class SequentialProcessor:
                 f"{self}: calling client result "
                 f"processor {self.result_processor}")
             self.result_processor(
+                sender,
                 result_type,
                 result,
                 *self.result_processor_args)

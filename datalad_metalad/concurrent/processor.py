@@ -89,13 +89,13 @@ class Processor:
 
         logging.debug(f"{self}: start called with arguments: {arguments}")
         if sequential is True:
-            result = self.callable(*arguments)
+            result = self.callable(self, *arguments)
             self.result_processor(
                 ProcessorResultType.Result,
                 result,
                 *self.result_processor_args)
         else:
-            future = self.executor.submit(self.callable, *arguments)
+            future = self.executor.submit(self.callable, self, *arguments)
             self.future_set.add_future(future, self)
 
     def done_handler(self, done_future: Future):
@@ -123,4 +123,7 @@ class Processor:
             result_type = ProcessorResultType.Exception
             result = exception
 
-        self.result_processor(result_type, result, *self.result_processor_args)
+        self.result_processor(self,
+                              result_type,
+                              result,
+                              *self.result_processor_args)

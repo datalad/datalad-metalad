@@ -46,8 +46,13 @@ class ParallelProcessor:
                             result_processor=self._downstream_result_processor,
                             sequential=sequential)
 
-    def _downstream_result_processor(self, result_type, result):
+    def _downstream_result_processor(self, sender, result_type, result):
         """process result from one of the processes"""
-        logging.debug(f"{self}: downstream result processor called with {result_type}, {result}")
-        logging.debug(f"{self}: calling client result processor {self.result_processor}")
-        self.result_processor(result_type, result, *self.result_processor_args)
+        logging.debug(f"{self}: downstream result processor "
+                      f"called with {sender}, {result_type}, {result}")
+        logging.debug(f"{self}: calling client result "
+                      f"processor {self.result_processor}")
+        self.result_processor(sender,
+                              result_type,
+                              result,
+                              *self.result_processor_args)
