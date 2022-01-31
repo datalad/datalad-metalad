@@ -50,7 +50,7 @@ class Processor:
 
     @staticmethod
     def done():
-        while Processor.future_set:
+        while Processor.future_set.futures:
             for future in as_completed(Processor.future_set.futures.keys()):
                 yield future, Processor.future_set.futures[future]
                 Processor.future_set.remove_future(future)
@@ -74,20 +74,29 @@ class Processor:
     def start(self,
               arguments: List[Any],
               result_processor: Callable,
-              result_processor_args: Optional[List[Any]] = None):
+              result_processor_args: Optional[List[Any]] = None,
+              sequential: bool = False):
         """
 
         :param arguments:
         :param result_processor:
         :param result_processor_args:
-        :return:
+        :param sequential:
+        :return: None
         """
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
 
         logging.debug(f"{self}: start called with arguments: {arguments}")
-        future = self.executor.submit(self.callable, *arguments)
-        self.future_set.add_future(future, self)
+        if sequential is True:
+            result = self.callable(*arguments)
+            self.result_processor(
+                ProcessorResultType.Result,
+                result,
+                *self.result_processor_args)
+        else:
+            future = self.executor.submit(self.callable, *arguments)
+            self.future_set.add_future(future, self)
 
     def done_handler(self, done_future: Future):
         """process a done future

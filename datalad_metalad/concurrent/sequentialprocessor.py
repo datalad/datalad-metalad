@@ -42,7 +42,8 @@ class SequentialProcessor:
     def _downstream_result_processor(self,
                                      result_type: ProcessorResultType,
                                      result: Any,
-                                     index: int):
+                                     index: int,
+                                     sequential: bool):
 
         if result_type != ProcessorResultType.Result \
                 or index == len(self.processors):
@@ -59,17 +60,22 @@ class SequentialProcessor:
                 f"{self}: starting processor[{index}] "
                 f"with argument: {[result]}")
             processor = self.processors[index]
-            processor.start([result], self._downstream_result_processor, [index + 1])
+            processor.start(arguments=[result],
+                            result_processor=self._downstream_result_processor,
+                            result_processor_args=[index + 1, sequential],
+                            sequential=sequential)
 
     def start(self,
               arguments: List[Any],
               result_processor: Callable,
-              result_processor_args: Optional[List[Any]] = None):
+              result_processor_args: Optional[List[Any]] = None,
+              sequential: bool = False):
         """
 
         :param arguments:
         :param result_processor:
         :param result_processor_args:
+        :param sequential:
         :return:
         """
         self.result_processor = result_processor
@@ -78,4 +84,7 @@ class SequentialProcessor:
         processor = self.processors[0]
         logging.debug(
             f"{self}: starting processor[0] with argument: {arguments}")
-        processor.start(arguments, self._downstream_result_processor, [1])
+        processor.start(arguments=arguments,
+                        result_processor=self._downstream_result_processor,
+                        result_processor_args=[1, sequential],
+                        sequential=sequential)
