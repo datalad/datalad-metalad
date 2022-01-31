@@ -13,7 +13,7 @@ from ..processor import (
     ProcessorResultType,
 )
 from ..parallelprocessor import ParallelProcessor
-from ..sequentialprocessor import SequentialProcessor
+from ..queueprocessor import QueueProcessor
 
 
 def parallel_result_handler(sender: Processor,
@@ -45,8 +45,8 @@ def individual_worker(sender: Processor,
 def test_sp_par_basics():
 
     processors = [
-        SequentialProcessor([
-            Processor(individual_worker, f"{p}.{w}")
+        QueueProcessor([
+            (Processor, [individual_worker, f"{p}.{w}"], dict())
             for w in range(4)
         ])
         for p in range(3)

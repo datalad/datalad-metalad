@@ -1,3 +1,4 @@
+import abc
 import enum
 import logging
 from concurrent.futures import (
@@ -23,13 +24,23 @@ class ProcessorResultType(enum.Enum):
     Cancelled = 2
 
 
+class ProcessorInterface(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def start(self,
+              arguments: List[Any],
+              result_processor: Callable,
+              result_processor_args: Optional[List[Any]] = None,
+              sequential: bool = False):
+        raise NotImplementedError
+
+
 class FutureSet:
     def __init__(self):
         self.futures = dict()
 
     def add_future(self,
                    future: Future,
-                   processor: "Processor"):
+                   processor: ProcessorInterface):
         self.futures[future] = processor
 
     def remove_future(self, future: Future):
@@ -43,7 +54,7 @@ class FutureSet:
                 self.remove_future(future)
 
 
-class Processor:
+class Processor(ProcessorInterface):
 
     executor = ProcessPoolExecutor(16)
     future_set = FutureSet()

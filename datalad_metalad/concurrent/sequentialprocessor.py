@@ -8,6 +8,7 @@ from typing import (
 
 from .processor import (
     Processor,
+    ProcessorInterface,
     ProcessorResultType,
 )
 
@@ -15,14 +16,14 @@ from .processor import (
 __docformat__ = "restructuredtext"
 
 
-class SequentialProcessor:
+class SequentialProcessor(ProcessorInterface):
     """
     Run all processors and process the individual results, by
     calling the result handler with the callable, and the
     callback arguments.
     """
     def __init__(self,
-                 processors: List[Processor],
+                 processors: List[ProcessorInterface],
                  name: Optional[str] = None):
         """
 
