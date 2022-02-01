@@ -47,7 +47,7 @@ class ParallelProcessor(ProcessorInterface):
         self.result_processor_args = result_processor_args or []
         for processor in self.processors:
             logging.debug(f"{self}: starting: {repr(processor)}")
-            processor.start(arguments=deepcopy(arguments),
+            processor.start(arguments=arguments,
                             result_processor=self._downstream_result_processor,
                             sequential=sequential)
 
@@ -57,12 +57,12 @@ class ParallelProcessor(ProcessorInterface):
         :param sender:
         :param result_type:
         :param result:
-        :return:
         """
-        logging.debug(f"{self}: downstream result processor "
-                      f"called with {sender}, {result_type}, {result}")
-        logging.debug(f"{self}: calling client result "
-                      f"processor {self.result_processor}")
+        logging.debug(f"{self}: ParallelProcessor._downstream_result_processor"
+                      f"({sender}, {result_type}, {result}) called")
+        logging.debug(f"{self}: calling {self.result_processor} with "
+                      f"({sender}, {result_type}, {result}, "
+                      f"*{self.result_processor_args})")
         self.result_processor(sender,
                               result_type,
                               result,

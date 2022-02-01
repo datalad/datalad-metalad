@@ -35,24 +35,18 @@ class ProcessorInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-class FutureSet:
+class FutureSet(dict):
     def __init__(self):
+        dict.__init__(self)
         self.futures = dict()
 
     def add_future(self,
                    future: Future,
                    processor: ProcessorInterface):
-        self.futures[future] = processor
+        self[future] = processor
 
     def remove_future(self, future: Future):
-        del self.futures[future]
-
-    @property
-    def done(self):
-        while self.futures:
-            for future in as_completed(self.futures.keys()):
-                yield future, self.futures[future]
-                self.remove_future(future)
+        del self[future]
 
 
 class Processor(ProcessorInterface):
@@ -62,15 +56,20 @@ class Processor(ProcessorInterface):
 
     @staticmethod
     def done(timeout: Optional[float] = None):
-        while Processor.future_set.futures:
+        future_set = Processor.future_set
+        while future_set:
             try:
-                for future in as_completed(
-                                    fs=Processor.future_set.futures.keys(),
-                                    timeout=timeout):
-                    yield future, Processor.future_set.futures[future]
-                    Processor.future_set.remove_future(future)
+                for future in as_completed(fs=future_set.keys(),
+                                           timeout=timeout):
+                    yield future, future_set[future]
+                    future_set.remove_future(future)
             except TimeoutError:
                 return
+
+    @staticmethod
+    def done_all(timeout: Optional[float] = None):
+        for future, processor in Processor.done(timeout):
+            processor.done_handler(future)
 
     def __init__(self,
                  a_callable: Callable,
@@ -106,13 +105,13 @@ class Processor(ProcessorInterface):
 
         logging.debug(f"{self}: start called with arguments: {arguments}")
         if sequential is True:
-            result = self.callable(self, *arguments)
+            result = self.callable(*arguments)
             self.result_processor(
                 ProcessorResultType.Result,
                 result,
                 *self.result_processor_args)
         else:
-            future = self.executor.submit(self.callable, self, *arguments)
+            future = self.executor.submit(self.callable, *arguments)
             self.future_set.add_future(future, self)
 
     def done_handler(self, done_future: Future):

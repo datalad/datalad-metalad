@@ -1,9 +1,13 @@
 import logging
+import sys
+
 from nose.tools import assert_equal
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
+    Optional,
 )
 
 from ..processor import (
@@ -28,9 +32,22 @@ def queue_result_handler(sender: QueueProcessor,
     result_store.append(pe)
 
 
-def queue_worker(sender: Processor,
-                 pipeline_element: Dict) -> Any:
+class IWorker(Processor):
+    def __init__(self,
+                 wrapped_callable: Callable,
+                 name: Optional[str] = None):
 
+        Processor.__init__(self, self.worker_interface, name)
+        self.wrapped_callable = wrapped_callable
+
+    def __repr__(self):
+        return f"IWorker[{self.name}]"
+
+    def worker_interface(self, *args, **kwargs) -> Any:
+        return self.wrapped_callable(self, *args, **kwargs)
+
+
+def queue_worker(sender, pipeline_element: Dict) -> Any:
     if "name_list" not in pipeline_element:
         pipeline_element["name_list"] = f"q.{sender.name}"
     else:
@@ -39,15 +56,13 @@ def queue_worker(sender: Processor,
 
 
 def test_basics():
-    processor_factories = [
-        (Processor, [queue_worker], dict(name=f"{i}"))
+
+    processors = [
+        IWorker(queue_worker, f"{i}")
         for i in range(4)
     ]
 
-    queue_processor = QueueProcessor(
-        processor_factories=processor_factories,
-        name=f""
-    )
+    queue_processor = QueueProcessor(processors=processors, name=f"")
 
     result_store = list()
 
@@ -57,8 +72,7 @@ def test_basics():
                           result_processor_args=[result_store],
                           sequential=False)
 
-    for done_future, done_processor in Processor.done():
-        done_processor.done_handler(done_future)
+    Processor.done_all()
 
     assert_equal(
         result_store[0]["name_list"],
@@ -79,13 +93,13 @@ def queue_exception_worker(sender: Processor,
 
 
 def test_exception():
-    processor_factories = [
-        (Processor, [queue_exception_worker], dict(name=f"{i}"))
+    processors = [
+        IWorker(queue_exception_worker, f"{i}")
         for i in range(4)
     ]
 
     queue_processor = QueueProcessor(
-        processor_factories=processor_factories,
+        processors=processors,
         name=f""
     )
 
@@ -97,8 +111,7 @@ def test_exception():
                           result_processor_args=[result_store],
                           sequential=False)
 
-    for done_future, done_processor in Processor.done():
-        done_processor.done_handler(done_future)
+    Processor.done_all()
 
     assert_equal(
         result_store[0]["name_list"],

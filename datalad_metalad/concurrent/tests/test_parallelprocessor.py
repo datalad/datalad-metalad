@@ -1,8 +1,10 @@
 import logging
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
+    Optional,
 )
 
 from nose.tools import assert_equal
@@ -30,15 +32,26 @@ def parallel_result_handler(sender: Processor,
     result_store.append(pe)
 
 
-def individual_worker(sender: Processor,
-                      pipeline_element: Dict) -> Any:
+class IWorker(Processor):
+    def __init__(self,
+                 wrapped_callable: Callable,
+                 name: Optional[str] = None):
 
-    logging.debug(f"individual_worker ENTER: {pipeline_element}")
+        Processor.__init__(self, self.worker_interface, name)
+        self.wrapped_callable = wrapped_callable
+
+    def __repr__(self):
+        return f"IWorker[{self.name}]"
+
+    def worker_interface(self, *args, **kwargs) -> Any:
+        return self.wrapped_callable(self, *args, **kwargs)
+
+
+def individual_worker(sender, pipeline_element: Dict) -> Any:
     if "name_list" not in pipeline_element:
         pipeline_element["name_list"] = f"i.{sender.name}"
     else:
         pipeline_element["name_list"] += f" i.{sender.name}"
-    logging.debug(f"individual_worker EXIT: {sender.name}, {pipeline_element}")
     return pipeline_element
 
 
@@ -46,7 +59,7 @@ def test_sp_par_basics():
 
     processors = [
         QueueProcessor([
-            (Processor, [individual_worker, f"{p}.{w}"], dict())
+            IWorker(individual_worker, f"{p}.{w}")
             for w in range(4)
         ])
         for p in range(3)
@@ -62,8 +75,7 @@ def test_sp_par_basics():
               result_processor_args=[result_store],
               sequential=False)
 
-    for done_future, done_processor in Processor.done():
-        done_processor.done_handler(done_future)
+    Processor.done_all()
 
     assert_equal(len(result_store), 3)
     patterns = [

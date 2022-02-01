@@ -2,10 +2,8 @@ import logging
 from typing import (
     Any,
     Callable,
-    Dict,
     List,
     Optional,
-    Tuple,
 )
 
 from .processor import (
@@ -29,14 +27,14 @@ class QueueProcessor(ProcessorInterface):
     """
 
     def __init__(self,
-                 processor_factories: List[Tuple[Callable, List, Dict]],
+                 processors: List[ProcessorInterface],
                  name: Optional[str] = None):
         """
 
-        :param processor_factories:
+        :param processors:
         :param name:
         """
-        self.processor_factories = processor_factories
+        self.processors = processors
         self.name = name or str(id(self))
 
         self.result_processor = None
@@ -46,7 +44,7 @@ class QueueProcessor(ProcessorInterface):
 
     def __repr__(self):
         return f"<{type(self).__name__}[{self.name}], " \
-               f"processors[{len(self.processor_factories)}]>"
+               f"processors[{len(self.processors)}]>"
 
     def start(self,
               arguments: List[Any],
@@ -57,10 +55,7 @@ class QueueProcessor(ProcessorInterface):
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
 
-        self.last_processor = self.processor_factories[0][0](
-            *self.processor_factories[0][1],
-            **self.processor_factories[0][2])
-
+        self.last_processor = self.processors[0]
         logging.debug(f"{self}: starting: {self.last_processor}")
         self.last_processor.start(
             arguments=arguments,
@@ -69,14 +64,14 @@ class QueueProcessor(ProcessorInterface):
             sequential=sequential)
 
     def _downstream_result_processor(self,
-                                     sender: ProcessorInterface,
+                                     _: ProcessorInterface,
                                      result_type: ProcessorResultType,
                                      result: Any,
                                      index: int,
                                      sequential: bool):
 
         if result_type != ProcessorResultType.Result \
-                or index == len(self.processor_factories):
+                or index == len(self.processors):
 
             if result_type != ProcessorResultType.Result:
                 result = self.last_result
@@ -85,18 +80,17 @@ class QueueProcessor(ProcessorInterface):
                 f"{self}: calling client result "
                 f"processor {self.result_processor}")
             self.result_processor(
-                sender,
+                self.last_processor,
                 result_type,
                 result,
                 *self.result_processor_args)
         else:
             self.last_result = result
-            self.last_processor = self.processor_factories[index][0](
-                *self.processor_factories[index][1],
-                **self.processor_factories[index][2])
+            self.last_processor = self.processors[index]
 
-            logging.debug(f"{self}: starting: "
-                          f"{self.last_processor} with {[result]}")
+            logging.debug(f"{self}: starting:"
+                          f" {self.last_processor}"
+                          f" with {[result]}")
             self.last_processor.start(
                 arguments=[result],
                 result_processor=self._downstream_result_processor,
