@@ -42,7 +42,14 @@ class ParallelProcessor(ProcessorInterface):
               result_processor: Callable,
               result_processor_args: Optional[List[Any]] = None,
               sequential: bool = False):
+        """
 
+        :param arguments:
+        :param result_processor:
+        :param result_processor_args:
+        :param sequential:
+        :return: None
+        """
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
         for processor in self.processors:
@@ -57,6 +64,7 @@ class ParallelProcessor(ProcessorInterface):
         :param sender:
         :param result_type:
         :param result:
+        :return: None
         """
         logging.debug(f"{self}: ParallelProcessor._downstream_result_processor"
                       f"({sender}, {result_type}, {result}) called")

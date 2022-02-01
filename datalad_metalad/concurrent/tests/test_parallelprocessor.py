@@ -1,16 +1,15 @@
 import logging
 from typing import (
     Any,
-    Callable,
     Dict,
     List,
-    Optional,
 )
 
 from nose.tools import assert_equal
 
 
 from ..processor import (
+    InterfaceExtendedProcessor,
     Processor,
     ProcessorResultType,
 )
@@ -32,21 +31,6 @@ def parallel_result_handler(sender: Processor,
     result_store.append(pe)
 
 
-class IWorker(Processor):
-    def __init__(self,
-                 wrapped_callable: Callable,
-                 name: Optional[str] = None):
-
-        Processor.__init__(self, self.worker_interface, name)
-        self.wrapped_callable = wrapped_callable
-
-    def __repr__(self):
-        return f"IWorker[{self.name}]"
-
-    def worker_interface(self, *args, **kwargs) -> Any:
-        return self.wrapped_callable(self, *args, **kwargs)
-
-
 def individual_worker(sender, pipeline_element: Dict) -> Any:
     if "name_list" not in pipeline_element:
         pipeline_element["name_list"] = f"i.{sender.name}"
@@ -59,7 +43,7 @@ def test_sp_par_basics():
 
     processors = [
         QueueProcessor([
-            IWorker(individual_worker, f"{p}.{w}")
+            InterfaceExtendedProcessor(individual_worker, f"{p}.{w}")
             for w in range(4)
         ])
         for p in range(3)

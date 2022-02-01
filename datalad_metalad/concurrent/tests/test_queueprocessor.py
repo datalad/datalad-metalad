@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from nose.tools import assert_equal
 from typing import (
@@ -7,10 +6,10 @@ from typing import (
     Callable,
     Dict,
     List,
-    Optional,
 )
 
 from ..processor import (
+    InterfaceExtendedProcessor,
     Processor,
     ProcessorResultType,
 )
@@ -32,21 +31,6 @@ def queue_result_handler(sender: QueueProcessor,
     result_store.append(pe)
 
 
-class IWorker(Processor):
-    def __init__(self,
-                 wrapped_callable: Callable,
-                 name: Optional[str] = None):
-
-        Processor.__init__(self, self.worker_interface, name)
-        self.wrapped_callable = wrapped_callable
-
-    def __repr__(self):
-        return f"IWorker[{self.name}]"
-
-    def worker_interface(self, *args, **kwargs) -> Any:
-        return self.wrapped_callable(self, *args, **kwargs)
-
-
 def queue_worker(sender, pipeline_element: Dict) -> Any:
     if "name_list" not in pipeline_element:
         pipeline_element["name_list"] = f"q.{sender.name}"
@@ -55,18 +39,20 @@ def queue_worker(sender, pipeline_element: Dict) -> Any:
     return pipeline_element
 
 
-def test_basics():
-
+def _get_queue_processor(worker: Callable, count: int) -> QueueProcessor:
     processors = [
-        IWorker(queue_worker, f"{i}")
-        for i in range(4)
+        InterfaceExtendedProcessor(worker, f"{i}")
+        for i in range(count)
     ]
+    return QueueProcessor(processors=processors, name=f"")
 
-    queue_processor = QueueProcessor(processors=processors, name=f"")
+
+def test_basics():
 
     result_store = list()
 
     pipeline_element = {"name_list": "start"}
+    queue_processor = _get_queue_processor(queue_worker, 4)
     queue_processor.start(arguments=[pipeline_element],
                           result_processor=queue_result_handler,
                           result_processor_args=[result_store],
@@ -93,19 +79,11 @@ def queue_exception_worker(sender: Processor,
 
 
 def test_exception():
-    processors = [
-        IWorker(queue_exception_worker, f"{i}")
-        for i in range(4)
-    ]
-
-    queue_processor = QueueProcessor(
-        processors=processors,
-        name=f""
-    )
 
     result_store = list()
 
     pipeline_element = {"name_list": "start"}
+    queue_processor = _get_queue_processor(queue_exception_worker, 4)
     queue_processor.start(arguments=[pipeline_element],
                           result_processor=queue_result_handler,
                           result_processor_args=[result_store],

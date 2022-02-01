@@ -51,7 +51,14 @@ class QueueProcessor(ProcessorInterface):
               result_processor: Callable,
               result_processor_args: Optional[List[Any]] = None,
               sequential: bool = False):
+        """
 
+        :param arguments:
+        :param result_processor:
+        :param result_processor_args:
+        :param sequential:
+        :return: None
+        """
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
 

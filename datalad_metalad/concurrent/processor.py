@@ -123,6 +123,7 @@ class Processor(ProcessorInterface):
         Call the result handler method
 
         :param done_future: the future that is done
+        :return: None
         """
         try:
             result = done_future.result()
@@ -143,3 +144,18 @@ class Processor(ProcessorInterface):
                               result_type,
                               result,
                               *self.result_processor_args)
+
+
+class InterfaceExtendedProcessor(Processor):
+    def __init__(self,
+                 wrapped_callable: Callable,
+                 name: Optional[str] = None):
+
+        Processor.__init__(self, self.interface_extender, name)
+        self.wrapped_callable = wrapped_callable
+
+    def __repr__(self):
+        return f"ExtendedParameterProcessor[{self.name}]"
+
+    def interface_extender(self, *args, **kwargs) -> Any:
+        return self.wrapped_callable(self, *args, **kwargs)
