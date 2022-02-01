@@ -67,9 +67,9 @@ class MetadataExtractor(Processor):
             return pipeline_element
 
         dataset_path = (
-                dataset_traverse_record.fs_base_path
-                / dataset_traverse_record.dataset_path
-        )
+            dataset_traverse_record.fs_base_path
+            / dataset_traverse_record.dataset_path)
+
         object_type = dataset_traverse_record.type
 
         if object_type == "file":

@@ -5,6 +5,7 @@ from concurrent.futures import (
     CancelledError,
     Future,
     ProcessPoolExecutor,
+    TimeoutError,
     as_completed,
 )
 from typing import (
@@ -60,11 +61,16 @@ class Processor(ProcessorInterface):
     future_set = FutureSet()
 
     @staticmethod
-    def done():
+    def done(timeout: Optional[float] = None):
         while Processor.future_set.futures:
-            for future in as_completed(Processor.future_set.futures.keys()):
-                yield future, Processor.future_set.futures[future]
-                Processor.future_set.remove_future(future)
+            try:
+                for future in as_completed(
+                                    fs=Processor.future_set.futures.keys(),
+                                    timeout=timeout):
+                    yield future, Processor.future_set.futures[future]
+                    Processor.future_set.remove_future(future)
+            except TimeoutError:
+                return
 
     def __init__(self,
                  a_callable: Callable,
