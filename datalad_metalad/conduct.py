@@ -11,7 +11,6 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
-import sys
 import traceback
 from collections import defaultdict
 from importlib import import_module
@@ -33,8 +32,6 @@ from datalad.support.constraints import (
     EnsureChoice,
     EnsureInt,
     EnsureNone,
-    EnsureStrPrefix,
-    EnsureStr,
 )
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
@@ -183,8 +180,6 @@ class Conduct(Interface):
             processing_mode: str = "process"):
 
         element_arguments, file_path = split_arguments(arguments, "++")
-        print("XXXX", element_arguments, file_path, file=sys.stderr)
-
         conduct_configuration = read_json_object(configuration)
 
         elements = [
@@ -204,8 +199,6 @@ class Conduct(Interface):
         constructor_keyword_args = get_constructor_keyword_args(
             element_arguments=element_arguments,
             element_names=element_names)
-
-        print("YYYYY", constructor_keyword_args, file=sys.stderr)
 
         error_message = check_arguments(constructor_keyword_args, elements)
         if error_message:
