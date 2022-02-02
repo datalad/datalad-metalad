@@ -60,7 +60,6 @@ from .pathutils.metadataurlparser import (
 from .pathutils.mtreesearch import MTreeSearch
 
 
-
 default_mapper_family = "git"
 
 lgr = logging.getLogger('datalad.metadata.dump')

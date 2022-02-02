@@ -21,8 +21,8 @@ from datalad.distribution.dataset import (
 )
 
 from .base import Provider
-from ..pipelineelement import (
-    PipelineElement,
+from ..pipelinedata import (
+    PipelineData,
     PipelineResult,
     ResultState
 )
@@ -125,7 +125,7 @@ class DatasetTraverser(Provider):
             if self._already_visited(dataset, Path("")):
                 return
 
-            yield PipelineElement((
+            yield PipelineData((
                 ("path", element_path),
                 (
                     "dataset-traversal-record",
@@ -157,7 +157,7 @@ class DatasetTraverser(Provider):
                     if self._already_visited(dataset, relative_element_path):
                         continue
 
-                    yield PipelineElement((
+                    yield PipelineData((
                         ("path", element_path),
                         (
                             "dataset-traversal-record",
