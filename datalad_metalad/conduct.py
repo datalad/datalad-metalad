@@ -11,6 +11,7 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
+import sys
 import traceback
 from collections import defaultdict
 from importlib import import_module
@@ -19,8 +20,9 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Union,
     Optional,
+    Tuple,
+    Union,
 )
 
 from datalad.distribution.dataset import datasetmethod
@@ -30,14 +32,16 @@ from datalad.interface.utils import eval_results
 from datalad.support.constraints import (
     EnsureChoice,
     EnsureInt,
-    EnsureNone
+    EnsureNone,
+    EnsureStrPrefix,
+    EnsureStr,
 )
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
-from .pipelineelement import (
-    PipelineElement,
-    PipelineElementState
+from .pipelinedata import (
+    PipelineData,
+    PipelineDataState,
 )
 from .consumer.base import Consumer
 from .processor.base import Processor
@@ -55,6 +59,31 @@ lgr = logging.getLogger('datalad.metadata.conduct')
 
 class ConductProcessorException(Exception):
     pass
+
+
+def split_arguments(arguments: List[str], divider: str) -> Tuple[List, List]:
+    if divider in arguments:
+        index = arguments.index(divider)
+        return arguments[:index], arguments[index + 1:]
+    else:
+        return arguments, []
+
+
+def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
+                    elements: List[Dict]) -> Optional[str]:
+
+    error_messages = []
+    for element in elements:
+        print(element)
+        element_kwargs = keyword_arguments[element["name"]]
+        element_class = get_class_instance(element)
+        error_message = element_class.check_keyword_args(element_kwargs)
+        if error_message is not None:
+            error_messages.append(error_message)
+
+    if error_messages:
+        return "\n".join(error_messages)
+    return None
 
 
 @build_doc
@@ -87,20 +116,25 @@ class Conduct(Interface):
     _examples_ = [
         dict(
             text="Run metalad_core_dataset extractor on the top dataset and "
-                 "all subdatasets.",
-            code_cmd="datalad meta-conduct extract_metadata_auto "
-                     "traverser:<dataset path> traverser:True "
-                     "extractor:Dataset extractor:metalad_core_dataset "
-                     "adder:True"
+                 "all subdatasets. Add the resulting metadata in aggregated"
+                 "mode. This command uses the provided pipeline"
+                 "definition 'extract_metadata'.",
+            code_cmd="datalad meta-conduct extract_metadata "
+                     "traverser.path=<dataset path> traverser.type=dataset"
+                     "traverser.recursive=True extractor.type=dataset "
+                     "extractor.extractor_name=metalad_core_dataset "
+                     "adder.aggregate=True"
         ),
         dict(
             text="Run metalad_core_file extractor on all files of the root "
                  "dataset and the subdatasets. Automatically get the content, "
                  "if it is not present. Drop content that was automatically "
                  "fetched after its metadata has been added.",
-            code_cmd="datalad meta-conduct pipelines/extract_metadata_auto "
-                     "traverser:<dataset path> traverser:True extractor:File "
-                     "extractor:metalad_core_file adder:True"
+            code_cmd="datalad meta-conduct extract_metadata_autoget_autodrop "
+                     "traverser.path=<dataset path> traverser.type=file"
+                     "traverser.recursive=True extractor.type=file "
+                     "extractor.extractor_name=metalad_core_file "
+                     "adder.aggregate=True"
         )
     ]
 
@@ -129,18 +163,14 @@ class Conduct(Interface):
             args=("arguments",),
             metavar="ARGUMENTS",
             nargs="*",
-            doc="""Additional constructor arguments for provider or processors.
-                   The arguments have to be prefixed with the name of the
-                   provider or processor followed by ":" or "=".
-                   
-                   Positional arguments are identified by the prefix "<name>:".
-                   The argument is given directly after the prefix. The
-                   arguments will be appended to the respective argument
-                   list that is given in the configuration.
-                   
-                   Key-Value parameter are identified by the prefix "<name>=".
-                   The key and value are then given as: "<name>=<key>=<value>".
-                   """)
+            doc="""Constructor arguments for pipeline elements, i.e. provider,
+                   processors, and consumer. The arguments have to be prefixed
+                   with the name of the pipeline element, followed by ".",
+                   the keyname, a "=", and the value. The pipeline element
+                   arguments are identified by the pattern
+                   "<name>.<key>=<value>". If an optional path has the same
+                   structure as a pipeline element argument, the pipeline 
+                   element arguments can be terminated by "++"."""),
     )
 
     @staticmethod
@@ -152,53 +182,61 @@ class Conduct(Interface):
             max_workers: Optional[int] = None,
             processing_mode: str = "process"):
 
+        element_arguments, file_path = split_arguments(arguments, "++")
+        print("XXXX", element_arguments, file_path, file=sys.stderr)
+
         conduct_configuration = read_json_object(configuration)
 
-        element_names = [
-            element["name"] for element in chain(
+        elements = [
+            element
+            for element in chain(
                 [conduct_configuration["provider"]],
                 conduct_configuration["processors"],
-                [conduct_configuration.get("consumer", None)])
-            if element is not None]
+                [conduct_configuration.get("consumer", None)]
+            )
+            if element is not None
+        ]
 
-        additional_arguments = get_additional_arguments(
-            arguments,
-            element_names)
+        element_names = [element["name"] for element in elements]
+        if len(element_names) != len(set(element_names)):
+            raise ValueError("repeated element names")
+
+        constructor_keyword_args = get_constructor_keyword_args(
+            element_arguments=element_arguments,
+            element_names=element_names)
+
+        print("YYYYY", constructor_keyword_args, file=sys.stderr)
+
+        error_message = check_arguments(constructor_keyword_args, elements)
+        if error_message:
+            raise ValueError(
+                "Pipeline element construction errors:\n"
+                f"{error_message}\n")
 
         consumer_name = conduct_configuration.get("consumer", None)
         if consumer_name:
-            consumer_instance = get_class_instance(conduct_configuration["consumer"])(
-                dataset="/home/cristian/datalad/inm7-studies/superset")
-            x = """
-            *(
-                conduct_configuration["consumer"]["arguments"] +
-                additional_arguments[consumer_name]["positional_arguments"]
-            ),
-            **{
-                **conduct_configuration["consumer"]["keyword_arguments"],
-                **additional_arguments[consumer_name]["keyword_arguments"]
-            })
-            """
+            consumer_instance = get_class_instance(
+                conduct_configuration["consumer"])(
+                    **{
+                        **conduct_configuration["consumer"]["arguments"],
+                        **constructor_keyword_args[consumer_name]
+                    })
         else:
             consumer_instance = None
 
         provider_name = conduct_configuration["provider"]["name"]
-        provider_instance = get_class_instance(conduct_configuration["provider"])(
-            *(
-                conduct_configuration["provider"]["arguments"] +
-                additional_arguments[provider_name]["positional_arguments"]
-            ),
+        provider_instance = get_class_instance(
+            conduct_configuration["provider"])(
             **{
-                **conduct_configuration["provider"]["keyword_arguments"],
-                **additional_arguments[provider_name]["keyword_arguments"]
+                **conduct_configuration["provider"]["arguments"],
+                **constructor_keyword_args[provider_name]
             })
 
         processor_instances = [
             get_class_instance(spec)(
-                *(spec["arguments"] + additional_arguments[spec["name"]]["positional_arguments"]),
                 **{
-                    **spec["keyword_arguments"],
-                    **additional_arguments[spec["name"]]["keyword_arguments"]
+                    **spec["arguments"],
+                    **constructor_keyword_args[spec["name"]]
                 }
             )
             for index, spec in enumerate(conduct_configuration["processors"])]
@@ -232,22 +270,22 @@ def process_parallel(executor,
     running = set()
 
     # This thread iterates over the provider result,
-    # starts a new pipeline element to process the result,
+    # starts a new processor instance to process the result,
     # and feeds the result of every pipeline into the consumer.
-    for pipeline_element in provider_instance.next_object():
+    for pipeline_data in provider_instance.next_object():
 
         if not processor_instances:
-            path = pipeline_element.get_result("path")
+            path = pipeline_data.get_result("path")
             yield dict(
                 action="meta_conduct",
                 status="ok",
                 path=str(path),
                 logger=lgr,
-                pipeline_element=pipeline_element.to_json())
+                pipeline_data=pipeline_data.to_json())
             continue
 
-        lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_element}")
-        running.add(executor.submit(processor_instances[0].execute, -1, pipeline_element))
+        lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_data}")
+        running.add(executor.submit(processor_instances[0].execute, -1, pipeline_data))
 
         # During provider result fetching, check for already finished processors
         done, running = concurrent.futures.wait(
@@ -258,25 +296,25 @@ def process_parallel(executor,
         for future in done:
             try:
 
-                source_index, pipeline_element = future.result()
+                source_index, pipeline_data = future.result()
                 this_index = source_index + 1
                 next_index = this_index + 1
 
                 lgr.debug(
-                    f"Processor[{source_index}] returned {pipeline_element} "
+                    f"Processor[{source_index}] returned {pipeline_data} "
                     f"[provider not yet exhausted]")
                 if next_index >= len(processor_instances):
                     if consumer_instance:
-                        pipeline_element = consumer_instance.consume(pipeline_element)
+                        pipeline_data = consumer_instance.consume(pipeline_data)
 
-                    path = pipeline_element.get_result("path")
+                    path = pipeline_data.get_result("path")
                     if path is not None:
                         yield dict(
                             action="meta_conduct",
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_element=pipeline_element.to_json())
+                            pipeline_data=pipeline_data.to_json())
                 else:
                     lgr.debug(
                         f"Starting processor[{next_index}]"
@@ -285,7 +323,7 @@ def process_parallel(executor,
                         executor.submit(
                             processor_instances[next_index].execute,
                             this_index,
-                            pipeline_element))
+                            pipeline_data))
 
             except Exception as e:
                 lgr.error(f"Exception {e} in processor {future}")
@@ -305,37 +343,37 @@ def process_parallel(executor,
         for future in done:
             try:
 
-                source_index, pipeline_element = future.result()
+                source_index, pipeline_data = future.result()
                 this_index = source_index + 1
                 next_index = this_index + 1
 
                 lgr.debug(
-                    f"Processor[{source_index}] returned {pipeline_element}")
+                    f"Processor[{source_index}] returned {pipeline_data}")
 
                 if next_index >= len(processor_instances):
                     if consumer_instance:
-                        pipeline_element = consumer_instance.consume(pipeline_element)
+                        pipeline_data = consumer_instance.consume(pipeline_data)
                     lgr.debug(
                         f"No more elements in pipeline, returning "
-                        f"{pipeline_element}")
+                        f"{pipeline_data}")
 
-                    path = pipeline_element.get_result("path")
+                    path = pipeline_data.get_result("path")
                     if path is not None:
                         yield dict(
                             action="meta_conduct",
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_element=pipeline_element.to_json())
+                            pipeline_data=pipeline_data.to_json())
                 else:
                     lgr.debug(
-                        f"Handing pipeline element {pipeline_element} to"
+                        f"Handing pipeline data {pipeline_data} to"
                         f"processor[{next_index}]")
                     running.add(
                         executor.submit(
                             processor_instances[next_index].execute,
                             this_index,
-                            pipeline_element))
+                            pipeline_data))
 
             except Exception as e:
                 lgr.error(f"Exception {e} in processor {future}")
@@ -351,24 +389,24 @@ def process_sequential(provider_instance: Provider,
                        processor_instances: List[Processor],
                        consumer_instance: Optional[Consumer]) -> Iterable:
 
-    for pipeline_element in provider_instance.next_object():
-        lgr.debug(f"Provider yielded: {pipeline_element}")
-        yield from process_downstream(pipeline_element, processor_instances, consumer_instance)
+    for pipeline_data in provider_instance.next_object():
+        lgr.debug(f"Provider yielded: {pipeline_data}")
+        yield from process_downstream(pipeline_data, processor_instances, consumer_instance)
 
 
-def process_downstream(pipeline_element: PipelineElement,
+def process_downstream(pipeline_data: PipelineData,
                        processor_instances: List[Processor],
                        consumer_instance: Optional[Consumer]) -> Iterable:
 
-    if pipeline_element.state == PipelineElementState.STOP:
-        path = pipeline_element.get_result("path")
+    if pipeline_data.state == PipelineDataState.STOP:
+        path = pipeline_data.get_result("path")
         if path is not None:
             datalad_result = dict(
                 action="meta_conduct",
                 status="stopped",
                 path=str(path),
                 logger=lgr,
-                pipeline_element=pipeline_element)
+                pipeline_data=pipeline_data)
 
             lgr.debug(
                 f"Pipeline stop was requested, returning datalad result {datalad_result}")
@@ -378,7 +416,7 @@ def process_downstream(pipeline_element: PipelineElement,
 
     for processor in processor_instances:
         try:
-            _, pipeline_element = processor.execute(None, pipeline_element)
+            _, pipeline_data = processor.execute(None, pipeline_data)
         except Exception:
             yield dict(
                 action="meta_conduct",
@@ -390,7 +428,7 @@ def process_downstream(pipeline_element: PipelineElement,
 
     if consumer_instance:
         try:
-            pipeline_element = consumer_instance.consume(pipeline_element)
+            pipeline_data = consumer_instance.consume(pipeline_data)
         except Exception as e:
             yield dict(
                 action="meta_conduct",
@@ -400,14 +438,14 @@ def process_downstream(pipeline_element: PipelineElement,
                 base_error=traceback.format_exc())
             return
 
-    path = pipeline_element.get_result("path")
+    path = pipeline_data.get_result("path")
     if path is not None:
         datalad_result = dict(
             action="meta_conduct",
             status="ok",
             path=str(path),
             logger=lgr,
-            pipeline_element=pipeline_element.to_json())
+            pipeline_data=pipeline_data.to_json())
 
         lgr.debug(
             f"Pipeline finished, returning datalad result {datalad_result}")
@@ -432,34 +470,15 @@ def assert_pipeline_validity(current_output_type: str, processors: List[Processo
         current_output_type = processor.output_type()
 
 
-def get_additional_arguments(arguments: List[str],
-                             element_names: List[str]) -> dict:
+def get_constructor_keyword_args(element_arguments: List[str],
+                                 element_names: List[str]) -> dict:
 
-    def element_dict() -> Dict:
-        return dict(positional_arguments=[], keyword_arguments={})
+    result = defaultdict(dict)
 
-    def sortable_index(string: str, character: str):
-        index = string.find(character)
-        return len(string) if index < 0 else index
-
-    result = defaultdict(element_dict)
-
-    for argument in arguments:
-        delimiter = sorted(
-            [
-                (sortable_index(argument, delimiter), delimiter)
-                for delimiter in (":", "=")
-            ],
-            key=lambda element: element[0]
-        )[0][1]
-
-        name, argument = argument.split(delimiter, 1)
-        if name not in element_names:
-            raise ValueError(f"No provider or processor with name: '{name}'")
-
-        if delimiter == ":":
-            result[name]["positional_arguments"].append(argument)
-        else:
-            key, value = argument.split("=", 1)
-            result[name]["keyword_arguments"][key] = value
+    for argument in element_arguments:
+        argument_coordinate, value = argument.split("=", 1)
+        element_name, keyword = argument_coordinate.split(".")
+        if element_name not in element_names:
+            raise ValueError(f"No pipeline element with name: '{element_name}'")
+        result[element_name][keyword] = value
     return result

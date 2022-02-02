@@ -31,12 +31,12 @@ def queue_result_handler(sender: QueueProcessor,
     result_store.append(pe)
 
 
-def queue_worker(sender, pipeline_element: Dict) -> Any:
-    if "name_list" not in pipeline_element:
-        pipeline_element["name_list"] = f"q.{sender.name}"
+def queue_worker(sender, pipeline_data: Dict) -> Any:
+    if "name_list" not in pipeline_data:
+        pipeline_data["name_list"] = f"q.{sender.name}"
     else:
-        pipeline_element["name_list"] += f" q.{sender.name}"
-    return pipeline_element
+        pipeline_data["name_list"] += f" q.{sender.name}"
+    return pipeline_data
 
 
 def _get_queue_processor(worker: Callable, count: int) -> QueueProcessor:
@@ -51,9 +51,9 @@ def test_basics():
 
     result_store = list()
 
-    pipeline_element = {"name_list": "start"}
+    pipeline_data = {"name_list": "start"}
     queue_processor = _get_queue_processor(queue_worker, 4)
-    queue_processor.start(arguments=[pipeline_element],
+    queue_processor.start(arguments=[pipeline_data],
                           result_processor=queue_result_handler,
                           result_processor_args=[result_store],
                           sequential=False)
@@ -67,24 +67,24 @@ def test_basics():
 
 
 def queue_exception_worker(sender: Processor,
-                           pipeline_element: Dict) -> Any:
+                           pipeline_data: Dict) -> Any:
     if sender.name == "1":
         raise ValueError("Sender' name is '1'")
 
-    if "name_list" not in pipeline_element:
-        pipeline_element["name_list"] = f"q.{sender.name}"
+    if "name_list" not in pipeline_data:
+        pipeline_data["name_list"] = f"q.{sender.name}"
     else:
-        pipeline_element["name_list"] += f" q.{sender.name}"
-    return pipeline_element
+        pipeline_data["name_list"] += f" q.{sender.name}"
+    return pipeline_data
 
 
 def test_exception():
 
     result_store = list()
 
-    pipeline_element = {"name_list": "start"}
+    pipeline_data = {"name_list": "start"}
     queue_processor = _get_queue_processor(queue_exception_worker, 4)
-    queue_processor.start(arguments=[pipeline_element],
+    queue_processor.start(arguments=[pipeline_data],
                           result_processor=queue_result_handler,
                           result_processor_args=[result_store],
                           sequential=False)

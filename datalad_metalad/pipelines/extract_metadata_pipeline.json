@@ -3,23 +3,20 @@
     "module": "datalad_metalad.provider.datasettraverse",
     "class": "DatasetTraverser",
     "name": "traverser",
-    "arguments": [],
-    "keyword_arguments": {}
+    "arguments": {}
   },
   "processors": [
     {
       "module": "datalad_metalad.processor.extract",
       "class": "MetadataExtractor",
       "name": "extractor",
-      "arguments": [],
-      "keyword_arguments": {}
+      "arguments": {}
     }
   ],
   "consumer": {
     "module": "datalad_metalad.consumer.add",
     "class": "BatchAdder",
     "name": "adder",
-    "arguments": [],
-    "keyword_arguments": {}
+    "arguments": {}
   }
 }

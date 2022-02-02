@@ -31,12 +31,12 @@ def parallel_result_handler(sender: Processor,
     result_store.append(pe)
 
 
-def individual_worker(sender, pipeline_element: Dict) -> Any:
-    if "name_list" not in pipeline_element:
-        pipeline_element["name_list"] = f"i.{sender.name}"
+def individual_worker(sender, pipeline_data: Dict) -> Any:
+    if "name_list" not in pipeline_data:
+        pipeline_data["name_list"] = f"i.{sender.name}"
     else:
-        pipeline_element["name_list"] += f" i.{sender.name}"
-    return pipeline_element
+        pipeline_data["name_list"] += f" i.{sender.name}"
+    return pipeline_data
 
 
 def test_sp_par_basics():
@@ -53,8 +53,8 @@ def test_sp_par_basics():
 
     result_store = list()
 
-    pipeline_element = {"name_list": "start"}
-    par.start(arguments=[pipeline_element],
+    pipeline_data = {"name_list": "start"}
+    par.start(arguments=[pipeline_data],
               result_processor=parallel_result_handler,
               result_processor_args=[result_store],
               sequential=False)

@@ -1,17 +1,13 @@
 import abc
-import queue
-from typing import (
-    Any,
-    Optional,
-)
 
+from ..pipelinedata import PipelineData
 from ..pipelineelement import PipelineElement
 
 
 __docformat__ = "restructuredtext"
 
 
-class Consumer(metaclass=abc.ABCMeta):
+class Consumer(PipelineElement, metaclass=abc.ABCMeta):
     """ A sub-process consumer for conduct.
 
     Consumer provide an access point, usually a queue or similar, on which
@@ -20,16 +16,16 @@ class Consumer(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def consume(self, pipeline_element: PipelineElement) -> bool:
-        """ Consume the pipeline element.
+    def consume(self, pipeline_data: PipelineData) -> bool:
+        """ Consume the pipeline data.
 
-        Consume the pipeline element and return `True` if it was successfully
+        Consume the pipeline data and return `True` if it was successfully
         consumed, `False` otherwise.
 
         Overwrite this method in derived classes to implement the functionality
         of the consumer.
 
-        :param PipelineElement pipeline_element: The pipeline element that
+        :param PipelineData pipeline_data: The pipeline data that
             shall be consumed.
         :return: Return `True` if the element was consumed, `False` otherwise
         :rtype: bool

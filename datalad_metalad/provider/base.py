@@ -1,8 +1,10 @@
 import abc
 from typing import Iterable
 
+from ..pipelineelement import PipelineElement
 
-class Provider(metaclass=abc.ABCMeta):
+
+class Provider(PipelineElement, metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs):
         pass
 

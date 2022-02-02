@@ -4,18 +4,19 @@ from typing import (
     Tuple,
 )
 
+from ..pipelinedata import PipelineData
 from ..pipelineelement import PipelineElement
 
 
-class Processor(metaclass=abc.ABCMeta):
+class Processor(PipelineElement, metaclass=abc.ABCMeta):
     """ A processor for conduct """
     def __init__(self, *args, **kwargs):
         pass
 
     def execute(self,
                 context: Any,
-                pipeline_element: PipelineElement
-                ) -> Tuple[Any, PipelineElement]:
+                pipeline_data: PipelineData
+                ) -> Tuple[Any, PipelineData]:
         """
         Execute the processor. If we want to use process worker pools,
         we cannot return an iterator or generator as a result.
@@ -23,10 +24,10 @@ class Processor(metaclass=abc.ABCMeta):
         and return them in a list of tuples, which consist of the passed
         context and .
         """
-        return context, self.process(pipeline_element)
+        return context, self.process(pipeline_data)
 
     @abc.abstractmethod
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+    def process(self, pipeline_data: PipelineData) -> PipelineData:
         """
         Overwrite this method in derived classes to implement
         the functionality of the processor. Return-values are
