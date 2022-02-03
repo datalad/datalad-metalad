@@ -71,7 +71,7 @@ class Processor(ProcessorInterface):
     @staticmethod
     def done_all(timeout: Optional[float] = None):
         for future, processor in Processor.done(timeout):
-            processor.done_handler(future)
+            yield processor.done_handler(future)
 
     @classmethod
     def _check_start_state(cls, method_name: str):
@@ -131,6 +131,7 @@ class Processor(ProcessorInterface):
         if sequential is True:
             result = self.callable(*arguments)
             self.result_processor(
+                self,
                 ProcessorResultType.Result,
                 result,
                 *self.result_processor_args)
@@ -138,7 +139,7 @@ class Processor(ProcessorInterface):
             future = self.executor.submit(self.callable, *arguments)
             self.future_set.add_future(future, self)
 
-    def done_handler(self, done_future: Future):
+    def done_handler(self, done_future: Future) -> Any:
         """process a done future
 
         Retrieve the result from the executor, check for exceptions,
@@ -147,7 +148,8 @@ class Processor(ProcessorInterface):
         Call the result handler method
 
         :param done_future: the future that is done
-        :return: None
+        :return: the object returned from the result_handler
+        :rtype: Any
         """
         try:
             result = done_future.result()
@@ -164,10 +166,10 @@ class Processor(ProcessorInterface):
             result_type = ProcessorResultType.Exception
             result = exception
 
-        self.result_processor(self,
-                              result_type,
-                              result,
-                              *self.result_processor_args)
+        return self.result_processor(self,
+                                     result_type,
+                                     result,
+                                     *self.result_processor_args)
 
 
 class InterfaceExtendedProcessor(Processor):

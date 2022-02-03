@@ -77,20 +77,18 @@ class QueueProcessor(ProcessorInterface):
                                      index: int,
                                      sequential: bool):
 
-        if result_type != ProcessorResultType.Result \
-                or index == len(self.processors):
-
-            if result_type != ProcessorResultType.Result:
-                result = self.last_result
+        if result_type != ProcessorResultType.Result or index == len(self.processors):
 
             logging.debug(
                 f"{self}: calling client result "
                 f"processor {self.result_processor}")
+
             self.result_processor(
                 self.last_processor,
                 result_type,
                 result,
                 *self.result_processor_args)
+
         else:
             self.last_result = result
             self.last_processor = self.processors[index]

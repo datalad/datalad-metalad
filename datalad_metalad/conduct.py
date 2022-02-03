@@ -9,10 +9,8 @@
 """
 Conduct the execution of a processing pipeline
 """
-import concurrent.futures
 import logging
 import sys
-import traceback
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
@@ -40,17 +38,14 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
 from .pipelineelement import PipelineElement
-from .pipelinedata import (
-    PipelineData,
-    PipelineDataState,
-)
+from .pipelinedata import PipelineData
 from .concurrent.processor import (
     Processor as ConcurrentProcessor,
+    ProcessorInterface,
     ProcessorResultType,
 )
 from .concurrent.queueprocessor import QueueProcessor
 from .consumer.base import Consumer
-from .processor.base import Processor
 from .provider.base import Provider
 
 from .utils import read_json_object
@@ -302,8 +297,6 @@ def process_parallel(provider_instance: Provider,
     :return:
     """
 
-    queue_results = []
-
     for pipeline_data in provider_instance.next_object():
 
         # Generate a new queue for the given pipeline data.
@@ -316,7 +309,7 @@ def process_parallel(provider_instance: Provider,
                     **spec["arguments"],
                     **constructor_keyword_args[spec["name"]]
                 }
-            ).execute
+            ).process
             for index, spec in enumerate(conduct_configuration["processors"])
         ]
 
@@ -334,41 +327,17 @@ def process_parallel(provider_instance: Provider,
             workers=queue_processor_element_callables)
 
         queue_processor.start(
-            arguments=pipeline_data,
+            arguments=[pipeline_data],
             result_processor=process_worker_result,
-            result_processor_args=[queue_results],
+            result_processor_args=[consumer_instance],
             sequential=sequential
         )
 
-        ConcurrentProcessor.done_all(0.0)
+        for result in ConcurrentProcessor.done_all(0.0):
+            yield result
 
-        for result in queue_results:
-            if consumer_instance:
-                result = consumer_instance.consume(result)
-            path = result.get_result("path")
-            if path is not None:
-                yield dict(
-                    action="meta_conduct",
-                    status="ok",
-                    path=str(path),
-                    logger=lgr,
-                    pipeline_data=result.to_json())
-
-        queue_results = []
-
-    ConcurrentProcessor.done_all()
-
-    for result in queue_results:
-        if consumer_instance:
-            result = consumer_instance.consume(result)
-        path = result.get_result("path")
-        if path is not None:
-            yield dict(
-                action="meta_conduct",
-                status="ok",
-                path=str(path),
-                logger=lgr,
-                pipeline_data=result.to_json())
+    for result in ConcurrentProcessor.done_all():
+        yield result
 
 
 def _create_queue_processor_from(workers: List[Callable]) -> QueueProcessor:
@@ -379,14 +348,24 @@ def _create_queue_processor_from(workers: List[Callable]) -> QueueProcessor:
     return QueueProcessor(processors=processors, name=f"")
 
 
-def process_worker_result(result_type: ProcessorResultType,
-                          pipeline_data: PipelineData,
-                          result_store: List):
+def process_worker_result(sender: ProcessorInterface,
+                          result_type: ProcessorResultType,
+                          result: PipelineData,
+                          consumer: Optional[Consumer]):
 
     if result_type == ProcessorResultType.Result:
-        result_store.append(pipeline_data)
+        if consumer is not None:
+            result = consumer.consume(result)
+        path = result.get_result("path")
+        if path is not None:
+            return dict(
+                action="meta_conduct",
+                status="ok",
+                path=str(path),
+                logger=lgr,
+                pipeline_data=result.to_json())
     else:
-        print(f"Exception {pipeline_data}", file=sys.stderr)
+        print(f"Exception {result}", file=sys.stderr)
 
 
 def get_class_instance(module_class_spec: dict):
