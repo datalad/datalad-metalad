@@ -1,4 +1,5 @@
 import abc
+import dataclasses
 import enum
 import logging
 from concurrent.futures import (
@@ -36,6 +37,20 @@ class ProcessorInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
+@dataclasses.dataclass(frozen=True)
+class SequentialFuture:
+    _result: Any
+    _exception: Exception = None
+
+    def result(self):
+        if self._exception is not None:
+            raise self._exception
+        return self._result
+
+    def exception(self):
+        return self._exception
+
+
 class FutureSet(dict):
     def __init__(self):
         dict.__init__(self)
@@ -56,17 +71,36 @@ class Processor(ProcessorInterface):
     future_set = FutureSet()
     started = False
 
+    sequential_future_set = FutureSet()
+
     @staticmethod
     def done(timeout: Optional[float] = None):
+
         future_set = Processor.future_set
         while future_set:
+            handled_futures = set()
             try:
                 for future in as_completed(fs=future_set.keys(),
                                            timeout=timeout):
                     yield future, future_set[future]
-                    future_set.remove_future(future)
+                    handled_futures.add(future)
+
             except TimeoutError:
-                return
+                break
+
+            finally:
+                for future in handled_futures:
+                    future_set.remove_future(future)
+
+        sequential_future_set = Processor.sequential_future_set
+        handled_sequential_futures = set()
+        while sequential_future_set:
+            for sequential_future, processor in sequential_future_set.items():
+                yield sequential_future, processor
+                handled_sequential_futures.add(sequential_future)
+
+            for sequential_future in handled_sequential_futures:
+                sequential_future_set.remove_future(sequential_future)
 
     @staticmethod
     def done_all(timeout: Optional[float] = None):
@@ -128,13 +162,16 @@ class Processor(ProcessorInterface):
         self.result_processor_args = result_processor_args or []
 
         logging.debug(f"{self}: start called with arguments: {arguments}")
+
         if sequential is True:
-            result = self.callable(*arguments)
-            self.result_processor(
-                self,
-                ProcessorResultType.Result,
-                result,
-                *self.result_processor_args)
+            exception = None
+            try:
+                result = self.callable(*arguments)
+            except Exception as exception:
+                result = None
+            sequential_future = SequentialFuture(result, exception)
+            self.sequential_future_set.add_future(sequential_future, self)
+
         else:
             future = self.executor.submit(self.callable, *arguments)
             self.future_set.add_future(future, self)

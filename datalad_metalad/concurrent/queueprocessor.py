@@ -75,7 +75,7 @@ class QueueProcessor(ProcessorInterface):
                                      result_type: ProcessorResultType,
                                      result: Any,
                                      index: int,
-                                     sequential: bool):
+                                     sequential: bool) -> Any:
 
         if result_type != ProcessorResultType.Result or index == len(self.processors):
 
@@ -83,7 +83,7 @@ class QueueProcessor(ProcessorInterface):
                 f"{self}: calling client result "
                 f"processor {self.result_processor}")
 
-            self.result_processor(
+            return self.result_processor(
                 self.last_processor,
                 result_type,
                 result,

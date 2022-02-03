@@ -75,7 +75,6 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
 
     error_messages = []
     for element in elements:
-        print(element)
         element_kwargs = keyword_arguments[element["name"]]
         element_class = get_class_instance(element)
         error_message = element_class.check_keyword_args(element_kwargs)
@@ -334,9 +333,11 @@ def process_parallel(provider_instance: Provider,
         )
 
         for result in ConcurrentProcessor.done_all(0.0):
+            #print("yielding;", result)
             yield result
 
     for result in ConcurrentProcessor.done_all():
+        #print("yielding;", result)
         yield result
 
 
@@ -351,7 +352,8 @@ def _create_queue_processor_from(workers: List[Callable]) -> QueueProcessor:
 def process_worker_result(sender: ProcessorInterface,
                           result_type: ProcessorResultType,
                           result: PipelineData,
-                          consumer: Optional[Consumer]):
+                          consumer: Optional[Consumer]
+                          ) -> Dict:
 
     if result_type == ProcessorResultType.Result:
         if consumer is not None:
@@ -364,8 +366,14 @@ def process_worker_result(sender: ProcessorInterface,
                 path=str(path),
                 logger=lgr,
                 pipeline_data=result.to_json())
+        else:
+            print("No path in:", result)
     else:
-        print(f"Exception {result}", file=sys.stderr)
+        return dict(
+            action="meta_conduct",
+            status="error",
+            message=f"{sender} raised exception: {result}",
+            logger=lgr)
 
 
 def get_class_instance(module_class_spec: dict):
