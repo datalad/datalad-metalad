@@ -17,13 +17,13 @@ __docformat__ = "restructuredtext"
 
 class QueueProcessor(ProcessorInterface):
     """
-    A queue that will execute a sequence of processors on an
-    object that is given to it. The result of processor n is
-    handed as input to processor n+1. The final result is processed
-    by the result processor given in the start-methos.
+    A queue that will execute a sequence of processors on an object that is
+    given to it. The result of processor #n is handed as input to
+    processor #n+1. The final result is processed by the result processor
+    given in the start-method.
 
-    Processors are created by supplying a factory method and arguments
-    per processor.
+    In the current implementation the hand-over from processor #n to
+    processor #n+1 is done in the context of the caller of start()
     """
 
     def __init__(self,

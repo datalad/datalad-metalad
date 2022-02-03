@@ -11,17 +11,20 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
+import sys
 import traceback
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
 from typing import (
+    Callable,
     Dict,
     Iterable,
     List,
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
 from datalad.distribution.dataset import datasetmethod
@@ -36,10 +39,16 @@ from datalad.support.constraints import (
 from datalad.support.param import Parameter
 from dataladmetadatamodel import JSONObject
 
+from .pipelineelement import PipelineElement
 from .pipelinedata import (
     PipelineData,
     PipelineDataState,
 )
+from .concurrent.processor import (
+    Processor as ConcurrentProcessor,
+    ProcessorResultType,
+)
+from .concurrent.queueprocessor import QueueProcessor
 from .consumer.base import Consumer
 from .processor.base import Processor
 from .provider.base import Provider
@@ -81,6 +90,39 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
     if error_messages:
         return "\n".join(error_messages)
     return None
+
+
+def get_optional_element_instance(element_type: str,
+                                  conduct_configuration: JSONObject,
+                                  constructor_keyword_args: Dict[str, Dict[str, str]]
+                                  ) -> Optional[PipelineElement]:
+
+    element_configuration = conduct_configuration.get(element_type, None)
+    if element_configuration:
+        element_name = element_configuration["name"]
+        return get_class_instance(element_configuration)(
+            **{
+                **element_configuration["arguments"],
+                **constructor_keyword_args[element_name]
+            })
+    return None
+
+
+def get_element_instance(element_type: str,
+                         conduct_configuration: JSONObject,
+                         constructor_keyword_args: Dict[str, Dict[str, str]]
+                         ) -> PipelineElement:
+
+    element = get_optional_element_instance(
+        element_type=element_type,
+        conduct_configuration=conduct_configuration,
+        constructor_keyword_args=constructor_keyword_args)
+
+    if element is None:
+        raise ValueError(
+            f"No element of type {element_type} in pipeline configuration")
+
+    return element
 
 
 @build_doc
@@ -206,68 +248,79 @@ class Conduct(Interface):
                 "Pipeline element construction errors:\n"
                 f"{error_message}\n")
 
-        consumer_name = conduct_configuration.get("consumer", None)
-        if consumer_name:
-            consumer_instance = get_class_instance(
-                conduct_configuration["consumer"])(
-                    **{
-                        **conduct_configuration["consumer"]["arguments"],
-                        **constructor_keyword_args[consumer_name]
-                    })
+        provider_instance = cast(Provider, get_element_instance(
+            element_type="provider",
+            conduct_configuration=conduct_configuration,
+            constructor_keyword_args=constructor_keyword_args))
+
+        consumer_instance = cast(Consumer, get_optional_element_instance(
+            element_type="consumer",
+            conduct_configuration=conduct_configuration,
+            constructor_keyword_args=constructor_keyword_args))
+
+        if processing_mode == "thread":
+            ConcurrentProcessor.set_thread_executor(max_workers)
+            sequential = False
+        elif processing_mode == "process":
+            ConcurrentProcessor.set_process_executor(max_workers)
+            sequential = False
+        elif processing_mode == "sequential":
+            ConcurrentProcessor.set_thread_executor(max_workers)
+            sequential = True
         else:
-            consumer_instance = None
+            raise ValueError(f"Unknown processing mode: {processing_mode}")
 
-        provider_name = conduct_configuration["provider"]["name"]
-        provider_instance = get_class_instance(
-            conduct_configuration["provider"])(
-            **{
-                **conduct_configuration["provider"]["arguments"],
-                **constructor_keyword_args[provider_name]
-            })
+        yield from process_parallel(
+            provider_instance=provider_instance,
+            consumer_instance=consumer_instance,
+            conduct_configuration=conduct_configuration,
+            constructor_keyword_args=constructor_keyword_args,
+            sequential=sequential)
 
-        processor_instances = [
+
+def process_parallel(provider_instance: Provider,
+                     consumer_instance: Optional[Consumer],
+                     conduct_configuration: JSONObject,
+                     constructor_keyword_args: Dict[str, Dict[str, str]],
+                     sequential: bool
+                     ) -> Iterable:
+    """ Execute a configuration
+
+    This method iterates over the provider results and starts a new processor
+    queue for each result.
+
+    If a consumer is given, the output of the queue
+    is feed into the consumer and the consumer's result is yielded.
+
+    If no consumer is given, the output of the queue is yielded
+
+    :param provider_instance:
+    :param consumer_instance:
+    :param conduct_configuration:
+    :param constructor_keyword_args:
+    :param sequential: run everything in this thread (mainly for debugging)
+    :return:
+    """
+
+    queue_results = []
+
+    for pipeline_data in provider_instance.next_object():
+
+        # Generate a new queue for the given pipeline data.
+        # TODO: check the costs, this has to be done in threads, but not
+        #  necessarily in process execution
+
+        queue_processor_element_callables = [
             get_class_instance(spec)(
                 **{
                     **spec["arguments"],
                     **constructor_keyword_args[spec["name"]]
                 }
-            )
-            for index, spec in enumerate(conduct_configuration["processors"])]
+            ).execute
+            for index, spec in enumerate(conduct_configuration["processors"])
+        ]
 
-        if processing_mode == "sequential":
-            yield from process_sequential(
-                provider_instance,
-                processor_instances,
-                consumer_instance)
-            return
-        elif processing_mode == "thread":
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers)
-        elif processing_mode == "process":
-            executor = concurrent.futures.ProcessPoolExecutor(max_workers)
-        else:
-            raise ValueError(f"unsupported processing mode: {processing_mode}")
-
-        yield from process_parallel(
-                executor,
-                provider_instance,
-                processor_instances,
-                consumer_instance)
-
-
-def process_parallel(executor,
-                     provider_instance: Provider,
-                     processor_instances: List[Processor],
-                     consumer_instance: Optional[Consumer] = None
-                     ) -> Iterable:
-
-    running = set()
-
-    # This thread iterates over the provider result,
-    # starts a new processor instance to process the result,
-    # and feeds the result of every pipeline into the consumer.
-    for pipeline_data in provider_instance.next_object():
-
-        if not processor_instances:
+        if not queue_processor_element_callables:
             path = pipeline_data.get_result("path")
             yield dict(
                 action="meta_conduct",
@@ -277,190 +330,69 @@ def process_parallel(executor,
                 pipeline_data=pipeline_data.to_json())
             continue
 
-        lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_data}")
-        running.add(executor.submit(processor_instances[0].execute, -1, pipeline_data))
+        queue_processor = _create_queue_processor_from(
+            workers=queue_processor_element_callables)
 
-        # During provider result fetching, check for already finished processors
-        done, running = concurrent.futures.wait(
-            running,
-            return_when=concurrent.futures.FIRST_COMPLETED,
-            timeout=0)
+        queue_processor.start(
+            arguments=pipeline_data,
+            result_processor=process_worker_result,
+            result_processor_args=[queue_results],
+            sequential=sequential
+        )
 
-        for future in done:
-            try:
+        ConcurrentProcessor.done_all(0.0)
 
-                source_index, pipeline_data = future.result()
-                this_index = source_index + 1
-                next_index = this_index + 1
-
-                lgr.debug(
-                    f"Processor[{source_index}] returned {pipeline_data} "
-                    f"[provider not yet exhausted]")
-                if next_index >= len(processor_instances):
-                    if consumer_instance:
-                        pipeline_data = consumer_instance.consume(pipeline_data)
-
-                    path = pipeline_data.get_result("path")
-                    if path is not None:
-                        yield dict(
-                            action="meta_conduct",
-                            status="ok",
-                            path=str(path),
-                            logger=lgr,
-                            pipeline_data=pipeline_data.to_json())
-                else:
-                    lgr.debug(
-                        f"Starting processor[{next_index}]"
-                        f"[provider not yet exhausted]")
-                    running.add(
-                        executor.submit(
-                            processor_instances[next_index].execute,
-                            this_index,
-                            pipeline_data))
-
-            except Exception as e:
-                lgr.error(f"Exception {e} in processor {future}")
+        for result in queue_results:
+            if consumer_instance:
+                result = consumer_instance.consume(result)
+            path = result.get_result("path")
+            if path is not None:
                 yield dict(
                     action="meta_conduct",
-                    status="error",
+                    status="ok",
+                    path=str(path),
                     logger=lgr,
-                    message=traceback.format_exc())
+                    pipeline_data=result.to_json())
 
-    # Provider exhausted, process the running pipelines
-    while running:
-        lgr.debug(f"Waiting for next completing from {running}")
-        done, running = concurrent.futures.wait(
-            running,
-            return_when=concurrent.futures.FIRST_COMPLETED)
+        queue_results = []
 
-        for future in done:
-            try:
+    ConcurrentProcessor.done_all()
 
-                source_index, pipeline_data = future.result()
-                this_index = source_index + 1
-                next_index = this_index + 1
-
-                lgr.debug(
-                    f"Processor[{source_index}] returned {pipeline_data}")
-
-                if next_index >= len(processor_instances):
-                    if consumer_instance:
-                        pipeline_data = consumer_instance.consume(pipeline_data)
-                    lgr.debug(
-                        f"No more elements in pipeline, returning "
-                        f"{pipeline_data}")
-
-                    path = pipeline_data.get_result("path")
-                    if path is not None:
-                        yield dict(
-                            action="meta_conduct",
-                            status="ok",
-                            path=str(path),
-                            logger=lgr,
-                            pipeline_data=pipeline_data.to_json())
-                else:
-                    lgr.debug(
-                        f"Handing pipeline data {pipeline_data} to"
-                        f"processor[{next_index}]")
-                    running.add(
-                        executor.submit(
-                            processor_instances[next_index].execute,
-                            this_index,
-                            pipeline_data))
-
-            except Exception as e:
-                lgr.error(f"Exception {e} in processor {future}")
-                yield dict(
-                    action="meta_conduct",
-                    status="error",
-                    logger=lgr,
-                    message=traceback.format_exc())
-    return
-
-
-def process_sequential(provider_instance: Provider,
-                       processor_instances: List[Processor],
-                       consumer_instance: Optional[Consumer]) -> Iterable:
-
-    for pipeline_data in provider_instance.next_object():
-        lgr.debug(f"Provider yielded: {pipeline_data}")
-        yield from process_downstream(pipeline_data, processor_instances, consumer_instance)
-
-
-def process_downstream(pipeline_data: PipelineData,
-                       processor_instances: List[Processor],
-                       consumer_instance: Optional[Consumer]) -> Iterable:
-
-    if pipeline_data.state == PipelineDataState.STOP:
-        path = pipeline_data.get_result("path")
+    for result in queue_results:
+        if consumer_instance:
+            result = consumer_instance.consume(result)
+        path = result.get_result("path")
         if path is not None:
-            datalad_result = dict(
+            yield dict(
                 action="meta_conduct",
-                status="stopped",
+                status="ok",
                 path=str(path),
                 logger=lgr,
-                pipeline_data=pipeline_data)
+                pipeline_data=result.to_json())
 
-            lgr.debug(
-                f"Pipeline stop was requested, returning datalad result {datalad_result}")
 
-            yield datalad_result
-        return
+def _create_queue_processor_from(workers: List[Callable]) -> QueueProcessor:
+    processors = [
+        ConcurrentProcessor(worker, f"worker_{index}")
+        for index, worker in enumerate(workers)
+    ]
+    return QueueProcessor(processors=processors, name=f"")
 
-    for processor in processor_instances:
-        try:
-            _, pipeline_data = processor.execute(None, pipeline_data)
-        except Exception:
-            yield dict(
-                action="meta_conduct",
-                status="error",
-                logger=lgr,
-                message=f"Exception in processor {processor}",
-                base_error=traceback.format_exc())
-            return
 
-    if consumer_instance:
-        try:
-            pipeline_data = consumer_instance.consume(pipeline_data)
-        except Exception as e:
-            yield dict(
-                action="meta_conduct",
-                status="error",
-                logger=lgr,
-                message=f"Exception in consumer {consumer_instance}",
-                base_error=traceback.format_exc())
-            return
+def process_worker_result(result_type: ProcessorResultType,
+                          pipeline_data: PipelineData,
+                          result_store: List):
 
-    path = pipeline_data.get_result("path")
-    if path is not None:
-        datalad_result = dict(
-            action="meta_conduct",
-            status="ok",
-            path=str(path),
-            logger=lgr,
-            pipeline_data=pipeline_data.to_json())
-
-        lgr.debug(
-            f"Pipeline finished, returning datalad result {datalad_result}")
-
-        yield datalad_result
-    return
+    if result_type == ProcessorResultType.Result:
+        result_store.append(pipeline_data)
+    else:
+        print(f"Exception {pipeline_data}", file=sys.stderr)
 
 
 def get_class_instance(module_class_spec: dict):
     module_instance = import_module(module_class_spec["module"])
     class_instance = getattr(module_instance, module_class_spec["class"])
     return class_instance
-
-
-def assert_pipeline_validity(current_output_type: str, processors: List[Processor]):
-    for processor in processors:
-        next_input_type = processor.input_type()
-        if next_input_type != current_output_type:
-            raise ValueError(
-                f"Input type mismatch: {next_input_type} "
-                f"!= {current_output_type}")
-        current_output_type = processor.output_type()
 
 
 def get_constructor_keyword_args(element_arguments: List[str],

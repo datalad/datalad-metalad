@@ -5,6 +5,7 @@ from concurrent.futures import (
     CancelledError,
     Future,
     ProcessPoolExecutor,
+    ThreadPoolExecutor,
     TimeoutError,
     as_completed,
 )
@@ -53,6 +54,7 @@ class Processor(ProcessorInterface):
 
     executor = ProcessPoolExecutor(16)
     future_set = FutureSet()
+    started = False
 
     @staticmethod
     def done(timeout: Optional[float] = None):
@@ -70,6 +72,26 @@ class Processor(ProcessorInterface):
     def done_all(timeout: Optional[float] = None):
         for future, processor in Processor.done(timeout):
             processor.done_handler(future)
+
+    @classmethod
+    def _check_start_state(cls, method_name: str):
+        if cls.started is True:
+            raise RuntimeError(f"Cannot execute '{method_name}' after "
+                               f"Processors have been started")
+
+    @classmethod
+    def set_process_executor(cls, max_worker: int = 16):
+        if isinstance(cls.executor, ProcessPoolExecutor):
+            return
+        cls._check_start_state("Process.set_process_executor")
+        cls.executor = ProcessPoolExecutor(max_worker)
+
+    @classmethod
+    def set_thread_executor(cls, max_worker: int = 8):
+        if isinstance(cls.executor, ThreadPoolExecutor):
+            return
+        cls._check_start_state("Process.set_process_executor")
+        cls.executor = ThreadPoolExecutor(max_worker)
 
     def __init__(self,
                  a_callable: Callable,
@@ -100,6 +122,8 @@ class Processor(ProcessorInterface):
         :param sequential:
         :return: None
         """
+        Processor.started = True
+
         self.result_processor = result_processor
         self.result_processor_args = result_processor_args or []
 
@@ -147,6 +171,10 @@ class Processor(ProcessorInterface):
 
 
 class InterfaceExtendedProcessor(Processor):
+    """
+    A processor that will invoke the given callable with itself as the
+    first arguments.
+    """
     def __init__(self,
                  wrapped_callable: Callable,
                  name: Optional[str] = None):
@@ -155,7 +183,7 @@ class InterfaceExtendedProcessor(Processor):
         self.wrapped_callable = wrapped_callable
 
     def __repr__(self):
-        return f"ExtendedParameterProcessor[{self.name}]"
+        return f"InterfaceExtendedProcessor[{self.name}]"
 
     def interface_extender(self, *args, **kwargs) -> Any:
         return self.wrapped_callable(self, *args, **kwargs)
