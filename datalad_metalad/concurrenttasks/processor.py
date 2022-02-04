@@ -14,6 +14,7 @@ from typing import (
     Any,
     Callable,
     List,
+    NamedTuple,
     Optional,
 )
 
@@ -37,7 +38,7 @@ class ProcessorInterface(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass()
 class SequentialFuture:
     _result: Any
     _exception: Exception = None
@@ -50,11 +51,13 @@ class SequentialFuture:
     def exception(self):
         return self._exception
 
+    def __hash__(self):
+        return id(self)
+
 
 class FutureSet(dict):
     def __init__(self):
         dict.__init__(self)
-        self.futures = dict()
 
     def add_future(self,
                    future: Future,
@@ -93,13 +96,9 @@ class Processor(ProcessorInterface):
                     future_set.remove_future(future)
 
         sequential_future_set = Processor.sequential_future_set
-        handled_sequential_futures = set()
         while sequential_future_set:
-            for sequential_future, processor in sequential_future_set.items():
+            for sequential_future, processor in tuple(sequential_future_set.items()):
                 yield sequential_future, processor
-                handled_sequential_futures.add(sequential_future)
-
-            for sequential_future in handled_sequential_futures:
                 sequential_future_set.remove_future(sequential_future)
 
     @staticmethod
@@ -167,8 +166,9 @@ class Processor(ProcessorInterface):
             exception = None
             try:
                 result = self.callable(*arguments)
-            except Exception as exception:
+            except Exception as exc:
                 result = None
+                exception = exc
             sequential_future = SequentialFuture(result, exception)
             self.sequential_future_set.add_future(sequential_future, self)
 

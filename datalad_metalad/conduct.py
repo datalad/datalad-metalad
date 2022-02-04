@@ -39,12 +39,12 @@ from dataladmetadatamodel import JSONObject
 
 from .pipelineelement import PipelineElement
 from .pipelinedata import PipelineData
-from .concurrent.processor import (
+from .concurrenttasks.processor import (
     Processor as ConcurrentProcessor,
     ProcessorInterface,
     ProcessorResultType,
 )
-from .concurrent.queueprocessor import QueueProcessor
+from .concurrenttasks.queueprocessor import QueueProcessor
 from .consumer.base import Consumer
 from .provider.base import Provider
 
@@ -138,7 +138,7 @@ class Conduct(Interface):
       e.g. store metadata.
 
     The provider is usually executed in the current processes' main
-    thread. Processors are usually executed in concurrent processes,
+    thread. Processors are usually executed in concurrenttasks processes,
     i.e. workers. The maximum number of workers is given by the
     parameter `max_workers`.
 

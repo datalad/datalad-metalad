@@ -18,9 +18,9 @@ from ..queueprocessor import QueueProcessor
 
 def queue_result_handler(sender: QueueProcessor,
                          result_type: ProcessorResultType,
-                         pe: Dict,
-                         result_store: List):
+                         pe: Dict) -> Dict:
 
+    print("queue_result_handler:", result_type, repr(pe))
     if result_type == ProcessorResultType.Result:
         logging.debug(f"queue_result_handler ENTER: {result_type}, {pe}")
         if "name_list" not in pe:
@@ -28,7 +28,10 @@ def queue_result_handler(sender: QueueProcessor,
         else:
             pe["name_list"] += f" final.{sender.name}"
         logging.debug(f"queue_result_handler EXIT: {sender.name}, {pe}")
-    result_store.append(pe)
+        return pe
+    else:
+        print("queue_result_handler: got an exception", repr(pe), "re-raising it")
+        raise pe
 
 
 def queue_worker(sender, pipeline_data: Dict) -> Any:
@@ -49,16 +52,16 @@ def _get_queue_processor(worker: Callable, count: int) -> QueueProcessor:
 
 def test_basics():
 
-    result_store = list()
-
     pipeline_data = {"name_list": "start"}
     queue_processor = _get_queue_processor(queue_worker, 4)
     queue_processor.start(arguments=[pipeline_data],
                           result_processor=queue_result_handler,
-                          result_processor_args=[result_store],
                           sequential=False)
 
-    Processor.done_all()
+    result_store = []
+    for result in Processor.done_all():
+        if result is not None:
+            result_store.append(result)
 
     assert_equal(
         result_store[0]["name_list"],
@@ -80,16 +83,17 @@ def queue_exception_worker(sender: Processor,
 
 def test_exception():
 
-    result_store = list()
-
     pipeline_data = {"name_list": "start"}
     queue_processor = _get_queue_processor(queue_exception_worker, 4)
     queue_processor.start(arguments=[pipeline_data],
                           result_processor=queue_result_handler,
-                          result_processor_args=[result_store],
-                          sequential=False)
+                          sequential=True)
 
-    Processor.done_all()
+    result_store = []
+    for result in Processor.done_all():
+        print(result)
+        if result is not None:
+            result_store.append(result)
 
     assert_equal(
         result_store[0]["name_list"],
