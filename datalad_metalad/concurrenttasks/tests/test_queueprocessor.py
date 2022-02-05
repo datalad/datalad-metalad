@@ -1,9 +1,10 @@
 import logging
-
+import traceback
 from typing import (
     Any,
     Callable,
     Dict,
+    List,
 )
 
 from nose.tools import (
@@ -21,10 +22,10 @@ from ..queueprocessor import QueueProcessor
 
 def queue_result_handler(sender: QueueProcessor,
                          result_type: ProcessorResultType,
-                         pe: Dict) -> Dict:
+                         pe: Dict,
+                         result_store: List) -> Dict:
 
-    print("queue_result_handler: result_type:", result_type)
-    print("queue_result_handler: result:", repr(pe))
+    print(f"queue_result_handler({sender}, {result_type}, {pe}, {result_store})")
 
     if result_type == ProcessorResultType.Result:
         logging.debug(f"queue_result_handler ENTER: {result_type}, {pe}")
@@ -33,14 +34,17 @@ def queue_result_handler(sender: QueueProcessor,
         else:
             pe["name_list"] += f" final.{sender.name}"
         logging.debug(f"queue_result_handler EXIT: {sender.name}, {pe}")
-        print(f"queue_result_handler EXIT A, returning: {sender.name}, {repr(pe)}")
-        return pe
+        print(f"queue_result_handler EXIT A, appending {repr(pe)}")
+        result_store.append(pe)
     else:
         print(
             "queue_result_handler: got an exception:",
             repr(pe[0]), "last result was:", repr(pe[1]))
-        print(f"queue_result_handler EXIT B, returning: {sender.name}, {repr(pe[0])}")
-        return pe[0]
+        exc = pe[0]
+        traceback.print_exception(type(exc), exc, exc.__traceback__)
+
+        print(f"queue_result_handler EXIT B, appending: {repr(pe[1])}")
+        result_store.append(pe[1])
 
 
 def queue_worker(sender, pipeline_data: Dict) -> Any:
@@ -81,7 +85,7 @@ def test_basics():
 def queue_exception_worker(sender: Processor,
                            pipeline_data: Dict) -> Any:
 
-    print("queue_exception_worker, sender:", sender)
+    print(f"ENTER: queue_exception_worker({sender}, {repr(pipeline_data)})")
     if sender.name == "1":
         print("queue_exception_worker, raising ValueError")
         raise ValueError("Sender' name is '1'")
@@ -96,20 +100,22 @@ def queue_exception_worker(sender: Processor,
 
 def test_exception():
 
+
     pipeline_data = {"name_list": "start"}
     queue_processor = _get_queue_processor(queue_exception_worker, 4)
-    queue_processor.start(arguments=[pipeline_data],
-                          result_processor=queue_result_handler,
-                          sequential=True)
 
     result_store = []
+    queue_processor.start(arguments=[pipeline_data],
+                          result_processor=queue_result_handler,
+                          result_processor_args=[result_store],
+                          sequential=False)
+
     raised = False
     try:
         for result in Processor.done_all():
             print("result returned from done_all:", result)
             if result is None:
                 print("WTF")
-            result_store.append(result)
 
     except ValueError:
         raised = True

@@ -9,7 +9,6 @@ from typing import (
 from .processor import (
     ProcessorInterface,
     ProcessorResultType,
-    NO_RESULT,
 )
 
 
@@ -76,7 +75,7 @@ class QueueProcessor(ProcessorInterface):
                                      result_type: ProcessorResultType,
                                      result: Any,
                                      index: int,
-                                     sequential: bool) -> Any:
+                                     sequential: bool):
 
         print(f"_downstream_result_processor[{self}]: called with ({sender}, {result_type}, {repr(result)}, {index}, {sequential})")
         print(f"_downstream_result_processor[{self}]: processor is {self.result_processor}")
@@ -88,16 +87,17 @@ class QueueProcessor(ProcessorInterface):
             print(
                 f"_downstream_result_processor[{self}] calling {repr(self.result_processor)} "
                 f"with {self.last_processor}, {result_type}, {repr((result, self.last_result))}, {repr(self.result_processor_args)}")
-            return self.result_processor(
+            self.result_processor(
                 self.last_processor,
                 result_type,
                 (result, self.last_result),
                 *self.result_processor_args)
+            return
 
         if index == len(self.processors):
-            print(f"_downstream_result_processor[{self}] calling {repr(self.result_processor)} "
-                  f"with {self.last_processor}, {result_type}, {repr(result)}, {repr(self.result_processor_args)}")
-            return self.result_processor(
+            print(f"_downstream_result_processor[{self}] calling {repr(self.result_processor)}("
+                  f"{self.last_processor}, {result_type}, {repr(result)}, {repr(self.result_processor_args)})")
+            self.result_processor(
                 self.last_processor,
                 result_type,
                 result,
@@ -115,4 +115,3 @@ class QueueProcessor(ProcessorInterface):
                 result_processor=self._downstream_result_processor,
                 result_processor_args=[index + 1, sequential],
                 sequential=sequential)
-            return NO_RESULT

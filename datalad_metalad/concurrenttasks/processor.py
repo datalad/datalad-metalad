@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import enum
 import logging
+import traceback
 from concurrent.futures import (
     CancelledError,
     Future,
@@ -48,6 +49,7 @@ class SequentialFuture:
 
     def result(self):
         if self._exception is not None:
+            print(f"SequentialFuture: raising exception {repr(self._exception)}")
             raise self._exception
         return self._result
 
@@ -104,12 +106,8 @@ class Processor(ProcessorInterface):
     @staticmethod
     def done_all(timeout: Optional[float] = None):
         for future, processor in Processor.done(timeout):
-            print(f"done_all, got done: future: {repr(future)}, processor: {processor}")
-            result = processor.done_handler(future)
-            print(f"done_all, result from {processor}.done_handler({repr(future)}): {repr(result)}")
-            if result is not NO_RESULT:
-                print(f"done_all, yielding {repr(result)}")
-                yield result
+            print(f"done_all: calling {processor}.done_handler({repr(future)})")
+            processor.done_handler(future)
 
     @classmethod
     def _check_start_state(cls, method_name: str):
@@ -208,11 +206,10 @@ class Processor(ProcessorInterface):
             result_type = ProcessorResultType.Exception
             result = exception
 
-        print(f"done_handler[{self}]: calling {repr(self.result_processor)} with result {repr(result)}")
-        return self.result_processor(self,
-                                     result_type,
-                                     result,
-                                     *self.result_processor_args)
+        self.result_processor(self,
+                              result_type,
+                              result,
+                              *self.result_processor_args)
 
 
 class InterfaceExtendedProcessor(Processor):
