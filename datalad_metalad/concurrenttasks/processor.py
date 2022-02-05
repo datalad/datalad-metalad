@@ -10,16 +10,19 @@ from concurrent.futures import (
     TimeoutError,
     as_completed,
 )
+from random import randint
 from typing import (
     Any,
     Callable,
     List,
-    NamedTuple,
     Optional,
 )
 
 
 __docformat__ = "restructuredtext"
+
+
+NO_RESULT = object()
 
 
 class ProcessorResultType(enum.Enum):
@@ -52,7 +55,10 @@ class SequentialFuture:
         return self._exception
 
     def __hash__(self):
-        return id(self)
+        return self._hash
+
+    def __post_init__(self):
+        self._hash = randint(0, 10000000)
 
 
 class FutureSet(dict):
@@ -81,19 +87,13 @@ class Processor(ProcessorInterface):
 
         future_set = Processor.future_set
         while future_set:
-            handled_futures = set()
             try:
                 for future in as_completed(fs=future_set.keys(),
                                            timeout=timeout):
                     yield future, future_set[future]
-                    handled_futures.add(future)
-
+                    future_set.remove_future(future)
             except TimeoutError:
                 break
-
-            finally:
-                for future in handled_futures:
-                    future_set.remove_future(future)
 
         sequential_future_set = Processor.sequential_future_set
         while sequential_future_set:
@@ -104,7 +104,12 @@ class Processor(ProcessorInterface):
     @staticmethod
     def done_all(timeout: Optional[float] = None):
         for future, processor in Processor.done(timeout):
-            yield processor.done_handler(future)
+            print(f"done_all, got done: future: {repr(future)}, processor: {processor}")
+            result = processor.done_handler(future)
+            print(f"done_all, result from {processor}.done_handler({repr(future)}): {repr(result)}")
+            if result is not NO_RESULT:
+                print(f"done_all, yielding {repr(result)}")
+                yield result
 
     @classmethod
     def _check_start_state(cls, method_name: str):
@@ -203,6 +208,7 @@ class Processor(ProcessorInterface):
             result_type = ProcessorResultType.Exception
             result = exception
 
+        print(f"done_handler[{self}]: calling {repr(self.result_processor)} with result {repr(result)}")
         return self.result_processor(self,
                                      result_type,
                                      result,

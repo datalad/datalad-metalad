@@ -1,11 +1,14 @@
 import logging
 
-from nose.tools import assert_equal
 from typing import (
     Any,
     Callable,
     Dict,
-    List,
+)
+
+from nose.tools import (
+    assert_equal,
+    assert_true,
 )
 
 from ..processor import (
@@ -20,7 +23,9 @@ def queue_result_handler(sender: QueueProcessor,
                          result_type: ProcessorResultType,
                          pe: Dict) -> Dict:
 
-    print("queue_result_handler:", result_type, repr(pe))
+    print("queue_result_handler: result_type:", result_type)
+    print("queue_result_handler: result:", repr(pe))
+
     if result_type == ProcessorResultType.Result:
         logging.debug(f"queue_result_handler ENTER: {result_type}, {pe}")
         if "name_list" not in pe:
@@ -28,10 +33,14 @@ def queue_result_handler(sender: QueueProcessor,
         else:
             pe["name_list"] += f" final.{sender.name}"
         logging.debug(f"queue_result_handler EXIT: {sender.name}, {pe}")
+        print(f"queue_result_handler EXIT A, returning: {sender.name}, {repr(pe)}")
         return pe
     else:
-        print("queue_result_handler: got an exception", repr(pe), "re-raising it")
-        raise pe
+        print(
+            "queue_result_handler: got an exception:",
+            repr(pe[0]), "last result was:", repr(pe[1]))
+        print(f"queue_result_handler EXIT B, returning: {sender.name}, {repr(pe[0])}")
+        return pe[0]
 
 
 def queue_worker(sender, pipeline_data: Dict) -> Any:
@@ -71,13 +80,17 @@ def test_basics():
 
 def queue_exception_worker(sender: Processor,
                            pipeline_data: Dict) -> Any:
+
+    print("queue_exception_worker, sender:", sender)
     if sender.name == "1":
+        print("queue_exception_worker, raising ValueError")
         raise ValueError("Sender' name is '1'")
 
     if "name_list" not in pipeline_data:
         pipeline_data["name_list"] = f"q.{sender.name}"
     else:
         pipeline_data["name_list"] += f" q.{sender.name}"
+    print("queue_exception_worker, pipeline_data:", pipeline_data)
     return pipeline_data
 
 
@@ -90,12 +103,18 @@ def test_exception():
                           sequential=True)
 
     result_store = []
-    for result in Processor.done_all():
-        print(result)
-        if result is not None:
+    raised = False
+    try:
+        for result in Processor.done_all():
+            print("result returned from done_all:", result)
+            if result is None:
+                print("WTF")
             result_store.append(result)
 
-    assert_equal(
-        result_store[0]["name_list"],
-        "start q.0"
-    )
+    except ValueError:
+        raised = True
+
+    print(result_store)
+    assert_true(raised)
+    assert_equal(len(result_store), 1)
+    assert_equal(result_store[0]["name_list"], "start q.0")
