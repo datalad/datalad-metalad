@@ -38,6 +38,7 @@ class MetadataAddResult(PipelineResult):
 
 class MetadataAdder(Processor):
     def __init__(self,
+                 *,
                  aggregate: bool = False
                  ):
 

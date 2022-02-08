@@ -12,6 +12,7 @@ logger = logging.getLogger("datalad.meta-conduct.consumer.add")
 
 class BatchAdder(Consumer):
     def __init__(self,
+                 *,
                  dataset: str):
         self.batched_add = BatchedCommand(
             ["datalad", "meta-add", "-d", dataset, "--batch-mode", "-"])

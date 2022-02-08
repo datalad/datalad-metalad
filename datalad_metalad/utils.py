@@ -17,10 +17,10 @@ from datalad.distribution.dataset import (
 )
 from datalad.support.exceptions import NoDatasetFound
 from datalad.support.json_py import load as json_load
-from dataladmetadatamodel import JSONObject
 
 
 from . import aggregate_layout_version
+from .model import JSONType
 
 import logging
 
@@ -257,7 +257,7 @@ def check_dataset(dataset_or_path: Union[Dataset, str], purpose: str) -> Dataset
     return dataset
 
 
-def read_json_object(path_or_object: Union[str, JSONObject]) -> JSONObject:
+def read_json_object(path_or_object: Union[str, JSONType]) -> JSONType:
     if isinstance(path_or_object, str):
         if path_or_object == "-":
             metadata_file = sys.stdin
@@ -274,8 +274,8 @@ def read_json_object(path_or_object: Union[str, JSONObject]) -> JSONObject:
     return path_or_object
 
 
-def read_json_objects(path_or_object: Union[str, JSONObject]
-                      ) -> List[JSONObject]:
+def read_json_objects(path_or_object: Union[str, JSONType]
+                      ) -> List[JSONType]:
 
     if isinstance(path_or_object, str):
         if path_or_object == "-":

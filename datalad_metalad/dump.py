@@ -35,14 +35,13 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 from datalad.ui import ui
-from dataladmetadatamodel import JSONObject
 from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import datalad_root_record_name
 from dataladmetadatamodel.mapper.reference import Reference
 from dataladmetadatamodel.mappableobject import ensure_mapped
 from dataladmetadatamodel.metadata import (
     Metadata,
-    MetadataInstance
+    MetadataInstance,
 )
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.metadatarootrecord import MetadataRootRecord
@@ -54,9 +53,10 @@ from .exceptions import NoMetadataStoreFound
 from .pathutils.metadataurlparser import (
     MetadataURLParser,
     TreeMetadataURL,
-    UUIDMetadataURL
+    UUIDMetadataURL,
 )
 
+from .model import JSONType
 from .pathutils.mtreesearch import MTreeSearch
 
 
@@ -75,7 +75,7 @@ def _file_report_matcher(node: Any) -> bool:
 
 def _create_result_record(mapper: str,
                           metadata_store: Union[Path, str],
-                          metadata_record: JSONObject,
+                          metadata_record: JSONType,
                           element_path: MetadataPath,
                           report_type: str):
 

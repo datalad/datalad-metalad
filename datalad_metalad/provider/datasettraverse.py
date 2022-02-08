@@ -6,12 +6,11 @@ Relates to datalad_metalad issue #68
 import logging
 import re
 from dataclasses import dataclass
-from os.path import isdir
 from pathlib import Path
 from typing import (
     Iterable,
     Optional,
-    Union
+    Union,
 )
 
 from datalad.distribution.dataset import (
@@ -24,7 +23,7 @@ from .base import Provider
 from ..pipelinedata import (
     PipelineData,
     PipelineResult,
-    ResultState
+    ResultState,
 )
 
 
@@ -59,6 +58,7 @@ class DatasetTraverser(Provider):
     }
 
     def __init__(self,
+                 *,
                  top_level_dir: Union[str, Path],
                  item_type: str,
                  traverse_sub_datasets: bool = False
@@ -68,8 +68,6 @@ class DatasetTraverser(Provider):
         if item_type.lower() not in known_types:
             raise ValueError(f"{item_type.lower()} is not a known item_type. "
                              f"Known types are: {', '.join(known_types)}")
-
-        super().__init__()
 
         self.top_level_dir = Path(top_level_dir)
         self.item_set = self.name_to_item_set[item_type.lower()]

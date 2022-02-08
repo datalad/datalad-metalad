@@ -46,10 +46,11 @@ class MetadataExtractorResult(PipelineResult):
 
 class MetadataExtractor(Processor):
     def __init__(self,
+                 *,
                  extractor_type: str,
                  extractor_name: str
                  ):
-        super().__init__()
+
         self.extractor_type = extractor_type.lower()
         self.extractor_name = extractor_name
 

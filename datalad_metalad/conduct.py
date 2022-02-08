@@ -11,7 +11,6 @@ Conduct the execution of a processing pipeline
 """
 import concurrent.futures
 import logging
-import sys
 import traceback
 from collections import defaultdict
 from importlib import import_module
@@ -33,11 +32,8 @@ from datalad.support.constraints import (
     EnsureChoice,
     EnsureInt,
     EnsureNone,
-    EnsureStrPrefix,
-    EnsureStr,
 )
 from datalad.support.param import Parameter
-from dataladmetadatamodel import JSONObject
 
 from .pipelinedata import (
     PipelineData,
@@ -46,7 +42,7 @@ from .pipelinedata import (
 from .consumer.base import Consumer
 from .processor.base import Processor
 from .provider.base import Provider
-
+from .model import JSONType
 from .utils import read_json_object
 
 
@@ -177,7 +173,7 @@ class Conduct(Interface):
     @datasetmethod(name='meta_conduct')
     @eval_results
     def __call__(
-            configuration: Union[str, JSONObject],
+            configuration: Union[str, JSONType],
             arguments: List[str],
             max_workers: Optional[int] = None,
             processing_mode: str = "process"):

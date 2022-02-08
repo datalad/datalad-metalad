@@ -9,8 +9,6 @@ logger = logging.getLogger("datalad.metadata.processor.autodrop")
 
 
 class AutoDrop(Processor):
-    def __init__(self):
-        super().__init__()
 
     def process(self, pipeline_data: PipelineData) -> PipelineData:
         if pipeline_data.get_result("auto_get") is not None:

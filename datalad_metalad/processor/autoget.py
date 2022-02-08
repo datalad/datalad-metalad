@@ -18,8 +18,6 @@ class AutoGet(Processor):
     It sets a flag in the element that will allow the AutoDrop-processor
     to automatically drop the file again.
     """
-    def __init__(self):
-        super().__init__()
 
     def process(self, pipeline_data: PipelineData) -> PipelineData:
         for traverse_result in pipeline_data.get_result("dataset-traversal-record"):

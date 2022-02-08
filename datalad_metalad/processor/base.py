@@ -10,8 +10,6 @@ from ..pipelineelement import PipelineElement
 
 class Processor(PipelineElement, metaclass=abc.ABCMeta):
     """ A processor for conduct """
-    def __init__(self, *args, **kwargs):
-        pass
 
     def execute(self,
                 context: Any,
