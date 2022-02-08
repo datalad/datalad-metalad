@@ -124,6 +124,8 @@ class Add(Interface):
     In case of an API-call metadata can also be provided in a python
     dictionary or a list of dictionaries.
 
+    [TODO: add a schema]
+
     If metadata is read from a source, additional parameter can overwrite or
     amend information that is provided by the source.
 
@@ -868,6 +870,8 @@ def add_metadata_content(metadata: Metadata, ap: AddParameter):
 def _stdin_reader() -> Generator:
     for line in sys.stdin:
         if line == "\n":
+            sys.stdout.write("\n")
+            sys.stdout.flush()
             return
         try:
             yield json.loads(line)
