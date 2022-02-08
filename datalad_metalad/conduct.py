@@ -35,6 +35,7 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
+from .pipelineelement import PipelineElement
 from .pipelinedata import (
     PipelineData,
     PipelineDataState,
@@ -70,7 +71,6 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
 
     error_messages = []
     for element in elements:
-        print(element)
         element_kwargs = keyword_arguments[element["name"]]
         element_class = get_class_instance(element)
         error_message = element_class.check_keyword_args(element_kwargs)
@@ -80,6 +80,39 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
     if error_messages:
         return "\n".join(error_messages)
     return None
+
+
+def get_optional_element_instance(element_type: str,
+                                  conduct_configuration: JSONType,
+                                  constructor_keyword_args: Dict[str, Dict[str, str]]
+                                  ) -> Optional[PipelineElement]:
+
+    element_configuration = conduct_configuration.get(element_type, None)
+    if element_configuration:
+        element_name = element_configuration["name"]
+        return get_class_instance(element_configuration)(
+            **{
+                **element_configuration["arguments"],
+                **constructor_keyword_args[element_name]
+            })
+    return None
+
+
+def get_element_instance(element_type: str,
+                         conduct_configuration: JSONType,
+                         constructor_keyword_args: Dict[str, Dict[str, str]]
+                         ) -> PipelineElement:
+
+    element = get_optional_element_instance(
+        element_type=element_type,
+        conduct_configuration=conduct_configuration,
+        constructor_keyword_args=constructor_keyword_args)
+
+    if element is None:
+        raise ValueError(
+            f"No element of type {element_type} in pipeline configuration")
+
+    return element
 
 
 @build_doc
@@ -185,7 +218,6 @@ class Conduct(Interface):
             pipeline_help: bool = False):
 
         element_arguments, file_path = split_arguments(arguments, "++")
-
         conduct_configuration = read_json_object(configuration)
 
         elements = [
