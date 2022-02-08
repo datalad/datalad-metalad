@@ -16,10 +16,18 @@ from typing import (
 from datalad.distribution.dataset import (
     Dataset,
     require_dataset,
-    resolve_path
+    resolve_path,
+)
+from datalad.support.constraints import (
+    EnsureBool,
+    EnsureChoice,
 )
 
 from .base import Provider
+from ..documentedinterface import (
+    DocumentedInterface,
+    ParameterEntry,
+)
 from ..pipelinedata import (
     PipelineData,
     PipelineResult,
@@ -56,6 +64,31 @@ class DatasetTraverser(Provider):
         "dataset": {dataset_mask},
         "both": {file_mask, dataset_mask}
     }
+
+    interface_documentation = DocumentedInterface(
+        """A component that traverses a dataset and generates file- and/or
+           dataset-data for each file and/or dataset object in the dataset and
+           optionally in its sub-datasets.""",
+        [
+            ParameterEntry(
+                keyword="top_level_dir",
+                help="""A path to the dataset that should be traversed.""",
+                optional=False),
+            ParameterEntry(
+                keyword="item_type",
+                help="""Indicate which elements should be reported. Either
+                        files ("file") or datasets ("dataset") or files and
+                        datasets ("both").""",
+                optional=False,
+                constraints=[EnsureChoice("file", "dataset", "both")]),
+            ParameterEntry(
+                keyword="traverse_sub_datasets",
+                help="""Indicate whether sub-datasets should be traversed as
+                        well.""",
+                optional=True,
+                constraints=[EnsureBool()])
+        ]
+    )
 
     def __init__(self,
                  *,

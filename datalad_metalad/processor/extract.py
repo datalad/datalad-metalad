@@ -12,15 +12,19 @@ from typing import (
 )
 
 from datalad.api import meta_extract
+from datalad.support.constraints import EnsureChoice
 
 from .base import Processor
+from ..documentedinterface import (
+    DocumentedInterface,
+    ParameterEntry,
+)
 from ..pipelinedata import (
     PipelineData,
     PipelineResult,
     ResultState,
 )
 from ..provider.datasettraverse import DatasetTraverseResult
-
 
 logger = logging.getLogger("datalad.metadata.processor.extract")
 
@@ -45,6 +49,24 @@ class MetadataExtractorResult(PipelineResult):
 
 
 class MetadataExtractor(Processor):
+
+    interface_documentation = DocumentedInterface(
+        "A component that extracts metadata by running an extractor.",
+        [
+            ParameterEntry(
+                keyword="extractor_type",
+                help="""The type of the extractor that should be performed.
+                        Either a file-level extraction ("file") or a
+                        dataset-level extraction ("dataset").""",
+                optional=False,
+                constraints=[EnsureChoice("file", "dataset")]),
+            ParameterEntry(
+                keyword="extractor_name",
+                help="The name of the extractor that should be executed.",
+                optional=False),
+        ]
+    )
+
     def __init__(self,
                  *,
                  extractor_type: str,

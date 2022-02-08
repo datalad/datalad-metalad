@@ -149,6 +149,11 @@ class Conduct(Interface):
                    (default: "process").""",
             constraints=EnsureChoice("process", "thread", "sequential"),
             default="process"),
+        pipeline_help=Parameter(
+            args=("--pipeline-help",),
+            doc="Show documentation for the elements in the pipeline and exit.",
+            action="store_true",
+            default=False),
         configuration=Parameter(
             args=("configuration",),
             metavar="CONFIGURATION",
@@ -176,7 +181,8 @@ class Conduct(Interface):
             configuration: Union[str, JSONType],
             arguments: List[str],
             max_workers: Optional[int] = None,
-            processing_mode: str = "process"):
+            processing_mode: str = "process",
+            pipeline_help: bool = False):
 
         element_arguments, file_path = split_arguments(arguments, "++")
 
@@ -195,6 +201,22 @@ class Conduct(Interface):
         element_names = [element["name"] for element in elements]
         if len(element_names) != len(set(element_names)):
             raise ValueError("repeated element names")
+
+        class_instances = {
+            element["name"]: get_class_instance(element)
+            for element in chain(
+                [conduct_configuration["provider"]],
+                conduct_configuration["processors"],
+                [conduct_configuration.get("consumer", None)]
+            )
+            if element is not None
+        }
+
+        if pipeline_help is True:
+            for name, class_instance in class_instances.items():
+                print(class_instance.interface_documentation.get_description(name))
+                print(class_instance.interface_documentation.get_entry_description(name))
+            return
 
         constructor_keyword_args = get_constructor_keyword_args(
             element_arguments=element_arguments,

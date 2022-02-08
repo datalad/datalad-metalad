@@ -11,8 +11,13 @@ from typing import (
 )
 
 from datalad.api import meta_add
+from datalad.support.constraints import EnsureBool
 
 from .base import Processor
+from ..documentedinterface import (
+    DocumentedInterface,
+    ParameterEntry,
+)
 from ..processor.extract import MetadataExtractorResult
 from ..provider.datasettraverse import DatasetTraverseResult
 from ..pipelinedata import (
@@ -37,6 +42,22 @@ class MetadataAddResult(PipelineResult):
 
 
 class MetadataAdder(Processor):
+
+    interface_documentation = DocumentedInterface(
+        "A component that adds metadata to a dataset, i.e. a metadata-store",
+        [
+            ParameterEntry(
+                keyword="aggregate",
+                help="""A boolean that indicates whether sub-dataset metadata
+                        should be added into the root-dataset, i.e. aggregated
+                        (aggregate=True), or whether sub-dataset metadata should
+                        be added into the sub-dataset (aggregate=False). The
+                        sub-dataset path must exist and contain a git-repo.""",
+                optional=True,
+                constraints=[EnsureBool()])
+        ]
+    )
+
     def __init__(self,
                  *,
                  aggregate: bool = False
