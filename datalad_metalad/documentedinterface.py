@@ -1,11 +1,10 @@
 import dataclasses
 import textwrap
 from typing import (
+    Callable,
     Dict,
     List,
 )
-
-from datalad.support.constraints import Constraints
 
 
 @dataclasses.dataclass(frozen=True)
@@ -13,7 +12,7 @@ class ParameterEntry:
     keyword: str
     help: str
     optional: bool = False
-    constraints: List[Constraints] = None
+    constraints: Callable = None
 
 
 class DocumentedInterface:
@@ -57,9 +56,7 @@ class DocumentedInterface:
                       name: str,
                       entry: ParameterEntry):
         if entry.constraints:
-            constraints_text = "Allowed values: " + ", ".join(
-                str(constraint)
-                for constraint in entry.constraints) + "\n"
+            constraints_text = "Allowed values: " + str(entry.constraints)
         else:
             constraints_text = ""
 

@@ -54,7 +54,7 @@ class MetadataAdder(Processor):
                         be added into the sub-dataset (aggregate=False). The
                         sub-dataset path must exist and contain a git-repo.""",
                 optional=True,
-                constraints=[EnsureBool()])
+                constraints=EnsureBool())
         ]
     )
 

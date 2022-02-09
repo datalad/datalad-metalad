@@ -59,7 +59,7 @@ class MetadataExtractor(Processor):
                         Either a file-level extraction ("file") or a
                         dataset-level extraction ("dataset").""",
                 optional=False,
-                constraints=[EnsureChoice("file", "dataset")]),
+                constraints=EnsureChoice("file", "dataset")),
             ParameterEntry(
                 keyword="extractor_name",
                 help="The name of the extractor that should be executed.",

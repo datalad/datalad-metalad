@@ -80,13 +80,13 @@ class DatasetTraverser(Provider):
                         files ("file") or datasets ("dataset") or files and
                         datasets ("both").""",
                 optional=False,
-                constraints=[EnsureChoice("file", "dataset", "both")]),
+                constraints=EnsureChoice("file", "dataset", "both")),
             ParameterEntry(
                 keyword="traverse_sub_datasets",
                 help="""Indicate whether sub-datasets should be traversed as
                         well.""",
                 optional=True,
-                constraints=[EnsureBool()])
+                constraints=EnsureBool())
         ]
     )
 
