@@ -42,7 +42,7 @@ from .pipelinedata import (
 from .consumer.base import Consumer
 from .processor.base import Processor
 from .provider.base import Provider
-from .model import JSONType
+from .types import JSONType
 from .utils import read_json_object
 
 

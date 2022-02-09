@@ -17,7 +17,7 @@ from datalad.tests.utils import (
 )
 
 from .utils import create_dataset
-from ..model import JSONType
+from ..types import JSONType
 
 
 dataset_id = uuid4()

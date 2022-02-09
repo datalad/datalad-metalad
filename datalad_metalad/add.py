@@ -7,7 +7,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """
-Add metadata to a metadata model instance.
+Add metadata to a metadata types instance.
 Metadata is usually provided by an extractor, but
 can also be created by other means.
 """
@@ -57,7 +57,7 @@ from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_r
 from dataladmetadatamodel.mapper.gitmapper.utils import locked_backend
 
 from .exceptions import MetadataKeyException
-from .model import JSONType
+from .types import JSONType
 from .utils import (
     check_dataset,
     read_json_objects,
@@ -184,7 +184,7 @@ class Add(Interface):
             args=("metadata",),
             metavar="METADATA",
             doc=f"""path of the file that contains the
-            metadata that should be added to the metadata model instance
+            metadata that should be added to the metadata types instance
             (metadata must be provided as a JSON-serialized metadata
             dictionary). The file may contain a single metadata-record or
             a JSON-array with multiple metadata-records.

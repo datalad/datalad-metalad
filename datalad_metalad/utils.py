@@ -20,7 +20,7 @@ from datalad.support.json_py import load as json_load
 
 
 from . import aggregate_layout_version
-from .model import JSONType
+from .types import JSONType
 
 import logging
 

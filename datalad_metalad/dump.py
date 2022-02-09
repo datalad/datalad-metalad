@@ -56,7 +56,7 @@ from .pathutils.metadataurlparser import (
     UUIDMetadataURL,
 )
 
-from .model import JSONType
+from .types import JSONType
 from .pathutils.mtreesearch import MTreeSearch
 
 
