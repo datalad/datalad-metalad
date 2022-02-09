@@ -70,7 +70,7 @@ def test_basic_aggregation():
         create_dataset(str(subdataset_1_dir), sub_1_id)
 
         # TODO: there is a dependency here in meta_add. We should instead
-        #  use the model API to add metadata to metadata stores
+        #  use the types API to add metadata to metadata stores
 
         for index in range(3):
             add_dataset_level_metadata(
@@ -183,7 +183,7 @@ def test_basic_aggregation_into_empty_store():
         create_dataset(str(subdataset_1_dir), sub_1_id)
 
         # TODO: this is more an end-to-end test, since we depend
-        #  on meta_add. We should instead use the model API to add
+        #  on meta_add. We should instead use the types API to add
         #  metadata to metadata stores
 
         for index in range(2):

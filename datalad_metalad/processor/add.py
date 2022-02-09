@@ -11,12 +11,17 @@ from typing import (
 )
 
 from datalad.api import meta_add
+from datalad.support.constraints import EnsureBool
 
 from .base import Processor
+from ..documentedinterface import (
+    DocumentedInterface,
+    ParameterEntry,
+)
 from ..processor.extract import MetadataExtractorResult
 from ..provider.datasettraverse import DatasetTraverseResult
-from ..pipelineelement import (
-    PipelineElement,
+from ..pipelinedata import (
+    PipelineData,
     PipelineResult,
     ResultState,
 )
@@ -37,28 +42,45 @@ class MetadataAddResult(PipelineResult):
 
 
 class MetadataAdder(Processor):
+
+    interface_documentation = DocumentedInterface(
+        "A component that adds metadata to a dataset, i.e. a metadata-store",
+        [
+            ParameterEntry(
+                keyword="aggregate",
+                help="""A boolean that indicates whether sub-dataset metadata
+                        should be added into the root-dataset, i.e. aggregated
+                        (aggregate=True), or whether sub-dataset metadata should
+                        be added into the sub-dataset (aggregate=False). The
+                        sub-dataset path must exist and contain a git-repo.""",
+                optional=True,
+                constraints=EnsureBool())
+        ]
+    )
+
     def __init__(self,
+                 *,
                  aggregate: bool = False
                  ):
 
         super().__init__()
         self.aggregate = aggregate
 
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+    def process(self, pipeline_data: PipelineData) -> PipelineData:
 
-        metadata_result_list = pipeline_element.get_result("metadata")
+        metadata_result_list = pipeline_data.get_result("metadata")
         if not metadata_result_list:
             logger.debug(
-                f"Ignoring pipeline element without metadata: "
-                f"{pipeline_element}")
-            return pipeline_element
+                f"Ignoring pipeline data without metadata: "
+                f"{pipeline_data}")
+            return pipeline_data
 
         # Determine the destination metadata store. This is either the root
         # level dataset (if aggregate is True), or the containing dataset (if
         # aggregate is False).
         dataset_traversal_record = cast(
             DatasetTraverseResult,
-            pipeline_element.get_result("dataset-traversal-record")[0])
+            pipeline_data.get_result("dataset-traversal-record")[0])
 
         if dataset_traversal_record.dataset_path == Path("."):
             metadata_repository = dataset_traversal_record.fs_base_path
@@ -104,11 +126,11 @@ class MetadataAdder(Processor):
                 path = add_result["path"]
                 if add_result["status"] == "ok":
                     md_add_result = MetadataAddResult(ResultState.SUCCESS, path)
-                    pipeline_element.set_result("path", path)
+                    pipeline_data.set_result("path", path)
                 else:
                     md_add_result = MetadataAddResult(ResultState.FAILURE, path)
                     md_add_result.base_error = add_result
                 result.append(md_add_result)
 
-            pipeline_element.add_result_list("add", result)
-        return pipeline_element
+            pipeline_data.add_result_list("add", result)
+        return pipeline_data

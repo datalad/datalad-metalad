@@ -1,10 +1,10 @@
 import logging
 
 from .base import Processor
-from ..pipelineelement import (
+from ..pipelinedata import (
     PipelineResult,
     ResultState,
-    PipelineElement,
+    PipelineData,
 )
 from ..utils import check_dataset
 
@@ -18,11 +18,9 @@ class AutoGet(Processor):
     It sets a flag in the element that will allow the AutoDrop-processor
     to automatically drop the file again.
     """
-    def __init__(self):
-        super().__init__()
 
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
-        for traverse_result in pipeline_element.get_result("dataset-traversal-record"):
+    def process(self, pipeline_data: PipelineData) -> PipelineData:
+        for traverse_result in pipeline_data.get_result("dataset-traversal-record"):
             if traverse_result.type == "File":
                 path = traverse_result.path
                 if path.is_symlink():
@@ -36,7 +34,7 @@ class AutoGet(Processor):
                             f"AutoGet: automatically getting {path} "
                             f"in dataset {dataset.path}")
                         dataset.get(str(traverse_result.path), jobs=1)
-                        pipeline_element.set_result(
+                        pipeline_data.set_result(
                             "auto_get",
                             [PipelineResult(ResultState.SUCCESS)])
-        return pipeline_element
+        return pipeline_data

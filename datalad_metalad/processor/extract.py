@@ -12,15 +12,19 @@ from typing import (
 )
 
 from datalad.api import meta_extract
+from datalad.support.constraints import EnsureChoice
 
 from .base import Processor
-from ..pipelineelement import (
-    PipelineElement,
+from ..documentedinterface import (
+    DocumentedInterface,
+    ParameterEntry,
+)
+from ..pipelinedata import (
+    PipelineData,
     PipelineResult,
     ResultState,
 )
 from ..provider.datasettraverse import DatasetTraverseResult
-
 
 logger = logging.getLogger("datalad.metadata.processor.extract")
 
@@ -45,26 +49,45 @@ class MetadataExtractorResult(PipelineResult):
 
 
 class MetadataExtractor(Processor):
+
+    interface_documentation = DocumentedInterface(
+        "A component that extracts metadata by running an extractor.",
+        [
+            ParameterEntry(
+                keyword="extractor_type",
+                help="""The type of the extractor that should be performed.
+                        Either a file-level extraction ("file") or a
+                        dataset-level extraction ("dataset").""",
+                optional=False,
+                constraints=EnsureChoice("file", "dataset")),
+            ParameterEntry(
+                keyword="extractor_name",
+                help="The name of the extractor that should be executed.",
+                optional=False),
+        ]
+    )
+
     def __init__(self,
+                 *,
                  extractor_type: str,
                  extractor_name: str
                  ):
-        super().__init__()
+
         self.extractor_type = extractor_type.lower()
         self.extractor_name = extractor_name
 
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
+    def process(self, pipeline_data: PipelineData) -> PipelineData:
 
         dataset_traverse_record = cast(
             DatasetTraverseResult,
-            pipeline_element.get_result("dataset-traversal-record")[0])
+            pipeline_data.get_result("dataset-traversal-record")[0])
         logger.debug(f"MetadataExtractor process: {dataset_traverse_record}")
 
         if dataset_traverse_record.type != self.extractor_type:
             logger.debug(
                 f"ignoring un-configured type "
                 f"{dataset_traverse_record.type}")
-            return pipeline_element
+            return pipeline_data
 
         dataset_path = (
                 dataset_traverse_record.fs_base_path
@@ -86,7 +109,7 @@ class MetadataExtractor(Processor):
                 result_renderer="disabled")
         else:
             logger.warning(f"ignoring unknown type {object_type}")
-            return pipeline_element
+            return pipeline_data
 
         results = []
         for extract_result in meta_extract(**kwargs):
@@ -103,5 +126,5 @@ class MetadataExtractor(Processor):
                 md_extractor_result.base_error = extract_result
             results.append(md_extractor_result)
 
-        pipeline_element.add_result_list("metadata", results)
-        return pipeline_element
+        pipeline_data.add_result_list("metadata", results)
+        return pipeline_data

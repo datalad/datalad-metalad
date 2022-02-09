@@ -1,11 +1,7 @@
 import concurrent.futures
 import os
 import tempfile
-from typing import (
-    Dict,
-    List,
-    Union,
-)
+from typing import List
 from unittest.mock import patch
 from unittest import SkipTest
 from uuid import uuid4
@@ -21,9 +17,8 @@ from datalad.tests.utils import (
 )
 
 from .utils import create_dataset
+from ..types import JSONType
 
-
-JSONObject = Union[Dict, List]
 
 dataset_id = uuid4()
 
@@ -78,7 +73,7 @@ def perform_concurrent_adds(locked: bool,
         concurrent.futures.wait(running)
 
 
-def get_all_metadata_records(git_repo: GitRepo) -> List[JSONObject]:
+def get_all_metadata_records(git_repo: GitRepo) -> List[JSONType]:
     res = meta_dump(
         dataset=git_repo.path,
         path="*",

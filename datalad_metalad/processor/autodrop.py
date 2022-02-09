@@ -1,7 +1,7 @@
 import logging
 
 from .base import Processor
-from ..pipelineelement import PipelineElement
+from ..pipelinedata import PipelineData
 from ..utils import check_dataset
 
 
@@ -9,12 +9,10 @@ logger = logging.getLogger("datalad.metadata.processor.autodrop")
 
 
 class AutoDrop(Processor):
-    def __init__(self):
-        super().__init__()
 
-    def process(self, pipeline_element: PipelineElement) -> PipelineElement:
-        if pipeline_element.get_result("auto_get") is not None:
-            for traverse_result in pipeline_element.get_result("dataset-traversal-record"):
+    def process(self, pipeline_data: PipelineData) -> PipelineData:
+        if pipeline_data.get_result("auto_get") is not None:
+            for traverse_result in pipeline_data.get_result("dataset-traversal-record"):
                 fs_dataset_path = (
                     traverse_result.fs_base_path
                     / traverse_result.dataset_path
@@ -25,7 +23,7 @@ class AutoDrop(Processor):
                     f"AutoDrop: automatically dropping {path} "
                     f"in dataset {dataset.path}")
                 dataset.drop(str(path))
-        return pipeline_element
+        return pipeline_data
 
     @staticmethod
     def input_type() -> str:

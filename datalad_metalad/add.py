@@ -7,7 +7,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """
-Add metadata to a metadata model instance.
+Add metadata to a metadata types instance.
 Metadata is usually provided by an extractor, but
 can also be created by other means.
 """
@@ -57,13 +57,11 @@ from dataladmetadatamodel.mapper.gitmapper.objectreference import flush_object_r
 from dataladmetadatamodel.mapper.gitmapper.utils import locked_backend
 
 from .exceptions import MetadataKeyException
+from .types import JSONType
 from .utils import (
     check_dataset,
     read_json_objects,
 )
-
-
-JSONObject = Union[Dict, List]
 
 
 __docformat__ = "restructuredtext"
@@ -186,7 +184,7 @@ class Add(Interface):
             args=("metadata",),
             metavar="METADATA",
             doc=f"""path of the file that contains the
-            metadata that should be added to the metadata model instance
+            metadata that should be added to the metadata types instance
             (metadata must be provided as a JSON-serialized metadata
             dictionary). The file may contain a single metadata-record or
             a JSON-array with multiple metadata-records.
@@ -267,8 +265,8 @@ class Add(Interface):
     @datasetmethod(name="meta_add")
     @eval_results
     def __call__(
-            metadata: Union[str, JSONObject],
-            additionalvalues: Optional[Union[str, JSONObject]] = None,
+            metadata: Union[str, JSONType],
+            additionalvalues: Optional[Union[str, JSONType]] = None,
             dataset: Optional[Union[str, Dataset]] = None,
             allow_override: bool = False,
             allow_unknown: bool = False,
@@ -382,7 +380,7 @@ class Add(Interface):
         return
 
 
-def get_json_object(string_or_object: Union[str, JSONObject]):
+def get_json_object(string_or_object: Union[str, JSONType]):
     if isinstance(string_or_object, str):
         return json.loads(string_or_object)
     return string_or_object
