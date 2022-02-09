@@ -22,7 +22,8 @@ setup(
               'datalad_metalad.pathutils',
               'datalad_metalad.processor',
               'datalad_metalad.provider',
-              'datalad_metalad.tests'],
+              'datalad_metalad.tests',
+              'datalad_metalad.types'],
     package_data={'datalad_metalad': ['pipelines/*.json']},
     entry_points={
         'datalad.extensions': [
