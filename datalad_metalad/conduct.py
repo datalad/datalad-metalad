@@ -35,7 +35,6 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
-from .pipelineelement import PipelineElement
 from .pipelinedata import (
     PipelineData,
     PipelineDataState,
@@ -52,10 +51,6 @@ __docformat__ = 'restructuredtext'
 default_metadata_backend = "git"
 
 lgr = logging.getLogger('datalad.metadata.conduct')
-
-
-class ConductProcessorException(Exception):
-    pass
 
 
 def split_arguments(arguments: List[str], divider: str) -> Tuple[List, List]:
@@ -82,6 +77,7 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
     return None
 
 
+x1 = """
 def get_optional_element_instance(element_type: str,
                                   conduct_configuration: JSONType,
                                   constructor_keyword_args: Dict[str, Dict[str, str]]
@@ -96,8 +92,10 @@ def get_optional_element_instance(element_type: str,
                 **constructor_keyword_args[element_name]
             })
     return None
+"""
 
 
+x2 = """
 def get_element_instance(element_type: str,
                          conduct_configuration: JSONType,
                          constructor_keyword_args: Dict[str, Dict[str, str]]
@@ -113,6 +111,7 @@ def get_element_instance(element_type: str,
             f"No element of type {element_type} in pipeline configuration")
 
     return element
+"""
 
 
 @build_doc
@@ -260,14 +259,14 @@ class Conduct(Interface):
                 "Pipeline element construction errors:\n"
                 f"{error_message}\n")
 
-        consumer_name = conduct_configuration.get("consumer", None)
-        if consumer_name:
-            consumer_instance = get_class_instance(
-                conduct_configuration["consumer"])(
-                    **{
-                        **conduct_configuration["consumer"]["arguments"],
-                        **constructor_keyword_args[consumer_name]
-                    })
+        consumer_element = conduct_configuration.get("consumer", None)
+        if consumer_element:
+            consumer_name = consumer_element["name"]
+            consumer_instance = get_class_instance(consumer_element)(
+                **{
+                    **conduct_configuration["consumer"]["arguments"],
+                    **constructor_keyword_args[consumer_name]
+                })
         else:
             consumer_instance = None
 
@@ -331,8 +330,12 @@ def process_parallel(executor,
                 pipeline_data=pipeline_data.to_json())
             continue
 
-        lgr.debug(f"Starting instance {processor_instances[0]} on {pipeline_data}")
-        running.add(executor.submit(processor_instances[0].execute, -1, pipeline_data))
+        lgr.debug(f"Starting {processor_instances[0]} on {pipeline_data}")
+        running.add(
+            executor.submit(
+                processor_instances[0].execute,
+                -1,
+                pipeline_data))
 
         # During provider result fetching, check for already finished processors
         done, running = concurrent.futures.wait(
@@ -438,7 +441,10 @@ def process_sequential(provider_instance: Provider,
 
     for pipeline_data in provider_instance.next_object():
         lgr.debug(f"Provider yielded: {pipeline_data}")
-        yield from process_downstream(pipeline_data, processor_instances, consumer_instance)
+        yield from process_downstream(
+            pipeline_data=pipeline_data,
+            processor_instances=processor_instances,
+            consumer_instance=consumer_instance)
 
 
 def process_downstream(pipeline_data: PipelineData,
@@ -456,7 +462,8 @@ def process_downstream(pipeline_data: PipelineData,
                 pipeline_data=pipeline_data)
 
             lgr.debug(
-                f"Pipeline stop was requested, returning datalad result {datalad_result}")
+                f"Pipeline stop was requested, "
+                f"returning datalad result {datalad_result}")
 
             yield datalad_result
         return
@@ -464,24 +471,24 @@ def process_downstream(pipeline_data: PipelineData,
     for processor in processor_instances:
         try:
             _, pipeline_data = processor.execute(None, pipeline_data)
-        except Exception:
+        except Exception as exc:
             yield dict(
                 action="meta_conduct",
                 status="error",
                 logger=lgr,
-                message=f"Exception in processor {processor}",
+                message=f"Exception in processor {processor}: {exc}",
                 base_error=traceback.format_exc())
             return
 
     if consumer_instance:
         try:
             pipeline_data = consumer_instance.consume(pipeline_data)
-        except Exception as e:
+        except Exception as exc:
             yield dict(
                 action="meta_conduct",
                 status="error",
                 logger=lgr,
-                message=f"Exception in consumer {consumer_instance}",
+                message=f"Exception in consumer {consumer_instance}: {exc}",
                 base_error=traceback.format_exc())
             return
 
@@ -503,18 +510,7 @@ def process_downstream(pipeline_data: PipelineData,
 
 def get_class_instance(module_class_spec: dict):
     module_instance = import_module(module_class_spec["module"])
-    class_instance = getattr(module_instance, module_class_spec["class"])
-    return class_instance
-
-
-def assert_pipeline_validity(current_output_type: str, processors: List[Processor]):
-    for processor in processors:
-        next_input_type = processor.input_type()
-        if next_input_type != current_output_type:
-            raise ValueError(
-                f"Input type mismatch: {next_input_type} "
-                f"!= {current_output_type}")
-        current_output_type = processor.output_type()
+    return getattr(module_instance, module_class_spec["class"])
 
 
 def get_constructor_keyword_args(element_arguments: List[str],
@@ -523,8 +519,12 @@ def get_constructor_keyword_args(element_arguments: List[str],
     result = defaultdict(dict)
 
     for argument in element_arguments:
-        argument_coordinate, value = argument.split("=", 1)
-        element_name, keyword = argument_coordinate.split(".")
+        try:
+            argument_coordinate, value = argument.split("=", 1)
+            element_name, keyword = argument_coordinate.split(".")
+        except:
+            raise ValueError(f"Badly formatted element-argument: '{argument}'")
+
         if element_name not in element_names:
             raise ValueError(f"No pipeline element with name: '{element_name}'")
         result[element_name][keyword] = value

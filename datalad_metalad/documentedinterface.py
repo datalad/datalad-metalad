@@ -19,20 +19,28 @@ class DocumentedInterface:
 
     def __init__(self,
                  description: str,
-                 help_entries: List[ParameterEntry]):
+                 parameter_entries: List[ParameterEntry]):
 
         self.description = description
-        self.help_entries = help_entries
+        self.parameter_entries = parameter_entries
+
+        self.parameter_entry_by_name = {
+            entry.keyword: entry
+            for entry in parameter_entries
+        }
+
+        if len(self.parameter_entry_by_name.keys()) != len(parameter_entries):
+            raise ValueError("duplicated parameter name")
 
         self.required_entries, self.optional_entries = [
             [
                 entry
-                for entry in help_entries
+                for entry in parameter_entries
                 if entry.optional is condition
             ]
             for condition in (False, True)
         ]
-        self.all_keys = set([entry.keyword for entry in help_entries])
+        self.all_keys = set([entry.keyword for entry in parameter_entries])
 
     def check_keys_values(self,
                           name: str,
@@ -50,7 +58,7 @@ class DocumentedInterface:
                               name: str) -> str:
         return "\n".join(
             self._render_entry(name, entry)
-            for entry in self.help_entries)
+            for entry in self.parameter_entries)
 
     def _render_entry(self,
                       name: str,
