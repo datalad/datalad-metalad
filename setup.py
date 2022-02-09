@@ -17,6 +17,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     setup_requires=SETUP_REQUIRES,
     packages=['datalad_metalad',
+              'datalad_metalad.consumer',
               'datalad_metalad.extractors',
               'datalad_metalad.indexers',
               'datalad_metalad.pathutils',
