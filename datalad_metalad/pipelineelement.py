@@ -7,6 +7,9 @@ class PipelineElement:
 
     @classmethod
     def check_keyword_args(cls, keyword_args):
+        if not hasattr(cls, "interface_documentation"):
+            return
+
         for key, value in keyword_args.items():
             parameter_entry = cast(
                 ParameterEntry,
