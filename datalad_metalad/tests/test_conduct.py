@@ -22,13 +22,13 @@ from datalad.tests.utils import (
 )
 
 from .utils import create_dataset_proper
-from ..pipelinedata import (
+from datalad_metalad.pipeline.pipelinedata import (
     PipelineData,
     PipelineResult,
     ResultState,
 )
-from ..processor.base import Processor
-from ..provider.base import Provider
+from ..pipeline.processor.base import Processor
+from ..pipeline.provider.base import Provider
 
 
 test_tree = {
@@ -55,20 +55,20 @@ test_provider = {
 extract_pipeline = {
     "provider": {
         "name": "provider",
-        "module": "datalad_metalad.provider.datasettraverse",
+        "module": "datalad_metalad.pipeline.provider.datasettraverse",
         "class": "DatasetTraverser",
         "arguments": {}
     },
     "processors": [
         {
             "name": "testproc1",
-            "module": "datalad_metalad.processor.extract",
+            "module": "datalad_metalad.pipeline.processor.extract",
             "class": "MetadataExtractor",
             "arguments": {}
         },
         {
             "name": "testproc2",
-            "module": "datalad_metalad.processor.extract",
+            "module": "datalad_metalad.pipeline.processor.extract",
             "class": "MetadataExtractor",
             "arguments": {}
         }

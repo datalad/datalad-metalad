@@ -18,7 +18,7 @@ from ..documentedinterface import (
     DocumentedInterface,
     ParameterEntry,
 )
-from ..processor.extract import MetadataExtractorResult
+from .extract import MetadataExtractorResult
 from ..provider.datasettraverse import DatasetTraverseResult
 from ..pipelinedata import (
     PipelineData,
@@ -82,7 +82,7 @@ class MetadataAdder(Processor):
             DatasetTraverseResult,
             pipeline_data.get_result("dataset-traversal-record")[0])
 
-        if dataset_traversal_record.dataset_path == Path("."):
+        if dataset_traversal_record.dataset_path == Path(""):
             metadata_repository = dataset_traversal_record.fs_base_path
             additional_values = None
         else:
