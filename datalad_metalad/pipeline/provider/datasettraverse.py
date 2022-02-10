@@ -37,7 +37,7 @@ from ..pipelinedata import (
 
 lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
 
-# By default we exclude all paths that start with "."
+# By default, we exclude all paths that start with "."
 _standard_exclude = ["^\\..*"]
 
 
@@ -133,7 +133,7 @@ class DatasetTraverser(Provider):
     def _get_dataset_result_part(self, dataset: Dataset):
         if dataset.pathobj == self.fs_base_path:
             return {
-                "dataset_path": Path("."),
+                "dataset_path": Path(""),
                 **self._get_base_dataset_result(dataset,
                                                 "dataset_id",
                                                 "dataset_version")}

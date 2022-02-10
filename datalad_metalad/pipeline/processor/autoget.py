@@ -6,7 +6,7 @@ from ..pipelinedata import (
     ResultState,
     PipelineData,
 )
-from ..utils import check_dataset
+from ...utils import check_dataset
 
 
 logger = logging.getLogger("datalad.metadata.processor.autoget")

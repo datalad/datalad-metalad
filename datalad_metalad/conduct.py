@@ -35,13 +35,13 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
-from .pipelinedata import (
+from .pipeline.pipelinedata import (
     PipelineData,
     PipelineDataState,
 )
-from .consumer.base import Consumer
-from .processor.base import Processor
-from .provider.base import Provider
+from .pipeline.consumer.base import Consumer
+from .pipeline.processor.base import Processor
+from .pipeline.provider.base import Provider
 from .types import JSONType
 from .utils import read_json_object
 

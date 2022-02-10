@@ -26,6 +26,7 @@ from ..pipelinedata import (
 )
 from ..provider.datasettraverse import DatasetTraverseResult
 
+
 logger = logging.getLogger("datalad.metadata.processor.extract")
 
 

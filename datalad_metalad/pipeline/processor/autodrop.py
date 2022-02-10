@@ -2,7 +2,7 @@ import logging
 
 from .base import Processor
 from ..pipelinedata import PipelineData
-from ..utils import check_dataset
+from ...utils import check_dataset
 
 
 logger = logging.getLogger("datalad.metadata.processor.autodrop")
