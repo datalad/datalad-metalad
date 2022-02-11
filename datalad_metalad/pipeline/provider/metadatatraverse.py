@@ -92,7 +92,7 @@ class MetadataTraverser(Provider):
                                 path=self.pattern,
                                 recursive=self.recursive):
 
-            if result["state"] == "ok":
+            if result["status"] == "ok":
                 yield self._create_result(
                     state=ResultState.SUCCESS,
                     record=result)
