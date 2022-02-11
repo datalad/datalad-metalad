@@ -7,7 +7,10 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """
-Conduct the execution of a processing pipeline
+Conduct the execution of a processing pipeline.
+
+NB: Individual elements are instantiated once and reused in the individual
+parallel executions.
 """
 import concurrent.futures
 import logging

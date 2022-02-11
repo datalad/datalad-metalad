@@ -230,7 +230,7 @@ def args_to_dict(args: List[str]) -> Dict[str, str]:
 def error_result(action: str, message: str, status: str = "error") -> dict:
     return dict(
         action=action,
-        status="error",
+        status=status,
         message=message)
 
 
@@ -265,7 +265,7 @@ def read_json_object(path_or_object: Union[str, JSONType]) -> JSONType:
             try:
                 json_object = json.loads(
                     pkg_resources.resource_string(
-                        "datalad_metalad",
+                        "datalad_metalad.pipeline",
                         f"pipelines/{path_or_object}_pipeline.json"))
                 return json_object
             except FileNotFoundError:

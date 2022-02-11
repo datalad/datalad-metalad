@@ -1,0 +1,9 @@
+{
+  "provider": {
+    "module": "datalad_metalad.pipeline.provider.metadatatraverse",
+    "class": "MetadataTraverser",
+    "name": "traverser",
+    "arguments": {}
+  },
+  "processors": []
+}
