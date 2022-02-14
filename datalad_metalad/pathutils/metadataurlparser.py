@@ -91,7 +91,7 @@ class MetadataURLParser(object):
             return True, self.get_remaining()
         return False, None
 
-    def parse(self):
+    def parse(self) -> MetadataURL:
         """
         Parse a metadata path spec. It can either be a uuid spec or a tree
         spec. If no scheme is provided, a tree-spec is assumed. Note, if a
@@ -128,3 +128,8 @@ class MetadataURLParser(object):
                 dataset_path = MetadataPath(self.get_remaining())
                 local_path = MetadataPath("")
         return TreeMetadataURL(dataset_path, local_path, version)
+
+
+def parse_metadata_url(metadata_url: str) -> MetadataURL:
+    parser = MetadataURLParser(metadata_url)
+    return parser.parse()

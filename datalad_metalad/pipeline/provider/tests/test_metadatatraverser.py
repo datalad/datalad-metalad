@@ -8,6 +8,7 @@ from ..metadatatraverse import (
     MetadataTraverser,
     ResultState,
 )
+from ...pipelinedata import PipelineData
 
 
 def test_metadata_traverser():
@@ -31,12 +32,20 @@ def test_metadata_traverser():
         pattern=test_pattern,
         recursive=test_recursive)
 
+    expected = PipelineData((
+        ("path", Path(test_metadata_store)),
+        (
+            "metadata-traversal-record",
+            [
+                MetadataTraverseResult(
+                    state=ResultState.SUCCESS,
+                    metadata_store=Path(test_metadata_store),
+                    metadata_record=test_record)
+            ]
+        )
+    ))
+
     with patch("datalad_metalad.pipeline.provider.metadatatraverse.meta_dump") as md:
         md.side_effect = meta_dump_mock
         result = list(traverser.next_object())[0]
-        assert_equal(
-            result,
-            MetadataTraverseResult(
-                state=ResultState.SUCCESS,
-                metadata_store=Path(test_metadata_store),
-                metadata_record=test_record))
+        assert_equal(result, expected)

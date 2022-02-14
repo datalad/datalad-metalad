@@ -19,10 +19,11 @@ from ..documentedinterface import (
     ParameterEntry,
 )
 from ..pipelinedata import (
+    PipelineData,
     PipelineResult,
     ResultState,
 )
-from ...types import JSONType
+from ...metadatatypes import JSONType
 
 
 lgr = logging.getLogger('datalad.metadata.pipeline.provider.metadatatraverse')
@@ -78,13 +79,21 @@ class MetadataTraverser(Provider):
                        state: ResultState,
                        record: Dict,
                        message: str = ""
-                       ) -> MetadataTraverseResult:
+                       ) -> PipelineData:
 
-        return MetadataTraverseResult(
-            state=state,
-            metadata_store=self.metadata_store,
-            metadata_record=record,
-            message=message)
+        return PipelineData((
+            ("path", self.metadata_store),
+            (
+                "metadata-traversal-record",
+                [
+                    MetadataTraverseResult(**{
+                        "state": state,
+                        "metadata_store": self.metadata_store,
+                        "metadata_record": record,
+                        "message": message
+                    })
+                ]
+            )))
 
     def _traverse_metadata(self) -> Iterable:
 

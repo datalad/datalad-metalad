@@ -41,6 +41,11 @@ class PipelineData:
         self._dynamic = dict()
         self.state = PipelineDataState.CONTINUE
 
+    def __eq__(self, other):
+        return self._result == other._result \
+                and self._dynamic == other._dynamic \
+                and self.state == other.state
+
     def get_dynamic_data(self, key: str, default=None) -> Any:
         return self._dynamic.get(key, default)
 

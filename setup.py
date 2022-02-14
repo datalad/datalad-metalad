@@ -25,7 +25,7 @@ setup(
               'datalad_metalad.indexers',
               'datalad_metalad.pathutils',
               'datalad_metalad.tests',
-              'datalad_metalad.types'],
+              'datalad_metalad.metadatatypes'],
     package_data={'datalad_metalad.pipeline': ['pipeline/pipelines/*.json']},
     entry_points={
         'datalad.extensions': [
@@ -49,6 +49,9 @@ setup(
         ],
         'datalad.metadata.indexers': [
             'metalad_studyminimeta=datalad_metalad.indexers.studyminimeta:StudyMiniMetaIndexer',
+        ],
+        'datalad.metadata.filters': [
+            'metalad_demofilter=datalad_metalad.filters.demofilter:DemoFilter',
         ]
     },
 )

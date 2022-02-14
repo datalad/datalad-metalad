@@ -45,7 +45,7 @@ from .pipeline.pipelinedata import (
 from .pipeline.consumer.base import Consumer
 from .pipeline.processor.base import Processor
 from .pipeline.provider.base import Provider
-from .types import JSONType
+from .metadatatypes import JSONType
 from .utils import read_json_object
 
 

@@ -8,35 +8,62 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Metadata indexer base class"""
 import abc
-from typing import Dict, Optional
+from typing import (
+    Iterable,
+    List,
+    Optional,
+)
 from uuid import UUID
+
+from ..metadatatypes.metadata import Metadata
+
+
+__docformat__ = "restructuredtext"
 
 
 # TODO: parts of this definition are identical to extractors, shall we
 #  base them on the same ancestor class?
 
-
 class MetadataFilterBase(metaclass=abc.ABCMeta):
+    def __init__(self, format_name: Optional[str] = None):
+        pass
+
+    @abc.abstractmethod
     def filter(self,
-               metadata: Dict
-               ) -> Optional[Dict]:
-        """
-        Run a metadata filter.
+               metadata_iterables: List[Iterable[Metadata]],
+               *args,
+               **kwargs
+               ) -> Iterable[Metadata]:
+        """ Entry for the filter operation
 
-        Parameters
-        ----------
-        metadata: the metadata to filter
+        This method is called by the 'meta-filter' driver. It should iterate
+        through the metadata instances that are provided by the metadata
+        coordinates, perform the filter operation ond yield the resulting
+        metadata objects as instances of "datalad_metalad.metadatatypes.Metadata".
 
-        Returns
-        -------
-        filtered metadata or None
+        Returned metadata is emitted as datalad invocation result, e.g. as
+        JSON records.
+
+        :param metadata_iterables:
+               A list of iterables that correspond to the metadata urls that
+               were given to the "meta-filter" command. Each iterable will yield
+               metadata that is matched by the respective URL. Metadata is
+               represented by the class "datalad_metalad.metadatatypes.Metadata".
+        :param kwargs: keyword arguments that were provided in the meta-filter
+               call
+        :return: an iterable that contains the filtered/generated metadata as
+               instances of "datalad_metalad.metadatatypes.Metadata".
+        :rtype: Iterable[Metadata]
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
     def get_id(self) -> UUID:
         """ Report the universally unique ID of the filter """
         raise NotImplementedError
 
-    def get_version(self) -> str:       # TODO shall we remove this and regard it as part of the state?
+    # TODO shall we remove 'get_version()' and regard it as part of the state?
+    @abc.abstractmethod
+    def get_version(self) -> str:
         """ Report the version of the filter """
         raise NotImplementedError
