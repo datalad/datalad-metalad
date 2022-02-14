@@ -14,6 +14,12 @@ from .jsonld import (
     IndexerSchemaOrgTypes,
 )
 
+from .jsonld import (
+    IndexerSchemaOrgProperties,
+    IndexerJsonLdTags,
+    IndexerSchemaOrgTypes,
+)
+
 
 STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'
 

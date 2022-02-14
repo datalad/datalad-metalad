@@ -67,7 +67,7 @@ class MetadataRecord:
         if self.type not in (DATASET, FILE):
             raise ValueError(f"unknown type: '{self.type}'")
         if self.path == MetadataPath(".") and self.type != DATASET:
-            raise ValueError(f"root-path ({self.path}) in type: '{self.type}'")
+            raise ValueError(f"root-path in type: '{self.type}'")
 
     def as_json_obj(self) -> JSONType:
         result = {
