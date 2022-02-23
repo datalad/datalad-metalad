@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 from typing import Optional
 
 from datalad.cmd import BatchedCommand
@@ -47,14 +48,16 @@ class BatchAdder(Consumer):
             ["datalad", "meta-add", "-d", dataset, "--batch-mode", "-"])
 
     def __del__(self):
+        self.batched_add("")
         self.batched_add.close()
 
     def consume(self, pipeline_data: PipelineData) -> PipelineData:
-        for metadata in pipeline_data.get_result("metadata"):
-            metadata_json = metadata.to_json()
-            metadata.metadata_record["dataset_id"] = str(metadata.metadata_record["dataset_id"])
-            metadata.metadata_record["path"] = str(metadata.metadata_record["path"])
-            metadata_json_string = json.dumps(metadata_json)
-            logger.info(f"adding: {metadata_json_string}")
-            self.batched_add(metadata_json_string)
+        for metadata_extractor_result in pipeline_data.get_result("metadata") or []:
+            metadata_record = metadata_extractor_result.metadata_record
+            metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
+            if "path" in metadata_record:
+                metadata_record["path"] = str(metadata_record["path"])
+            metadata_record_json_string = json.dumps(metadata_record)
+            logger.info(f"adding: {metadata_record_json_string}")
+            self.batched_add(metadata_record_json_string)
         return pipeline_data

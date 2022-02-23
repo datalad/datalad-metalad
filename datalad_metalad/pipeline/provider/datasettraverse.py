@@ -35,7 +35,7 @@ from ..pipelinedata import (
 )
 
 
-lgr = logging.getLogger('datalad.metadata.provider.datasettraverse')
+lgr = logging.getLogger('datalad.metadata.pipeline.provider.datasettraverse')
 
 # By default, we exclude all paths that start with "."
 _standard_exclude = ["^\\..*"]

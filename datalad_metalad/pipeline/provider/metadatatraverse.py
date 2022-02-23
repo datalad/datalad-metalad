@@ -25,7 +25,7 @@ from ..pipelinedata import (
 from ...types import JSONType
 
 
-lgr = logging.getLogger('datalad.metadata.provider.metadatatraverse')
+lgr = logging.getLogger('datalad.metadata.pipeline.provider.metadatatraverse')
 
 default_mapper_family = "git"
 

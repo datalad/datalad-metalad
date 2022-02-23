@@ -459,9 +459,9 @@ def process_parameters(metadata: dict,
             raise MetadataKeyException(
                 "Missing path-property in file-type metadata")
     elif metadata["type"] == "dataset":
-        if "path" in metadata:
+        if "path" in metadata and metadata["path"] != ".":
             raise MetadataKeyException(
-                "Extraneous path-property in dataset-type metadata")
+                "Non-'.' path-property in dataset-type metadata")
     else:
         raise MetadataKeyException(f"Unknown type {metadata['type']}")
 
