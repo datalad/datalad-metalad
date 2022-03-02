@@ -1,17 +1,22 @@
 import json
 import logging
-import sys
-from typing import Optional
+from pathlib import Path
+from typing import (
+    Optional,
+    cast,
+)
 
 from datalad.cmd import BatchedCommand
 from datalad.support.constraints import EnsureBool
 
+from .base import Consumer
 from ..documentedinterface import (
     DocumentedInterface,
     ParameterEntry,
 )
 from ..pipelinedata import PipelineData
-from .base import Consumer
+from ..processor.extract import MetadataExtractorResult
+from ..provider.datasettraverse import DatasetTraverseResult
 
 
 logger = logging.getLogger("datalad.meta-conduct.consumer.add")
@@ -28,12 +33,14 @@ class BatchAdder(Consumer):
                         stored.""",
                 optional=True),
             ParameterEntry(
-                keyword="aggregate (NOT SUPPORTED YET)",
+                keyword="aggregate",
                 help="""A boolean that indicates whether sub-dataset metadata
                         should be added into the root-dataset, i.e. aggregated
                         (aggregate=True), or whether sub-dataset metadata should
-                        be added into the sub-dataset (aggregate=False). The
-                        sub-dataset path must exist and contain a git-repo.""",
+                        be added into the sub-dataset (aggregate=False). In the
+                        latter case it will be ignored, since it has to be sent
+                        to a different instance of a batched add command.
+                        Default: True""",
                 optional=True,
                 constraints=EnsureBool())
         ]
@@ -42,8 +49,9 @@ class BatchAdder(Consumer):
     def __init__(self,
                  *,
                  dataset: str,
-                 aggregate: Optional[bool] = False):
+                 aggregate: Optional[bool] = True):
 
+        self.aggregate = aggregate
         self.batched_add = BatchedCommand(
             ["datalad", "meta-add", "-d", dataset, "--batch-mode", "-"])
 
@@ -52,12 +60,50 @@ class BatchAdder(Consumer):
         self.batched_add.close()
 
     def consume(self, pipeline_data: PipelineData) -> PipelineData:
-        for metadata_extractor_result in pipeline_data.get_result("metadata") or []:
-            metadata_record = metadata_extractor_result.metadata_record
+
+        metadata_result_list = pipeline_data.get_result("metadata")
+        if not metadata_result_list:
+            logger.debug(
+                f"Ignoring pipeline data without metadata: "
+                f"{pipeline_data}")
+            return pipeline_data
+
+        # Determine the destination metadata store. This is either the root
+        # level dataset (if aggregate is True), or the containing dataset (if
+        # aggregate is False).
+        dataset_traversal_record = cast(
+            DatasetTraverseResult,
+            pipeline_data.get_result("dataset-traversal-record")[0])
+
+        if dataset_traversal_record.dataset_path == Path(""):
+            additional_values = {}
+        else:
+            if self.aggregate:
+                additional_values = {
+                    "dataset_path": str(dataset_traversal_record.dataset_path),
+                    "root_dataset_id": str(dataset_traversal_record.root_dataset_id),
+                    "root_dataset_version": str(dataset_traversal_record.root_dataset_version)
+                }
+            else:
+                logger.debug("ignoring non-root metadata because aggregate is not set")
+                return pipeline_data
+
+        for metadata_extractor_result in metadata_result_list:
+
+            metadata_record = cast(
+                MetadataExtractorResult,
+                metadata_extractor_result).metadata_record
+
             metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
             if "path" in metadata_record:
                 metadata_record["path"] = str(metadata_record["path"])
-            metadata_record_json_string = json.dumps(metadata_record)
-            logger.info(f"adding: {metadata_record_json_string}")
-            self.batched_add(metadata_record_json_string)
+
+            metadata_record_json = json.dumps({
+                **metadata_record,
+                **additional_values
+            })
+
+            logger.debug(f"adding {repr(metadata_record_json)}")
+            self.batched_add(metadata_record_json)
+
         return pipeline_data
