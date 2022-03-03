@@ -74,7 +74,7 @@ default_mapper_family = "git"
 lgr = logging.getLogger("datalad.metadata.add")
 
 max_cache_size = 10000
-max_cache_seconds = 5
+max_cache_age = 5
 
 
 @dataclass
@@ -313,8 +313,8 @@ class Add(Interface):
                 '{"status": "ok", "action": "meta_add", "cached": true}\n')
             sys.stdout.flush()
 
-            caching_duration = caching_start_time - time.time()
-            if len(all_metadata_objects) >= max_cache_size or caching_duration > max_cache_seconds:
+            cache_age = caching_start_time - time.time()
+            if len(all_metadata_objects) >= max_cache_size or cache_age > max_cache_age:
 
                 intermediate_result = flush_cache(
                     metadata_objects=all_metadata_objects,
