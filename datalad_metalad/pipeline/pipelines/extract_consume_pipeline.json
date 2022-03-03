@@ -11,13 +11,12 @@
       "class": "MetadataExtractor",
       "name": "extractor",
       "arguments": {}
-    },
-    {
-      "module": "datalad_metalad.pipeline.processor.add",
-      "class": "MetadataAdder",
-      "name": "adder",
-      "arguments": [],
-      "keyword_arguments": {}
     }
-  ]
+  ],
+  "consumer": {
+    "module": "datalad_metalad.pipeline.consumer.add",
+    "class": "BatchAdder",
+    "name": "adder",
+    "arguments": {}
+  }
 }
