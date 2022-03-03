@@ -313,7 +313,7 @@ class Add(Interface):
                 '{"status": "ok", "action": "meta_add", "cached": true}\n')
             sys.stdout.flush()
 
-            cache_age = caching_start_time - time.time()
+            cache_age = time.time() - caching_start_time
             if len(all_metadata_objects) >= max_cache_size or cache_age > max_cache_age:
 
                 intermediate_result = flush_cache(
@@ -350,7 +350,7 @@ class Add(Interface):
         }
 
         lgr.log(5, f"meta-add batched mode exiting with: {json.dumps(result_json)}")
-        sys.stdout.write(json.dumps(result_json))
+        sys.stdout.write(json.dumps(result_json) + "\n")
         sys.stdout.flush()
 
 

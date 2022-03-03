@@ -11,6 +11,7 @@
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import (
     List,
@@ -43,6 +44,7 @@ from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
 from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mappableobject import ensure_mapped
 
+import datalad_metalad.add
 from .utils import (
     create_dataset,
     create_dataset_proper,
@@ -718,7 +720,7 @@ def check_multi_adding(metadata: Union[str, List],
                 assert_in(
                     call.stdout.write(
                         f'{{"status": "ok", "succeeded": '
-                        f'{file_count * metadata_count}, "failed": 0}}'),
+                        f'{file_count * metadata_count}, "failed": 0}}\n'),
                     sys_mock.mock_calls)
         else:
             res = meta_add(metadata=metadata, dataset=git_repo.path)
@@ -785,6 +787,33 @@ def test_add_multiple_metadata_records_end_to_end(file_name: str):
 
 
 @with_tempfile(mkdir=True)
+def test_cache_age(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    def slow_feed():
+        json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
+        for json_object in json_objects:
+            yield json_object
+            time.sleep(.5)
+
+    # Ensure that maximum cache age is three
+    datalad_metalad.add.max_cache_age = 2
+    with \
+            patch("datalad_metalad.add.flush_cache") as fc, \
+            patch("datalad_metalad.add._stdin_reader") as stdin_mock:
+
+        stdin_mock.return_value = slow_feed()
+        fc.return_value = (4, 4)
+        meta_add(
+            metadata="-",
+            dataset=temp_dir,
+            allow_id_mismatch=True,
+            batch_mode=True)
+
+        assert_true(fc.call_count >= 2)
+
+
+@with_tempfile(mkdir=True)
 def test_batch_mode(temp_dir: str):
     create_dataset_proper(temp_dir)
 
@@ -803,7 +832,7 @@ def test_batch_mode(temp_dir: str):
         assert_in(
             call.stdout.write(
                 f'{{"status": "ok", "succeeded": {len(json_objects)}, '
-                f'"failed": 0}}'),
+                f'"failed": 0}}\n'),
             sys_mock.mock_calls)
 
 
