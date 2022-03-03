@@ -11,9 +11,11 @@
 import json
 import os
 import tempfile
-import time
 from pathlib import Path
-from typing import List
+from typing import (
+    List,
+    Union,
+)
 from unittest.mock import (
     call,
     patch,
@@ -697,19 +699,35 @@ def _create_json_metadata_records(file_count: int,
     ]
 
 
-def check_multi_adding(metadata, file_count, metadata_count):
+def check_multi_adding(metadata: Union[str, List],
+                       file_count: int,
+                       metadata_count: int,
+                       batch_mode: bool = False):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
         import time
         start_time = time.time()
-        res = meta_add(metadata=metadata, dataset=git_repo.path)
-        print(
-            f"meta-add ({file_count} files, {metadata_count} records): "
-            f"{time.time() - start_time}s"
-        )
+        if batch_mode:
+            with \
+                    patch("datalad_metalad.add._stdin_reader") as stdin_mock, \
+                    patch("datalad_metalad.add.sys") as sys_mock:
 
-        assert_result_count(res, file_count * metadata_count)
+                stdin_mock.return_value = iter(metadata)
+                meta_add(metadata="-", dataset=git_repo.path, batch_mode=True)
+                assert_in(
+                    call.stdout.write(
+                        f'{{"status": "ok", "succeeded": '
+                        f'{file_count * metadata_count}, "failed": 0}}'),
+                    sys_mock.mock_calls)
+        else:
+            res = meta_add(metadata=metadata, dataset=git_repo.path)
+            assert_result_count(res, file_count * metadata_count)
+
+        print(
+            f"meta-add ({file_count} files, {metadata_count} records, "
+            f"batched: {batch_mode}): {time.time() - start_time}s")
+
         if file_count * metadata_count == 0:
             return
 
@@ -720,8 +738,8 @@ def check_multi_adding(metadata, file_count, metadata_count):
 
 
 def _check_file_multiple_end_to_end_test(file_count: int,
-                                        metadata_count: int,
-                                        file_name: str):
+                                         metadata_count: int,
+                                         file_name: str):
     json.dump(
         _create_json_metadata_records(
             file_count=file_count,
@@ -733,26 +751,32 @@ def _check_file_multiple_end_to_end_test(file_count: int,
 
 
 def _check_memory_multiple_end_to_end_test(file_count: int,
-                                           metadata_count: int):
+                                           metadata_count: int,
+                                           batch_mode: bool = False):
 
     json_objects = _create_json_metadata_records(
         file_count=file_count,
         metadata_count=metadata_count
     )
-    check_multi_adding(json_objects, file_count, metadata_count)
+    check_multi_adding(json_objects, file_count, metadata_count, batch_mode)
 
 
 def test_really_large_end_to_end():
     _check_memory_multiple_end_to_end_test(1000, 1)
 
 
+def _perform_test_multiple_file_records_end_to_end(batch_mode: bool):
+    _check_memory_multiple_end_to_end_test(0, 0, batch_mode)
+    _check_memory_multiple_end_to_end_test(1, 1, batch_mode)
+    _check_memory_multiple_end_to_end_test(31, 31, batch_mode)
+    _check_memory_multiple_end_to_end_test(1, 1000, batch_mode)
+    _check_memory_multiple_end_to_end_test(1000, 1, batch_mode)
+    _check_memory_multiple_end_to_end_test(100, 100, batch_mode)
+
+
 def test_add_multiple_file_records_end_to_end():
-    _check_memory_multiple_end_to_end_test(0, 0)
-    _check_memory_multiple_end_to_end_test(1, 1)
-    _check_memory_multiple_end_to_end_test(31, 31)
-    _check_memory_multiple_end_to_end_test(1, 1000)
-    _check_memory_multiple_end_to_end_test(1000, 1)
-    _check_memory_multiple_end_to_end_test(100, 100)
+    for batch_mode in (True, False):
+        _perform_test_multiple_file_records_end_to_end(batch_mode)
 
 
 @with_tempfile
@@ -781,33 +805,6 @@ def test_batch_mode(temp_dir: str):
                 f'{{"status": "ok", "succeeded": {len(json_objects)}, '
                 f'"failed": 0}}'),
             sys_mock.mock_calls)
-
-
-@with_tempfile(mkdir=True)
-def test_batch_mode_performance(temp_dir: str):
-    create_dataset_proper(temp_dir)
-
-    json_objects = _create_json_metadata_records(file_count=100, metadata_count=100)
-
-    start_time = time.time()
-    with patch("datalad_metalad.add._stdin_reader") as stdin_mock, \
-         patch("datalad_metalad.add.sys") as sys_mock:
-
-        stdin_mock.return_value = iter(json_objects)
-        meta_add(
-            metadata="-",
-            dataset=temp_dir,
-            allow_id_mismatch=True,
-            batch_mode=True)
-
-        assert_in(
-            call.stdout.write(
-                f'{{"status": "ok", "succeeded": {len(json_objects)}, '
-                f'"failed": 0}}'),
-            sys_mock.mock_calls)
-
-    duration = time.time() - start_time
-    print(f"batch-mode: added {100 * 100} records in:", duration)
 
 
 @with_tempfile(mkdir=True)
