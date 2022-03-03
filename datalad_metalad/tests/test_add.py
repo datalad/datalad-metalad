@@ -11,9 +11,13 @@
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import List
-from unittest.mock import patch
+from unittest.mock import (
+    call,
+    patch,
+)
 from uuid import UUID
 
 from datalad.api import (
@@ -24,6 +28,7 @@ from datalad.cmd import BatchedCommand
 from datalad.support.exceptions import IncompleteResultsError
 from datalad.tests.utils import (
     assert_dict_equal,
+    assert_in,
     assert_is_not_none,
     assert_raises,
     assert_result_count,
@@ -760,6 +765,56 @@ def test_batch_mode(temp_dir: str):
     create_dataset_proper(temp_dir)
 
     json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
+
+    with patch("datalad_metalad.add._stdin_reader") as stdin_mock, \
+         patch("datalad_metalad.add.sys") as sys_mock:
+
+        stdin_mock.return_value = iter(json_objects)
+        meta_add(
+            metadata="-",
+            dataset=temp_dir,
+            allow_id_mismatch=True,
+            batch_mode=True)
+
+        assert_in(
+            call.stdout.write(
+                f'{{"status": "ok", "succeeded": {len(json_objects)}, '
+                f'"failed": 0}}'),
+            sys_mock.mock_calls)
+
+
+@with_tempfile(mkdir=True)
+def test_batch_mode_performance(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    json_objects = _create_json_metadata_records(file_count=100, metadata_count=100)
+
+    start_time = time.time()
+    with patch("datalad_metalad.add._stdin_reader") as stdin_mock, \
+         patch("datalad_metalad.add.sys") as sys_mock:
+
+        stdin_mock.return_value = iter(json_objects)
+        meta_add(
+            metadata="-",
+            dataset=temp_dir,
+            allow_id_mismatch=True,
+            batch_mode=True)
+
+        assert_in(
+            call.stdout.write(
+                f'{{"status": "ok", "succeeded": {len(json_objects)}, '
+                f'"failed": 0}}'),
+            sys_mock.mock_calls)
+
+    duration = time.time() - start_time
+    print(f"batch-mode: added {100 * 100} records in:", duration)
+
+
+@with_tempfile(mkdir=True)
+def test_batch_mode_end_to_end(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
     bc = BatchedCommand(
         ["datalad", "meta-add", "-d", temp_dir, "--batch-mode", "-i", "-"])
 
@@ -768,15 +823,8 @@ def test_batch_mode(temp_dir: str):
         result_object = json.loads(result)
         eq_(result_object["status"], "ok")
         eq_(result_object["action"], "meta_add")
-        eq_(result_object["destination"], temp_dir)
-        eq_(
-            Path(result_object["path"]).parts,
-            (
-                    Path(temp_dir)
-                    / json_object["dataset_path"]
-                    / json_object["path"]
-            ).parts
-        )
+        eq_(result_object["cached"], True)
 
-    eq_(bc("\n"), "")
+    eq_(bc(""),
+        f'{{"status": "ok", "succeeded": {len(json_objects)}, "failed": 0}}')
     bc.close()

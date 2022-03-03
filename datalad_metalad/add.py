@@ -14,6 +14,8 @@ can also be created by other means.
 import json
 import logging
 import sys
+import time
+from functools import reduce
 from itertools import chain
 from os import curdir
 from pathlib import Path
@@ -23,7 +25,8 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Union
+    Union,
+    cast
 )
 from uuid import UUID
 
@@ -69,6 +72,9 @@ __docformat__ = "restructuredtext"
 default_mapper_family = "git"
 
 lgr = logging.getLogger("datalad.metadata.add")
+
+max_cache_size = 10000
+max_cache_seconds = 5
 
 
 @dataclass
@@ -276,114 +282,202 @@ class Add(Interface):
         additional_values = additionalvalues or dict()
 
         # Get costly values
-        top_node_cache = dict()
         dataset = check_dataset(dataset or curdir, "add metadata")
-        metadata_store = dataset.pathobj
-        dataset_id = dataset.id
         additional_values_object = get_json_object(additional_values)
 
         if batch_mode is False:
             all_metadata_objects = read_json_objects(metadata)
-        else:
-            if metadata != "-":
-                lgr.warning(
-                    f"Metadata parameter in batch mode is {metadata} instead "
-                    f"of '-' (minus), ignoring it.")
-            all_metadata_objects = _stdin_reader()
+            yield from add_finite_set(
+                all_metadata_objects,
+                additional_values_object,
+                dataset,
+                allow_override,
+                allow_unknown,
+                allow_id_mismatch)
+            return
 
-        with locked_backend(metadata_store):
-            for metadata_object in all_metadata_objects:
-                metadata = process_parameters(
-                    metadata=metadata_object,
-                    additional_values=additional_values_object,
+        if metadata != "-":
+            lgr.warning(
+                f"Metadata parameter in batch mode is {metadata} instead "
+                f"of '-' (minus), ignoring it.")
+
+        all_metadata_objects = list()
+        caching_start_time = time.time()
+        result = (0, 0)
+        for metadata_object in _stdin_reader():
+
+            lgr.log(5, f"batch-mode: read: {repr(metadata_object)}")
+
+            all_metadata_objects.append(metadata_object)
+            sys.stdout.write(
+                '{"status": "ok", "action": "meta_add", "cached": true}\n')
+            sys.stdout.flush()
+
+            caching_duration = caching_start_time - time.time()
+            if len(all_metadata_objects) >= max_cache_size or caching_duration > max_cache_seconds:
+
+                intermediate_result = flush_cache(
+                    metadata_objects=all_metadata_objects,
+                    additional_values_object=additional_values_object,
+                    dataset=dataset,
                     allow_override=allow_override,
-                    allow_unknown=allow_unknown)
+                    allow_unknown=allow_unknown,
+                    allow_id_mismatch=allow_id_mismatch)
 
-                lgr.debug(
-                    f"attempting to add metadata: '{json.dumps(metadata)}' to "
-                    f"metadata store {metadata_store}")
+                result = (
+                    result[0] + intermediate_result[0],
+                    result[1] + intermediate_result[1])
 
-                add_parameter = AddParameter(
-                    result_path=(
+                all_metadata_objects = list()
+                caching_start_time = time.time()
+
+        intermediate_result = flush_cache(
+            metadata_objects=all_metadata_objects,
+            additional_values_object=additional_values_object,
+            dataset=dataset,
+            allow_override=allow_override,
+            allow_unknown=allow_unknown,
+            allow_id_mismatch=allow_id_mismatch)
+
+        succeeded, failed = (
+            result[0] + intermediate_result[0],
+            result[1] + intermediate_result[1])
+
+        result_json = {
+            "status": "ok" if failed == 0 else "error",
+            "succeeded": succeeded,
+            "failed": failed
+        }
+
+        lgr.log(5, f"meta-add batched mode exiting with: {json.dumps(result_json)}")
+        sys.stdout.write(json.dumps(result_json))
+        sys.stdout.flush()
+
+
+def add_finite_set(metadata_objects: List[JSONType],
+                   additional_values_object: JSONType,
+                   dataset: Dataset,
+                   allow_override: bool,
+                   allow_unknown: bool,
+                   allow_id_mismatch: bool
+                   ) -> Generator:
+
+    dataset_id = dataset.id
+    metadata_store = dataset.pathobj
+    top_node_cache = dict()
+
+    with locked_backend(metadata_store):
+        for metadata_object in metadata_objects:
+            metadata = process_parameters(
+                metadata=metadata_object,
+                additional_values=additional_values_object,
+                allow_override=allow_override,
+                allow_unknown=allow_unknown)
+
+            lgr.debug(
+                f"attempting to add metadata: '{json.dumps(metadata)}' to "
+                f"metadata store {metadata_store}")
+
+            add_parameter = AddParameter(
+                result_path=(
                         metadata_store
                         / Path(metadata.get("dataset_path", "."))
                         / Path(metadata.get("path", ""))),
-                    destination_path=metadata_store,
-                    allow_id_mismatch=allow_id_mismatch,
+                destination_path=metadata_store,
+                allow_id_mismatch=allow_id_mismatch,
 
-                    dataset_id=UUID(metadata["dataset_id"]),
-                    dataset_version=metadata["dataset_version"],
-                    file_path=(
-                        MetadataPath(metadata["path"])
-                        if "path" in metadata
-                        else None),
+                dataset_id=UUID(metadata["dataset_id"]),
+                dataset_version=metadata["dataset_version"],
+                file_path=(
+                    MetadataPath(metadata["path"])
+                    if "path" in metadata
+                    else None),
 
-                    root_dataset_id=(
-                        UUID(metadata["root_dataset_id"])
-                        if "root_dataset_id" in metadata
-                        else None),
-                    root_dataset_version=metadata.get("root_dataset_version", None),
-                    dataset_path=MetadataPath(
-                        metadata.get("dataset_path", "")),
+                root_dataset_id=(
+                    UUID(metadata["root_dataset_id"])
+                    if "root_dataset_id" in metadata
+                    else None),
+                root_dataset_version=metadata.get("root_dataset_version", None),
+                dataset_path=MetadataPath(
+                    metadata.get("dataset_path", "")),
 
-                    extractor_name=metadata["extractor_name"],
-                    extractor_version=metadata["extractor_version"],
-                    extraction_time=metadata["extraction_time"],
-                    extraction_parameter=metadata["extraction_parameter"],
-                    agent_name=metadata["agent_name"],
-                    agent_email=metadata["agent_email"],
+                extractor_name=metadata["extractor_name"],
+                extractor_version=metadata["extractor_version"],
+                extraction_time=metadata["extraction_time"],
+                extraction_parameter=metadata["extraction_parameter"],
+                agent_name=metadata["agent_name"],
+                agent_email=metadata["agent_email"],
 
-                    extracted_metadata=metadata["extracted_metadata"],
+                extracted_metadata=metadata["extracted_metadata"],
 
-                    top_node_cache=top_node_cache)
+                top_node_cache=top_node_cache)
 
-                error_result = check_dataset_ids(dataset.pathobj,
-                                                 UUID(dataset_id),
-                                                 add_parameter)
-                if error_result:
-                    if not allow_id_mismatch:
-                        if batch_mode is True:
-                            sys.stdout.write(json.dumps(error_result) + "\n")
-                            sys.stdout.flush()
-                        else:
-                            yield error_result
-                        continue
-                    lgr.warning(error_result["message"])
+            error_result = check_dataset_ids(
+                metadata_store,
+                UUID(dataset_id),
+                add_parameter)
 
-                # If the key "path" is present in the metadata
-                # dictionary, we assume that the metadata-dictionary describes
-                # file-level metadata. Otherwise, we assume that the
-                # metadata-dictionary contains dataset-level metadata.
-                if add_parameter.file_path:
-                    result = tuple(add_file_metadata(dataset.pathobj, add_parameter))
-                else:
-                    result = tuple(add_dataset_metadata(dataset.pathobj, add_parameter))
+            if error_result:
+                if not allow_id_mismatch:
+                    yield error_result
+                    continue
+                lgr.warning(error_result["message"])
 
-                if len(result) > 1:
-                    raise ValueError(
-                        f"expected result length <= 1, got: {len(result)}")
+            # If the key "path" is present in the metadata
+            # dictionary, we assume that the metadata-dictionary describes
+            # file-level metadata. Otherwise, we assume that the
+            # metadata-dictionary contains dataset-level metadata.
+            if add_parameter.file_path:
+                result = tuple(
+                    add_file_metadata(metadata_store, add_parameter))
+            else:
+                result = tuple(
+                    add_dataset_metadata(metadata_store, add_parameter))
 
-                if len(result) == 1:
-                    if batch_mode is True:
-                        sys.stdout.write(json.dumps(result[0]) + "\n")
-                        sys.stdout.flush()
-                    else:
-                        yield result[0]
+            if len(result) > 1:
+                lgr.error(f"ignoring result with length > 1: {repr(result)}")
+                continue
 
-            for value in top_node_cache.values():
-                tree_version_list, uuid_set = value[0:2]
-                tree_version_list.write_out(str(metadata_store))
-                uuid_set.write_out(str(metadata_store))
+            if len(result) == 1:
+                yield result[0]
 
-            flush_object_references(metadata_store)
+        for value in top_node_cache.values():
+            tree_version_list, uuid_set = value[0:2]
+            tree_version_list.write_out(str(metadata_store))
+            uuid_set.write_out(str(metadata_store))
 
-        return
+        flush_object_references(metadata_store)
+
+    return
 
 
-def get_json_object(string_or_object: Union[str, JSONType]):
+def flush_cache(metadata_objects: List[JSONType],
+                additional_values_object: JSONType,
+                dataset: Dataset,
+                allow_override: bool,
+                allow_unknown: bool,
+                allow_id_mismatch: bool) -> Tuple[int, int]:
+
+    return reduce(
+        lambda result, record:
+            (result[0] + 1, result[1])
+            if record["status"] == "ok"
+            else (result[0], result[1] + 1),
+        add_finite_set(
+            metadata_objects,
+            additional_values_object,
+            dataset,
+            allow_override,
+            allow_unknown,
+            allow_id_mismatch),
+        (0, 0)
+    )
+
+
+def get_json_object(string_or_object: Union[str, JSONType]) -> JSONType:
     if isinstance(string_or_object, str):
         return json.loads(string_or_object)
-    return string_or_object
+    return cast(JSONType, string_or_object)
 
 
 def process_parameters(metadata: dict,
@@ -642,8 +736,6 @@ def add_metadata_content(metadata: Metadata, ap: AddParameter):
 def _stdin_reader() -> Generator:
     for line in sys.stdin:
         if line == "\n":
-            sys.stdout.write("\n")
-            sys.stdout.flush()
             return
         try:
             yield json.loads(line)
