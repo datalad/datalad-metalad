@@ -104,7 +104,7 @@ class DemoFilter(MetadataFilterBase):
             f"{repr(self)}: called with args: {repr(args)}, "
             f"kwargs: {repr(kwargs)}")
 
-        histograms = defaultdict(dict)
+        histograms = defaultdict(list)
         for metadata_iterable in metadata_iterables:
             for metadata_record in metadata_iterable:
                 self.add_metadata_to_histograms(metadata_record, histograms)
@@ -129,12 +129,9 @@ class DemoFilter(MetadataFilterBase):
 
     def add_metadata_to_histograms(self,
                                    metadata: Metadata,
-                                   histograms: Dict):
+                                   histogram: Dict):
 
-        extractor_histogram = histograms[metadata.extractor_name]
         flattened_metadata = _flatten_structure(metadata.extracted_metadata)
         for name_tuple, value in flattened_metadata:
-            key = _name_tuple_2_str(name_tuple)
-            if key not in extractor_histogram:
-                extractor_histogram[key] = []
-            extractor_histogram[key].append(value)
+            key = metadata.extractor_name + "." + _name_tuple_2_str(name_tuple)
+            histogram[key].append(value)
