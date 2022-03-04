@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata indexer base class"""
+"""MetadataRecord indexer base class"""
 import abc
 from typing import (
     Iterable,
@@ -15,7 +15,7 @@ from typing import (
 )
 from uuid import UUID
 
-from ..metadatatypes.metadata import Metadata
+from ..metadatatypes.metadata import MetadataRecord
 
 
 __docformat__ = "restructuredtext"
@@ -30,10 +30,10 @@ class MetadataFilterBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def filter(self,
-               metadata_iterables: List[Iterable[Metadata]],
+               metadata_iterables: List[Iterable[MetadataRecord]],
                *args,
                **kwargs
-               ) -> Iterable[Metadata]:
+               ) -> Iterable[MetadataRecord]:
         """ Entry for the filter operation
 
         This method is called by the 'meta-filter' driver. It should iterate
@@ -53,7 +53,7 @@ class MetadataFilterBase(metaclass=abc.ABCMeta):
                call
         :return: an iterable that contains the filtered/generated metadata as
                instances of "datalad_metalad.metadatatypes.Metadata".
-        :rtype: Iterable[Metadata]
+        :rtype: Iterable[MetadataRecord]
         """
         raise NotImplementedError
 

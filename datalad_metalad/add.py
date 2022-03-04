@@ -8,7 +8,7 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """
 Add metadata to a metadata store.
-Metadata is usually provided by an extractor, but
+MetadataRecord is usually provided by an extractor, but
 can also be created by other means.
 """
 import json
@@ -298,7 +298,7 @@ class Add(Interface):
 
         if metadata != "-":
             lgr.warning(
-                f"Metadata parameter in batch mode is {metadata} instead "
+                f"MetadataRecord parameter in batch mode is {metadata} instead "
                 f"of '-' (minus), ignoring it.")
 
         all_metadata_objects = list()

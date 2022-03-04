@@ -6,7 +6,6 @@ from dataclasses import (
 from pathlib import Path
 from typing import (
     Dict,
-    List,
     Optional,
     Union,
     cast,
@@ -31,6 +30,7 @@ DATASET_ID = "dataset_id"
 TYPE = "type"
 EXTRACTION_PARAMETER = "extraction_parameter"
 
+AGGREGATION_INFO = "aggregation_info"
 DATASET_PATH = "dataset_path"
 ROOT_DATASET_ID = "root_dataset_id"
 ROOT_DATASET_VERSION = "root_dataset_version"
@@ -48,7 +48,14 @@ META_FILTER = "meta_filter"
 
 
 @dataclass(eq=True, frozen=True)
-class Metadata:
+class AggregationInfo:
+    root_dataset_id: UUID
+    root_dataset_version: str
+    dataset_path: MetadataPath
+
+
+@dataclass(eq=True, frozen=True)
+class MetadataRecord:
     type: str
     extractor_name: str
     extractor_version: str
@@ -60,15 +67,13 @@ class Metadata:
     dataset_version: str
     extracted_metadata: JSONType
     path: MetadataPath = MetadataPath(".")
-    root_dataset_id: Optional[UUID] = None
-    root_dataset_version: Optional[str] = None
-    dataset_path: Optional[MetadataPath] = None
+    aggregation_info: Optional[AggregationInfo] = None
 
     def __post_init__(self):
         if self.type not in (DATASET, FILE):
             raise ValueError(f"unknown type: '{self.type}'")
         if self.path == MetadataPath(".") and self.type != DATASET:
-            raise ValueError(f"root-path in type: '{self.type}'")
+            raise ValueError(f"root-path ({self.path}) in type: '{self.type}'")
 
     def as_json_obj(self) -> JSONType:
         result = {
@@ -79,24 +84,14 @@ class Metadata:
             },
             **(
                 {
-                    ROOT_DATASET_ID: (
-                        str(self.root_dataset_id)
-                        if self.root_dataset_id is not None
-                        else None
-                    ),
-                    ROOT_DATASET_VERSION: self.root_dataset_version,
-                    DATASET_PATH: (
-                        str(self.dataset_path)
-                        if self.dataset_path is not None
-                        else None
-                    )
+                    ROOT_DATASET_ID: str(self.aggregation_info.root_dataset_id),
+                    ROOT_DATASET_VERSION: self.aggregation_info.root_dataset_version,
+                    DATASET_PATH: str(self.aggregation_info.dataset_path)
                 }
+                if self.aggregation_info is not None
+                else {}
             )
         }
-        if result[ROOT_DATASET_ID] is None:
-            del result[ROOT_DATASET_ID]
-            del result[ROOT_DATASET_VERSION]
-            del result[DATASET_PATH]
         return result
 
     def as_json_str(self):
@@ -104,26 +99,28 @@ class Metadata:
 
     @classmethod
     def from_json(cls, json_obj):
-        return cls(**{
-            **json_obj,
-            **{
-                DATASET_ID: UUID(json_obj[DATASET_ID]),
-                PATH: MetadataPath(json_obj.get(PATH, "")),
-            },
-            **{
-                ROOT_DATASET_ID: (
-                    UUID(json_obj[ROOT_DATASET_ID])
-                    if json_obj.get(ROOT_DATASET_ID, None)
-                    else None
-                ),
-                ROOT_DATASET_VERSION: json_obj.get(ROOT_DATASET_VERSION, None),
-                DATASET_PATH: (
-                    MetadataPath(json_obj[DATASET_PATH])
-                    if json_obj.get(DATASET_PATH, None)
-                    else None
-                )
-            }
-        })
+
+        if json_obj.get(ROOT_DATASET_ID, None) is not None:
+            aggregation_info = AggregationInfo(
+                json_obj[ROOT_DATASET_ID],
+                json_obj[ROOT_DATASET_VERSION],
+                json_obj[DATASET_PATH])
+        else:
+            aggregation_info = None
+
+        return cls(
+            type=json_obj["type"],
+            extractor_name=json_obj["extractor_name"],
+            extractor_version=json_obj["extractor_version"],
+            extraction_parameter=json_obj[EXTRACTION_PARAMETER],
+            extraction_time=json_obj["extraction_time"],
+            agent_name=json_obj["agent_name"],
+            agent_email=json_obj["agent_email"],
+            dataset_id=UUID(json_obj["dataset_id"]),
+            dataset_version=json_obj["dataset_version"],
+            extracted_metadata=json_obj["extracted_metadata"],
+            path=MetadataPath(json_obj[PATH]),
+            aggregation_info=aggregation_info)
 
 
 class MetadataResult(Result):
@@ -132,7 +129,7 @@ class MetadataResult(Result):
                  path: Union[str, Path],
                  action: str,
                  metadata_type: str,
-                 metadata_record: Metadata,
+                 metadata_record: MetadataRecord,
                  metadata_source: Union[str, Path],
                  backend: str):
 
@@ -167,6 +164,6 @@ class MetadataResult(Result):
             json_obj[PATH],
             json_obj[ACTION],
             json_obj[TYPE],
-            Metadata.from_json(json_obj[METADATA_RECORD]),
+            MetadataRecord.from_json(json_obj[METADATA_RECORD]),
             json_obj[METADATA_SOURCE],
             json_obj[BACKEND])

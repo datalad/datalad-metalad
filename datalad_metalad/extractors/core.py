@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for Datalad's own core storage"""
+"""MetadataRecord extractor for Datalad's own core storage"""
 
 # TODO dataset metadata
 # - known annex UUIDs

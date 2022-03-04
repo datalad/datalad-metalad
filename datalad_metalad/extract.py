@@ -469,7 +469,7 @@ def get_extractor_class(extractor_name: str) -> Union[
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
         lgr.warning(
-            "Metadata extractor %s from distribution %s overrides "
+            "MetadataRecord extractor %s from distribution %s overrides "
             "metadata extractor from distribution %s",
             extractor_name,
             entry_point.dist.project_name,

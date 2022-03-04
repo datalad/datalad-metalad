@@ -93,7 +93,7 @@ def get_metadata_type(ds):
     Returns
     -------
     list(str)
-      Metadata type labels or an empty list if no type setting is found and
+      MetadataRecord type labels or an empty list if no type setting is found and
       optional auto-detection yielded no results
     """
     cfg_key = 'datalad.metadata.nativetype'

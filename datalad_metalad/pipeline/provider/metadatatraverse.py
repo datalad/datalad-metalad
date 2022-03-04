@@ -52,7 +52,7 @@ class MetadataTraverser(Provider):
                 optional=False),
             ParameterEntry(
                 keyword="pattern",
-                help="""Metadata path pattern that is used to identify entry
+                help="""MetadataRecord path pattern that is used to identify entry
                         points. If not path is given, "." is used, i.e. the
                         root metadata entry is listed.""",
                 optional=True),

@@ -4,7 +4,7 @@ from dataladmetadatamodel.metadata import ExtractorConfiguration
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from ..metadata import (
-    Metadata,
+    MetadataRecord,
 )
 
 
@@ -29,7 +29,7 @@ test_json_1 = dict(
 
 
 def test_basic():
-    md = Metadata(
+    md = MetadataRecord(
         type="file",
         extractor_name="ext-a",
         extractor_version="1.0",
@@ -49,7 +49,7 @@ def test_basic():
 
 
 def test_uuid_conversion():
-    md = Metadata(
+    md = MetadataRecord(
         type="file",
         extractor_name="ext-a",
         extractor_version="1.0",
@@ -69,5 +69,5 @@ def test_uuid_conversion():
 
 
 def test_from_json():
-    md = Metadata.from_json(test_json_1)
+    md = MetadataRecord.from_json(test_json_1)
     print(md)

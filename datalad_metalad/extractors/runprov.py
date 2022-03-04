@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for provenance information in DataLad's `run` records
+"""MetadataRecord extractor for provenance information in DataLad's `run` records
 
 Concept
 -------

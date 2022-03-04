@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for Git-annex metadata
+"""MetadataRecord extractor for Git-annex metadata
 
 This extractor only deals with the metadata that can be assigned to annexed
 files via git-annex's `metadata` command. It does not deal with other implicit

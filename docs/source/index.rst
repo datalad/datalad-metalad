@@ -28,7 +28,7 @@ that ship with the DataLad core package.
    meta_aggregate
    meta_dump
 
-Metadata extractors
+MetadataRecord extractors
 -------------------
 
 To use any of the contained extractors their names needs to be prefixed with

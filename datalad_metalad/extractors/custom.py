@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for custom (JSON-LD) metadata contained in a dataset
+"""MetadataRecord extractor for custom (JSON-LD) metadata contained in a dataset
 
 One or more source files with metadata can be specified via the
 'datalad.metadata.custom-dataset-source' configuration variable.
