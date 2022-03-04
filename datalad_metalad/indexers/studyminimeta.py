@@ -1,7 +1,18 @@
-from typing import Dict, Generator, List, Tuple, Union
+from typing import (
+    Dict,
+    Generator,
+    List,
+    Tuple,
+    Union,
+)
 
-from .jsonld import IndexerSchemaOrgProperties, IndexerJsonLdTags, IndexerSchemaOrgTypes
 from datalad.metadata.indexers.base import MetadataIndexer
+
+from .jsonld import (
+    IndexerSchemaOrgProperties,
+    IndexerJsonLdTags,
+    IndexerSchemaOrgTypes,
+)
 
 
 STUDYMINIMETA_FORMAT_NAME = 'metalad_studyminimeta'

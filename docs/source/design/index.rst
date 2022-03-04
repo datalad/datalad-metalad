@@ -13,3 +13,4 @@ The chapter describes the design of particular subsystems in DataLad.
    :maxdepth: 2
 
    conduct
+   datatypes

@@ -375,7 +375,7 @@ def test_extra_parameter_recognition(ds_path):
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
         eq_(
-            de.call_args_list[0][0][0].extractor_arguments,
+            de.call_args_list[0][0][0].extraction_parameter,
             {
                 "k1": "v1",
                 "k2": "v2",
@@ -407,7 +407,7 @@ def test_path_and_extra_parameter_recognition(ds_path):
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
         eq_(
-            fe.call_args_list[0][0][0].extractor_arguments,
+            fe.call_args_list[0][0][0].extraction_parameter,
             {
                 "k1": "v1",
                 "k2": "v2",
@@ -523,7 +523,7 @@ def test_extractor_parameter_handling(ds_path):
 
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
-        eq_(de.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+        eq_(de.call_args[0][0].extraction_parameter, {"k0": "v0", "k1": "v1"})
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
             patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -538,7 +538,7 @@ def test_extractor_parameter_handling(ds_path):
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].file_tree_path, MetadataPath("sub/one"))
-        eq_(fe.call_args[0][0].extractor_arguments, {"k0": "v0", "k1": "v1"})
+        eq_(fe.call_args[0][0].extraction_parameter, {"k0": "v0", "k1": "v1"})
 
 
 @with_tree(meta_tree)

@@ -52,6 +52,12 @@ command_suite = (
             'meta-conduct',
             'meta_conduct'
         ),
+        (
+            'datalad_metalad.filter',
+            'Filter',
+            'meta-filter',
+            'meta_filter'
+        ),
     ]
 )
 

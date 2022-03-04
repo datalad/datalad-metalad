@@ -35,7 +35,6 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 from datalad.ui import ui
-from dataladmetadatamodel.common import get_top_level_metadata_objects
 from dataladmetadatamodel.datasettree import datalad_root_record_name
 from dataladmetadatamodel.mapper.reference import Reference
 from dataladmetadatamodel.mappableobject import ensure_mapped
@@ -49,14 +48,14 @@ from dataladmetadatamodel.mtreenode import MTreeNode
 from dataladmetadatamodel.uuidset import UUIDSet
 from dataladmetadatamodel.versionlist import TreeVersionList
 
-from .exceptions import NoMetadataStoreFound
 from .pathutils.metadataurlparser import (
     MetadataURLParser,
     TreeMetadataURL,
     UUIDMetadataURL,
 )
 
-from .types import JSONType
+from .metadatautils import get_metadata_objects
+from .metadatatypes import JSONType
 from .pathutils.mtreesearch import MTreeSearch
 
 
@@ -206,7 +205,7 @@ def show_file_tree_metadata(mapper: str,
                     result_count += 1
 
                     # Ignore empty datasets and ignore paths that do not
-                    # described metadata, but a directory
+                    # describe metadata, but a directory.
                     if metadata is None or isinstance(metadata, MTreeNode):
                         continue
 
@@ -473,27 +472,16 @@ class Dump(Interface):
             path="",
             recursive=False):
 
-        metadata_store_path = dataset \
-            if Reference.is_remote(str(dataset or ".")) \
-            else Path(dataset or ".")
-
-        backend = default_mapper_family
-        tree_version_list, uuid_set = get_top_level_metadata_objects(
-            backend,
-            metadata_store_path)
-
-        # We require both entry points to exist for valid metadata
-        if tree_version_list is None or uuid_set is None:
-            raise NoMetadataStoreFound(
-                f"No valid datalad metadata found in: "
-                f"{Path(metadata_store_path).resolve()}")
+        metadata_store_path, tree_version_list, uuid_set = get_metadata_objects(
+            dataset,
+            default_mapper_family)
 
         parser = MetadataURLParser(path)
         metadata_url = parser.parse()
 
         if isinstance(metadata_url, TreeMetadataURL):
             yield from dump_from_dataset_tree(
-                backend,
+                default_mapper_family,
                 metadata_store_path,
                 tree_version_list,
                 metadata_url,
@@ -501,7 +489,7 @@ class Dump(Interface):
 
         elif isinstance(metadata_url, UUIDMetadataURL):
             yield from dump_from_uuid_set(
-                backend,
+                default_mapper_family,
                 metadata_store_path,
                 uuid_set,
                 metadata_url,
