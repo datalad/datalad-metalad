@@ -111,7 +111,8 @@ class DemoFilter(MetadataFilterBase):
 
         # TODO: what is the best value for the dataset id and the dataset
         #  version? The extracted metadata might stem from a number of
-        #  different datasets.
+        #  different datasets. For now we set it to unknown, i.e.
+        #  UUID '00000000-0000-0000-0000-000000000000', and version '0'.
         yield Metadata(
             type="dataset",
             extractor_version=self.version,
