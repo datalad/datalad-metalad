@@ -29,7 +29,7 @@ that ship with the DataLad core package.
    meta_dump
 
 MetadataRecord extractors
--------------------
+-------------------------
 
 To use any of the contained extractors their names needs to be prefixed with
 `metalad_`, such that the `runprov` extractor is effectively named
