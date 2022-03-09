@@ -25,6 +25,7 @@ from ..pipelinedata import (
     ResultState,
 )
 from ..provider.datasettraverse import DatasetTraverseResult
+from ...metadatatypes.metadata import MetadataRecord
 
 
 logger = logging.getLogger("datalad.metadata.processor.extract")
@@ -39,7 +40,7 @@ class ExtractorType(enum.Enum):
 class MetadataExtractorResult(PipelineResult):
     path: str
     context: Optional[Dict] = None
-    metadata_record: Optional[Dict] = field(init=False)
+    metadata_record: Optional[MetadataRecord] = field(init=False)
 
     def to_json(self) -> Dict:
         return {
@@ -113,18 +114,19 @@ class MetadataExtractor(Processor):
             return pipeline_data
 
         results = []
-        for extract_result in meta_extract(**kwargs):
+        for result in meta_extract(**kwargs):
 
-            path = str(dataset_path / extract_result.get("path", ""))
+            path = str(dataset_path / result.get("path", ""))
 
-            if extract_result["status"] == "ok":
+            if result["status"] == "ok":
                 md_extractor_result = MetadataExtractorResult(ResultState.SUCCESS, path)
-                md_extractor_result.metadata_record = extract_result["metadata_record"]
+                md_extractor_result.metadata_record = MetadataRecord(
+                    **result["metadata_record"])
                 md_extractor_result.context = None
 
             else:
                 md_extractor_result = MetadataExtractorResult(ResultState.FAILURE, path)
-                md_extractor_result.base_error = extract_result
+                md_extractor_result.base_error = result
             results.append(md_extractor_result)
 
         pipeline_data.add_result_list("metadata", results)

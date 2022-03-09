@@ -54,7 +54,7 @@ class AggregationInfo:
     dataset_path: MetadataPath
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(eq=True)
 class MetadataRecord:
     type: str
     extractor_name: str

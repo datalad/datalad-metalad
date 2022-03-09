@@ -24,6 +24,7 @@ from ..pipelinedata import (
 from ..processor.extract import MetadataExtractorResult
 from ..provider.datasettraverse import DatasetTraverseResult
 from ..provider.metadatatraverse import MetadataTraverseResult
+from ...metadatatypes.metadata import AggregationInfo
 
 
 logger = logging.getLogger("datalad.meta-conduct.consumer.add")
@@ -100,20 +101,23 @@ class BatchAdder(Consumer):
                 MetadataExtractorResult,
                 metadata_extractor_result).metadata_record
 
-            metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
-            if "path" in metadata_record:
-                metadata_record["path"] = str(metadata_record["path"])
-                path = metadata_record["path"]
-            else:
-                path = ""
+            path = str(metadata_record.path)
+            if additional_values:
+                metadata_record.aggregation_info = AggregationInfo(
+                    **additional_values)
 
-            metadata_record_json = json.dumps({
-                **metadata_record,
-                **(additional_values or {})
-            })
+            #metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
+            #if "path" in metadata_record:
+            #    metadata_record["path"] = str(metadata_record["path"])
+            #    path = metadata_record["path"]
+            #else:
+            #    path = ""
 
-            logger.debug(f"adding {repr(metadata_record_json)}")
-            response = json.loads(self.batched_add(metadata_record_json))
+
+            metadata_record_json_str = metadata_record.as_json_str()
+
+            logger.debug(f"adding {repr(metadata_record_json_str)}")
+            response = json.loads(self.batched_add(metadata_record_json_str))
 
             if response["status"] == "ok":
                 add_result = MetadataBatchAddResult(ResultState.SUCCESS, path)

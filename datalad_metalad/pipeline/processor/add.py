@@ -105,21 +105,22 @@ class MetadataAdder(Processor):
             metadata_record = cast(
                 MetadataExtractorResult,
                 metadata_extractor_result).metadata_record
+            metadata_record_json_obj = metadata_record.as_json_obj()
 
-            metadata_record["dataset_id"] = str(metadata_record["dataset_id"])
-            if "path" in metadata_record:
-                metadata_record["path"] = str(metadata_record["path"])
+            #metadata_record.dataset_id = str(metadata_record.dataset_id)
+            #if "path" in metadata_record:
+            #    metadata_record["path"] = str(metadata_record["path"])
 
             logger.debug(
                 "processor.add: running meta-add with:\n"
                 f"metadata:\n"
-                f"{json.dumps(metadata_record)}\n"
+                f"{json.dumps(metadata_record_json_obj)}\n"
                 f"dataset: {metadata_repository}\n"
                 f"additional_values:\n"
                 f"{json.dumps(additional_values)}\n")
 
             result = []
-            for add_result in meta_add(metadata=metadata_record,
+            for add_result in meta_add(metadata=metadata_record_json_obj,
                                        dataset=str(metadata_repository),
                                        additionalvalues=additional_values,
                                        result_renderer="disabled"):
