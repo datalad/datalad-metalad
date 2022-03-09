@@ -35,5 +35,5 @@ This metadata-type classes are defined in ``datalad_metalad.metadatatypes``. The
 
 - ``MetadataResult``: a subclass of ``Result``, that represents the result of a datalad API call that yields metadata
 
-- ``Metadata``: a dataclass, which represents a metadata record in a metadata result
+- ``MetadataRecord``: a dataclass, which represents a metadata record in a metadata result
 

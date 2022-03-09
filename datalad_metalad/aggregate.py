@@ -100,8 +100,8 @@ class Aggregate(Interface):
 
     .. note::
 
-        Metadata storage is not forced to reside inside the datalad repository
-        of the dataset. Metadata might be stored within the repository that
+        MetadataRecord storage is not forced to reside inside the datalad repository
+        of the dataset. MetadataRecord might be stored within the repository that
         is used by a dataset, but it might as well be stored in another
         repository (or a non-git backend, once those exist). To distinguish
         metadata storage from the dataset storage, we refer to metadata storage
@@ -115,7 +115,7 @@ class Aggregate(Interface):
         metadata-store, we have to give the source metadata-store itself and the
         intra-dataset-path with regard to the root-dataset.
 
-    Metadata aggregation refers to a procedure that combines metadata from
+    MetadataRecord aggregation refers to a procedure that combines metadata from
     different sub-datasets into a root dataset, i.e. a dataset that contains
     all the sub-datasets. Aggregated metadata is "prefixed" with the
     intra-dataset-paths of the sub-datasets. The intra-dataset-path for a
@@ -148,7 +148,7 @@ class Aggregate(Interface):
             metavar="ROOT_DATASET",
             doc="""Topmost dataset metadata will be aggregated into. If no
             dataset is specified, a dataset will be discovered based on the
-            current working directory. Metadata for aggregated datasets will
+            current working directory. MetadataRecord for aggregated datasets will
             contain a dataset path that is relative to the top-dataset""",
             constraints=EnsureDataset() | EnsureNone()),
         path=Parameter(

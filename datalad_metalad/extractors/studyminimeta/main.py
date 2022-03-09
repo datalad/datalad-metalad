@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for studyminimeta metadata contained in a dataset
+"""MetadataRecord extractor for studyminimeta metadata contained in a dataset
 
 The metadata source file can be specified via the
 'datalad.metadata.studyminimeta-source' configuration variable,

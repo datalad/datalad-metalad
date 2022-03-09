@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for files stored in Datalad's own core storage"""
+"""MetadataRecord extractor for files stored in Datalad's own core storage"""
 import logging
 from uuid import UUID
 

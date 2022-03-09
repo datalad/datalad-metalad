@@ -20,7 +20,7 @@ different from the previous release in a few ways):
 
 1. Leaner commands with unix-style behavior, i.e. one command for one operation, and commands are chainable (use results from one command as input for another command, e.g. meta-extract|meta-add).
 
-2. Metadata modifications do not alter the state of the datalad dataset. In previous releases, changes to metadata have altered the version (commit-hash) of the repository although the primary data did not change. This is not the case in the new system. The new system does provide information about the primary data version, i.e. commit-hash, from which the individual metadata elements were created.
+2. MetadataRecord modifications do not alter the state of the datalad dataset. In previous releases, changes to metadata have altered the version (commit-hash) of the repository although the primary data did not change. This is not the case in the new system. The new system does provide information about the primary data version, i.e. commit-hash, from which the individual metadata elements were created.
 
 3. The ability to support a wide range of metadata storage backends in the future (this is facilitated by the [datalad-metadata-model](https://github.com/datalad/metadata-model)) which is developed alongside metalad), which separates the logical metadata model used in metalad from the storage backends, by abstracting the storage backend), Currently git-repository storage is supported.
 

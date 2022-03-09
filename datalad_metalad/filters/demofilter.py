@@ -14,7 +14,7 @@ from uuid import UUID
 from .base import MetadataFilterBase
 from ..metadatatypes.metadata import (
     JSONType,
-    Metadata,
+    MetadataRecord,
 )
 
 
@@ -95,10 +95,10 @@ class DemoFilter(MetadataFilterBase):
         return DemoFilter.uuid
 
     def filter(self,
-               metadata_iterables: List[Iterable[Metadata]],
+               metadata_iterables: List[Iterable[MetadataRecord]],
                *args,
                **kwargs
-               ) -> Iterable[Metadata]:
+               ) -> Iterable[MetadataRecord]:
 
         logger.debug(
             f"{repr(self)}: called with args: {repr(args)}, "
@@ -113,7 +113,7 @@ class DemoFilter(MetadataFilterBase):
         #  version? The extracted metadata might stem from a number of
         #  different datasets. For now we set it to unknown, i.e.
         #  UUID '00000000-0000-0000-0000-000000000000', and version '0'.
-        yield Metadata(
+        yield MetadataRecord(
             type="dataset",
             extractor_version=self.version,
             extraction_parameter={
@@ -129,7 +129,7 @@ class DemoFilter(MetadataFilterBase):
             extracted_metadata=dict(histograms))
 
     def add_metadata_to_histograms(self,
-                                   metadata: Metadata,
+                                   metadata: MetadataRecord,
                                    histogram: Dict):
 
         flattened_metadata = _flatten_structure(metadata.extracted_metadata)

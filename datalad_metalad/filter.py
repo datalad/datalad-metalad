@@ -41,7 +41,7 @@ from .dump import (
 )
 from .filters.base import MetadataFilterBase
 from .metadatatypes.metadata import (
-    Metadata,
+    MetadataRecord,
     MetadataResult,
     META_FILTER,
 )
@@ -65,9 +65,9 @@ default_backend = "git"
 lgr = logging.getLogger("datalad.metadata.filter")
 
 
-def create_metadata_object(metadata_dict: dict) -> Metadata:
+def create_metadata_object(metadata_dict: dict) -> MetadataRecord:
     """Create a metadata type instance from a JSON representation """
-    return Metadata.from_json(metadata_dict)
+    return MetadataRecord.from_json(metadata_dict)
 
 
 def create_iterator(dataset: Union[str, Path],
@@ -140,7 +140,7 @@ class Filter(Interface):
             args=("metadataurls",),
             metavar="METADATA_URL",
             nargs="+",
-            doc="""Metadata URL(s). A list of at least one metadata URL. The
+            doc="""MetadataRecord URL(s). A list of at least one metadata URL. The
                    filter will receive a list of iterables, that contains one 
                    iterable for each metadata URL. The iterables will yields all
                    metadata-entries that match the respective metadata URL.""",
@@ -225,7 +225,7 @@ class Filter(Interface):
 def run_filter(filter_name: str,
                filter_args: Optional[List],
                metadata_iterables: List[Iterable]
-               ) -> Iterable[Metadata]:
+               ) -> Iterable[MetadataRecord]:
 
     filter_class = get_filter_class(filter_name)
     filter_instance = filter_class(filter_name)
@@ -257,7 +257,7 @@ def get_filter_class(filter_name: str) -> Type[MetadataFilterBase]:
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
         lgr.warning(
-            "Metadata filter %s from distribution %s overrides "
+            "MetadataRecord filter %s from distribution %s overrides "
             "metadata filter from distribution %s",
             filter_name,
             entry_point.dist.project_name,

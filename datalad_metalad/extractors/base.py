@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor base class"""
+"""MetadataRecord extractor base class"""
 import abc
 import dataclasses
 import enum
@@ -45,7 +45,7 @@ class ExtractorResult:
 class DataOutputCategory(enum.Enum):
     """
     Describe how extractors output metadata.
-    Metadata can be small, like a few numbers,
+    MetadataRecord can be small, like a few numbers,
     or large e.g. images or sets of images.
 
     An extractor can either output to a single file
