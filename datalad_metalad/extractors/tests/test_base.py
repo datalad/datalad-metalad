@@ -8,10 +8,12 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test all extractors at a basic level"""
 
+from nose import SkipTest
+from pkg_resources import iter_entry_points
 from six import (
     text_type,
 )
-from pkg_resources import iter_entry_points
+
 from datalad.api import (
     Dataset,
     meta_extract,
@@ -19,8 +21,7 @@ from datalad.api import (
     install,
 )
 from datalad.support.gitrepo import GitRepo
-
-from nose import SkipTest
+from datalad.support.exceptions import NoDatasetFound
 from datalad.tests.utils import (
     assert_repo_status,
     assert_true,
@@ -32,10 +33,12 @@ from datalad.tests.utils import (
     with_tree,
     with_tempfile,
 )
+
 from ...tests import (
     make_ds_hierarchy_with_metadata,
     _get_dsmeta_from_core_metadata,
 )
+from ...tests.utils import create_dataset_proper
 
 
 @with_tree(tree={'file.dat': ''})
@@ -117,43 +120,31 @@ def test_api_annex():
 @with_tempfile(mkdir=True)
 def test_plainest(path):
 
-    # blow on nothing
+    # Expect an exception if no dataset exists
     assert_raises(
-        ValueError,
+        NoDatasetFound,
         meta_extract, dataset=path, extractorname='metalad_core')
 
     r = GitRepo(path, create=True)
-    # proper error, no crash, when there is the thinnest of all traces
-    # of a dataset: but nothing to describe
+    # Expect an exception, when the dataset is unusable because it has
+    # no dataset id
+    assert_raises(
+        NoDatasetFound,
+        meta_extract, dataset=path, extractorname='metalad_core')
+
+    # Expect proper extract run on a proper dataset.
+    dataset = create_dataset_proper(path)
     assert_result_count(
         meta_extract(
-            dataset=r.path,
+            dataset=dataset.path,
             extractorname='metalad_core',
             on_failure='ignore',
         ),
         1,
-        status='error',
+        status='ok',
         # message contains exception
         type='dataset',
         path=r.path,
-    )
-    # not we add some dummy content that does not count as metadata-relevant
-    # and we still fail
-    (r.pathobj / '.datalad').mkdir()
-    (r.pathobj / '.datalad' / 'dummy').write_text(text_type('stamp'))
-    ds = Dataset(r.path)
-    ds.save()
-    assert_result_count(
-        meta_extract(
-            dataset=ds.path,
-            extractorname='metalad_core',
-            on_failure='ignore',
-        ),
-        1,
-        status='error',
-        # message contains exception
-        type='dataset',
-        path=ds.path,
     )
 
 

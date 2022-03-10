@@ -27,3 +27,7 @@ class MetadataKeyException(RuntimeError):
 
 class NoMetadataStoreFound(InsufficientArgumentsError):
     pass
+
+
+class ExtractorNotFoundError(InsufficientArgumentsError):
+    pass

@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 from datalad.distribution.dataset import Dataset
 from datalad.api import meta_extract
+from datalad.support.exceptions import NoDatasetFound
 from datalad.utils import chpwd
 
 from datalad.tests.utils import (
@@ -30,7 +31,9 @@ from datalad.tests.utils import (
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
+from .utils import create_dataset
 from ..extract import get_extractor_class
+from ..exceptions import ExtractorNotFoundError
 
 
 meta_tree = {
@@ -46,16 +49,17 @@ def test_empty_dataset_error(path):
     # go into virgin dir to avoid detection of any dataset
     with chpwd(path):
         assert_raises(
-            ValueError,
+            NoDatasetFound,
             meta_extract, extractorname="metalad_core")
 
 
 @with_tempfile(mkdir=True)
 def test_unknown_extractor_error(path):
     # ensure failure on unavailable metadata extractor
+    create_dataset(path, UUID(int=0))
     with chpwd(path):
         assert_raises(
-            ValueError,
+            ExtractorNotFoundError,
             meta_extract, extractorname="bogus__")
 
 
