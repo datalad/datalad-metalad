@@ -92,6 +92,7 @@ class MetadataRecord:
                 else {}
             )
         }
+        del result[AGGREGATION_INFO]
         return result
 
     def as_json_str(self):
