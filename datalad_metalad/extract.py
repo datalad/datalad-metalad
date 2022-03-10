@@ -60,8 +60,8 @@ from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
+from .exceptions import ExtractorNotFoundError
 from .utils import (
-    NoDatasetFound,
     args_to_dict,
     check_dataset,
 )
@@ -227,6 +227,8 @@ class Extract(Interface):
                 if isinstance(context, str)
                 else context))
 
+        source_dataset = check_dataset(dataset or curdir, "extract metadata")
+        x = """
         try:
             source_dataset = check_dataset(dataset or curdir,
                                            "extract metadata")
@@ -240,6 +242,7 @@ class Extract(Interface):
                 logger=lgr
             )
             return
+        """
 
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
@@ -456,7 +459,7 @@ def get_extractor_class(extractor_name: str) -> Union[
         iter_entry_points("datalad.metadata.extractors", extractor_name))
 
     if not entry_points:
-        raise ValueError(
+        raise ExtractorNotFoundError(
             "Requested metadata extractor '{}' not available".format(
                 extractor_name))
 
