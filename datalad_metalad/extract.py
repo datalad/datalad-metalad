@@ -401,7 +401,7 @@ def perform_file_metadata_extraction(extraction_arguments: ExtractionArguments,
     result.datalad_result_dict["action"] = "meta_extract"
     result.datalad_result_dict["path"] = extraction_arguments.local_source_object_path
     if result.extraction_success:
-        result.datalad_result_dict["metadata_record"] = dict(
+        result.datalad_result_dict["metadata_record"] = dict(   # TODO: use MetadataRecord
             type="file",
             dataset_id=extraction_arguments.source_dataset_id,
             dataset_version=extraction_arguments.source_dataset_version,
@@ -430,7 +430,7 @@ def perform_dataset_metadata_extraction(ep: ExtractionArguments,
     result.datalad_result_dict["action"] = "meta_extract"
     result.datalad_result_dict["path"] = ep.local_source_object_path
     if result.extraction_success:
-        result.datalad_result_dict["metadata_record"] = dict(
+        result.datalad_result_dict["metadata_record"] = dict(   # TODO: Use MetadataRecord
             type="dataset",
             dataset_id=ep.source_dataset_id,
             dataset_version=ep.source_dataset_version,
