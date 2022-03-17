@@ -6,6 +6,8 @@ from typing import (
     List,
 )
 
+from datalad.support.param import Parameter
+
 
 @dataclasses.dataclass(frozen=True)
 class ParameterEntry:
@@ -50,33 +52,31 @@ class DocumentedInterface:
         unknown_keys = self._get_unknown_keys(name, key_value_dict)
         return missing_keys + unknown_keys
 
-    def get_description(self,
-                        name: str) -> str:
-        return f"{name}:" + "\n".join(textwrap.wrap(self.description))
+    def get_description(self) -> str:
+        return "\n".join(textwrap.wrap(self.description)) + "\n"
 
     def get_entry_description(self,
                               name: str) -> str:
-        return "\n".join(
+        return "\n\n".join(
             self._render_entry(name, entry)
             for entry in self.parameter_entries)
 
     def _render_entry(self,
                       name: str,
                       entry: ParameterEntry):
-        if entry.constraints:
-            constraints_text = "Allowed values: " + str(entry.constraints)
-        else:
-            constraints_text = ""
 
-        help_text = "\n".join(textwrap.wrap(entry.help)) + "\n"
-        return "{name}.{keyword} {optional}\n" \
-               "{description}\n" \
-               "{values}".format(
-                    name=name,
-                    keyword=entry.keyword,
-                    optional="  (optional)" if entry.optional is True else "",
-                    description=help_text,
-                    values=constraints_text)
+        dl_parameter_name = "{name}.{keyword}{optional}".format(
+            name=name,
+            keyword=entry.keyword,
+            optional=" (optional)" if entry.optional is True else "",
+        )
+
+        dl_parameter = Parameter(
+            args=("dummy",),
+            doc=entry.help,
+            constraints=entry.constraints)
+
+        return dl_parameter.get_autodoc(dl_parameter_name)
 
     def _get_missing_keys(self,
                           name: str,

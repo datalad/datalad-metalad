@@ -248,8 +248,11 @@ class Conduct(Interface):
 
         if pipeline_help is True:
             for name, class_instance in class_instances.items():
-                print(class_instance.interface_documentation.get_description(name))
+                print(f"== Element: {name} =============================")
+                print(class_instance.interface_documentation.get_description())
+                print(f".. Variables: {'.' * len(name)}............................")
                 print(class_instance.interface_documentation.get_entry_description(name))
+                print(f"=============={'=' * len(name)}============================\n")
             return
 
         constructor_keyword_args = get_constructor_keyword_args(
