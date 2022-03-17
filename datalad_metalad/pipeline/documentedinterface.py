@@ -52,11 +52,8 @@ class DocumentedInterface:
         unknown_keys = self._get_unknown_keys(name, key_value_dict)
         return missing_keys + unknown_keys
 
-    def get_description(self,
-                        name: str) -> str:
-
-        return f"-- Element: {name} --\n" \
-               + "\n".join(textwrap.wrap(self.description)) + "\n"
+    def get_description(self) -> str:
+        return "\n".join(textwrap.wrap(self.description)) + "\n"
 
     def get_entry_description(self,
                               name: str) -> str:
