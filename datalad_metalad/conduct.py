@@ -250,6 +250,7 @@ class Conduct(Interface):
             for name, class_instance in class_instances.items():
                 print(class_instance.interface_documentation.get_description(name))
                 print(class_instance.interface_documentation.get_entry_description(name))
+                print("\n")
             return
 
         constructor_keyword_args = get_constructor_keyword_args(
