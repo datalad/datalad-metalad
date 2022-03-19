@@ -228,22 +228,6 @@ class Extract(Interface):
                 else context))
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
-        x = """
-        try:
-            source_dataset = check_dataset(dataset or curdir,
-                                           "extract metadata")
-        except NoDatasetFound as raised_exception:
-            yield dict(
-                status="error",
-                path=dataset or curdir,
-                type="dataset" if path is None else "file",
-                action="meta_extract",
-                message=str(raised_exception),
-                logger=lgr
-            )
-            return
-        """
-
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()

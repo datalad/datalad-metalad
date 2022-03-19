@@ -16,8 +16,7 @@
       "module": "datalad_metalad.pipeline.processor.add",
       "class": "MetadataAdder",
       "name": "adder",
-      "arguments": [],
-      "keyword_arguments": {}
+      "arguments": {}
     }
   ]
 }
