@@ -49,7 +49,7 @@ def check_dataset(dataset_or_path: Union[Dataset, str],
         dataset = require_dataset(
             dataset_or_path,
             purpose=purpose,
-            check_installed=dataset_or_path is not None)
+            check_installed=True)
 
     if not dataset.repo:
         raise NoDatasetFound(
