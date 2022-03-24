@@ -58,7 +58,7 @@ class BatchAdder(Consumer):
                         (aggregate=True), or whether sub-dataset metadata should
                         be ignored (aggregate=False).""",
                 optional=True,
-                default=True
+                default=True,
                 constraints=EnsureBool())
         ]
     )
