@@ -86,6 +86,7 @@ class DatasetTraverser(Provider):
                 help="""Indicate whether sub-datasets should be traversed as
                         well.""",
                 optional=True,
+                default=False,
                 constraints=EnsureBool())
         ]
     )

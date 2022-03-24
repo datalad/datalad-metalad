@@ -49,7 +49,8 @@ class BatchAdder(Consumer):
                 keyword="dataset",
                 help="""A path to the dataset in which the metadata should be
                         stored.""",
-                optional=True),
+                optional=True,
+                default="."),
             ParameterEntry(
                 keyword="aggregate",
                 help="""A boolean that indicates whether sub-dataset metadata
@@ -57,13 +58,14 @@ class BatchAdder(Consumer):
                         (aggregate=True), or whether sub-dataset metadata should
                         be ignored (aggregate=False).""",
                 optional=True,
+                default=True
                 constraints=EnsureBool())
         ]
     )
 
     def __init__(self,
                  *,
-                 dataset: str,
+                 dataset: str = ".",
                  aggregate: Optional[bool] = True):
 
         self.aggregate = aggregate

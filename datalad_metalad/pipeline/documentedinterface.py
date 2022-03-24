@@ -1,9 +1,11 @@
 import dataclasses
 import textwrap
 from typing import (
+    Any,
     Callable,
     Dict,
     List,
+    Optional,
 )
 
 from datalad.support.param import Parameter
@@ -15,6 +17,7 @@ class ParameterEntry:
     help: str
     optional: bool = False
     constraints: Callable = None
+    default: Optional[Any] = None
 
 
 class DocumentedInterface:
@@ -68,13 +71,16 @@ class DocumentedInterface:
         dl_parameter_name = "{name}.{keyword}{optional}".format(
             name=name,
             keyword=entry.keyword,
-            optional=" (optional)" if entry.optional is True else "",
+            optional=f" (optional, default: {entry.default})"
+                     if entry.optional is True
+                     else "",
         )
 
         dl_parameter = Parameter(
             args=("dummy",),
             doc=entry.help,
-            constraints=entry.constraints)
+            constraints=entry.constraints,
+            default=entry.default)
 
         return dl_parameter.get_autodoc(dl_parameter_name)
 

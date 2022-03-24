@@ -24,6 +24,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    Type,
     Union,
 )
 
@@ -42,6 +43,7 @@ from .pipeline.pipelinedata import (
     PipelineData,
     PipelineDataState,
 )
+from .pipeline.pipelineelement import PipelineElement
 from .pipeline.consumer.base import Consumer
 from .pipeline.processor.base import Processor
 from .pipeline.provider.base import Provider
@@ -78,43 +80,6 @@ def check_arguments(keyword_arguments: Dict[str, Dict[str, str]],
     if error_messages:
         return "\n".join(error_messages)
     return None
-
-
-x1 = """
-def get_optional_element_instance(element_type: str,
-                                  conduct_configuration: JSONType,
-                                  constructor_keyword_args: Dict[str, Dict[str, str]]
-                                  ) -> Optional[PipelineElement]:
-
-    element_configuration = conduct_configuration.get(element_type, None)
-    if element_configuration:
-        element_name = element_configuration["name"]
-        return get_class_instance(element_configuration)(
-            **{
-                **element_configuration["arguments"],
-                **constructor_keyword_args[element_name]
-            })
-    return None
-"""
-
-
-x2 = """
-def get_element_instance(element_type: str,
-                         conduct_configuration: JSONType,
-                         constructor_keyword_args: Dict[str, Dict[str, str]]
-                         ) -> PipelineElement:
-
-    element = get_optional_element_instance(
-        element_type=element_type,
-        conduct_configuration=conduct_configuration,
-        constructor_keyword_args=constructor_keyword_args)
-
-    if element is None:
-        raise ValueError(
-            f"No element of type {element_type} in pipeline configuration")
-
-    return element
-"""
 
 
 @build_doc
@@ -265,13 +230,17 @@ class Conduct(Interface):
                 "Pipeline element construction errors:\n"
                 f"{error_message}\n")
 
+        evaluated_constructor_args = evaluate_constructor_args(
+            class_instance=class_instances,
+            element_arguments=constructor_keyword_args)
+
         consumer_element = conduct_configuration.get("consumer", None)
         if consumer_element:
             consumer_name = consumer_element["name"]
             consumer_instance = get_class_instance(consumer_element)(
                 **{
                     **conduct_configuration["consumer"]["arguments"],
-                    **constructor_keyword_args[consumer_name]
+                    **evaluated_constructor_args[consumer_name]
                 })
         else:
             consumer_instance = None
@@ -281,14 +250,14 @@ class Conduct(Interface):
             conduct_configuration["provider"])(
             **{
                 **conduct_configuration["provider"]["arguments"],
-                **constructor_keyword_args[provider_name]
+                **evaluated_constructor_args[provider_name]
             })
 
         processor_instances = [
             get_class_instance(spec)(
                 **{
                     **spec["arguments"],
-                    **constructor_keyword_args[spec["name"]]
+                    **evaluated_constructor_args[spec["name"]]
                 }
             )
             for index, spec in enumerate(conduct_configuration["processors"])]
@@ -523,7 +492,6 @@ def get_constructor_keyword_args(element_arguments: List[str],
                                  element_names: List[str]) -> dict:
 
     result = defaultdict(dict)
-
     for argument in element_arguments:
         try:
             argument_coordinate, value = argument.split("=", 1)
@@ -534,4 +502,16 @@ def get_constructor_keyword_args(element_arguments: List[str],
         if element_name not in element_names:
             raise ValueError(f"No pipeline element with name: '{element_name}'")
         result[element_name][keyword] = value
+    return result
+
+
+def evaluate_constructor_args(class_instance: Dict[str, Type[PipelineElement]],
+                              element_arguments: Dict
+                              ) -> Dict:
+
+    result = defaultdict(dict)
+    for element_name, class_instance in class_instance.items():
+        for keyword, value in element_arguments[element_name].items():
+            value = class_instance.get_keyword_arg_value(keyword, value)
+            result[element_name][keyword] = value
     return result
