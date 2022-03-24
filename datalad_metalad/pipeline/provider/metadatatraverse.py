@@ -55,11 +55,13 @@ class MetadataTraverser(Provider):
                 help="""MetadataRecord path pattern that is used to identify entry
                         points. If not path is given, "." is used, i.e. the
                         root metadata entry is listed.""",
-                optional=True),
+                optional=True,
+                default="."),
             ParameterEntry(
                 keyword="recursive",
                 help="""If set to True, list all sub entries recursively.""",
                 optional=True,
+                default=False,
                 constraints=EnsureBool())
         ]
     )
