@@ -48,26 +48,28 @@ md(rds) all possible paths would be:
                 Error("What can we do? Add a structure that allows for 'detached' metadata")
 
 """
+import dataclasses
 import logging
+import subprocess
 import time
 from pathlib import Path
-from typing import List, Tuple
-
-import dataclasses
+from typing import (
+    List,
+    Tuple,
+    cast,
+)
 
 from datalad.interface.base import Interface
-from datalad.interface.utils import (
-    eval_results
-)
+from datalad.interface.utils import eval_results
 from datalad.interface.base import build_doc
 from datalad.distribution.dataset import (
     Dataset,
     EnsureDataset,
-    datasetmethod
+    datasetmethod,
 )
 from datalad.support.constraints import (
     EnsureStr,
-    EnsureNone
+    EnsureNone,
 )
 from datalad.support.exceptions import InsufficientArgumentsError
 from datalad.support.param import Parameter
@@ -79,6 +81,7 @@ from dataladmetadatamodel.versionlist import TreeVersionList
 from dataladmetadatamodel.mapper.gitmapper.objectreference import (
     flush_object_references)
 from dataladmetadatamodel.mapper.gitmapper.utils import locked_backend
+
 from .utils import check_dataset
 
 
@@ -360,45 +363,102 @@ def copy_uuid_set(destination_metadata_store: str,
         source_uuid_set.unget_version_list(uuid)
 
 
+def copy_to_existing(destination_metadata_store: str,
+                     root_dataset_tree: DatasetTree,
+                     source_dataset_tree: DatasetTree,
+                     destination_path: MetadataPath):
+
+    if destination_path in root_dataset_tree:
+        lgr.warning(
+            f"replacing subtree {destination_path} for root dataset "
+            f"{root_dataset_tree}")
+        root_dataset_tree.delete_subtree(destination_path)
+
+    copied_dataset_tree = source_dataset_tree.deepcopy(
+        "git",
+        destination_metadata_store)
+
+    # TODO: due to the current policy of deepcopy, i.e. write
+    #  out everything that was copied and purge the complete
+    #  object, we have to read in the object after copying it
+    #  only, to write it out again. This is wasteful. We should
+    #  instead specify that the top-level object, here: the
+    #  DatasetTree, is not writen out.
+    copied_dataset_tree.read_in()
+
+    root_dataset_tree.add_subtree(
+        copied_dataset_tree,
+        destination_path)
+
+
 def copy_tree_version_list(destination_metadata_store: str,
                            destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
                            destination_path: MetadataPath):
+    """Copy the source tree to the versioned or unversioned destination path
+
+    For each source_tree in source_tree_version_list we do:
+
+    1. Check whether it has an un-versioned root-path.
+       (Case 1): If so, we extend the unversioned root-path by
+       "destination path", copy the existing tree, and are done.
+
+    2. We check whether there exists a destination_tree in
+       destination_tree_version_list that has the source tree with the given
+       version at the given path.
+
+       (Case 2): If that is the case, the source_tree is copied into the
+       dataset_tree of the destination_tree, and we are done.
+
+    (Case 3): Otherwise, the source_tree_version_list entry is copied
+    into the destination tree version list with an "unversioned path" and
+    the version of the source_tree.
     """
-    Determine the root-dataset version, that is, the root
-    version the contains the source version.
-    Copy the dataset tree to the root dataset tree in the
-    given destination path.
-    """
-    for source_pd_version in source_tree_version_list.versions():
+    for stv_info in source_tree_version_list.versioned_elements:
+        source_version, (_, source_path, source_dataset_tree) = stv_info
+        source_dataset_tree = cast(DatasetTree, source_dataset_tree)
 
-        for root_pd_version in get_root_version_for_subset_version(
-                destination_metadata_store,
-                source_pd_version,
-                destination_path):
+        is_contained = False
+        for dtv_info in destination_tree_version_list.versioned_elements:
+            dest_version, (_, dest_path, dest_dataset_tree) = dtv_info
+            dest_dataset_tree = cast(DatasetTree, dest_dataset_tree)
 
-            if root_pd_version in destination_tree_version_list.versions():
-                lgr.debug(
-                    f"reading root dataset tree for version "
-                    f"{root_pd_version}")
+            if source_path != MetadataPath(""):
+                # Case 1: extend anonymous path of dataset tree
+                destination_path = destination_path / source_path
+                break
 
-                _, root_dataset_tree = \
-                    destination_tree_version_list.get_dataset_tree(
-                        root_pd_version)
-            else:
-                lgr.debug(
-                    f"creating new root dataset tree for version "
-                    f"{root_pd_version}")
-                root_dataset_tree = DatasetTree()
+            is_contained = does_version_contain_version_at(
+                superset_path=Path(destination_metadata_store),
+                superset_version=dest_version,
+                subset_version=source_version,
+                subset_path=destination_path)
 
-            _, source_dataset_tree = \
-                source_tree_version_list.get_dataset_tree(source_pd_version)
+            if is_contained is True:
+                # Case 2: copy source tree into dataset tree
+                copy_to_existing(
+                    destination_metadata_store=destination_metadata_store,
+                    root_dataset_tree=dest_dataset_tree,
+                    source_dataset_tree=source_dataset_tree,
+                    destination_path=destination_path
+                )
+                destination_tree_version_list.set_dataset_tree(
+                    dest_version,
+                    str(time.time()),
+                    dest_dataset_tree)
 
-            if destination_path in root_dataset_tree:
-                lgr.warning(
-                    f"replacing subtree {destination_path} for root dataset "
-                    f" version {root_pd_version}")
-                root_dataset_tree.delete_subtree(destination_path)
+                # Save newly created tree-copy to new destination
+                destination_tree_version_list.unget_dataset_tree(
+                    dest_version,
+                    destination_metadata_store)
+
+                break
+
+        if is_contained is False:
+            # Case 3: copy anonymously
+            copied_dataset_tree = source_dataset_tree.deepcopy(
+                "git",
+                destination_metadata_store)
 
             # TODO: due to the current policy of deepcopy, i.e. write
             #  out everything that was copied and purge the complete
@@ -406,75 +466,39 @@ def copy_tree_version_list(destination_metadata_store: str,
             #  only, to write it out again. This is wasteful. We should
             #  instead specify that the top-level object, here: the
             #  DatasetTree, is not writen out.
-            copied_dataset_tree = source_dataset_tree.deepcopy(
-                "git",
-                destination_metadata_store)
             copied_dataset_tree.read_in()
 
-            root_dataset_tree.add_subtree(
+            destination_tree_version_list.set_dataset_tree(
+                source_version,
+                str(time.time()),
                 copied_dataset_tree,
                 destination_path)
 
-            destination_tree_version_list.set_dataset_tree(
-                root_pd_version,
-                str(time.time()),
-                root_dataset_tree)
-
             # Save newly created tree-copy to new destination
             destination_tree_version_list.unget_dataset_tree(
-                root_pd_version, destination_metadata_store)
+                source_version,
+                destination_metadata_store)
 
-            # Source should not need saving, so we purge it
-            source_tree_version_list.purge()
+        # Source should not need saving, so we purge it
+        source_tree_version_list.purge()
 
     return
 
 
-# TODO: this function should check all branches of all
-#  parent repositories, because more than one version of
-#  the root repository might contain the given path.
-def get_root_version_for_subset_version(root_dataset_path: str,
-                                        sub_dataset_version: str,
-                                        sub_dataset_path: MetadataPath
-                                        ) -> List[str]:
-    """
-    Get the versions of the root that contains the
-    given sub_dataset_version at the given sub_dataset_path,
-    if any exists. If the configuration does not exist
-    return an empty iterable.
-    """
-    root_path = Path(root_dataset_path).resolve()
-    current_path = (root_path / sub_dataset_path).resolve()
-
-    # Ensure that the sub-dataset path is under the root-dataset path
-    current_path.relative_to(root_path)
-
-    current_version = sub_dataset_version
-    current_path = current_path.parent
-    while len(current_path.parts) >= len(root_path.parts):
-
-        # Skip intermediate directories, i.e. check only on git
-        # repository roots.
-        if len(tuple(current_path.glob(".git"))) == 0:
-            current_path = current_path.parent
-            continue
-
-        current_version = find_version_containing(current_path, current_version)
-        if current_version == "":
-            return []
-        current_path = current_path.parent
-
-    return [current_version]
-
-
-def find_version_containing(path: Path, current_version):
-    import subprocess
+def does_version_contain_version_at(superset_path: Path,
+                                    superset_version: str,
+                                    subset_version: str,
+                                    subset_path: MetadataPath
+                                    ) -> bool:
 
     result = subprocess.run([
-        f"git", "--git-dir", str(path / ".git"), "log",
-        f"--find-object={current_version}",
-        f"--pretty=tformat:%h", "--no-abbrev"],
-        stdout=subprocess.PIPE
-    )
+        f"git",
+        "--git-dir", str(superset_path / ".git"),
+        "log",
+        f"--find-object={subset_version}",
+        f"--pretty=tformat:%h",
+        "--no-abbrev",
+        "--", str(subset_path)],
+        stdout=subprocess.PIPE)
 
-    return result.stdout.decode().strip()
+    return superset_version in result.stdout.decode().splitlines()[-1]

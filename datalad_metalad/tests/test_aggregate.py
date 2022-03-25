@@ -87,12 +87,12 @@ def test_basic_aggregation():
                 dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
-        # We have to patch "get_root_version_for_subset_version" because
-        # the test git repos have no commits.
-        with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
+        # We have to patch "does_version_contain_version_at" because the test
+        # git repos have no commits.
+        with patch("datalad_metalad.aggregate.does_version_contain_version_at") as p:
 
             # Ensure that the root version is found
-            p.return_value = [version_base.format(index=0)]
+            p.return_value = True
 
             result = meta_aggregate(
                 str(root_dataset_dir),
@@ -199,12 +199,12 @@ def test_basic_aggregation_into_empty_store():
                 dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
-        # We have to patch "get_root_version_for_subset_version" because
-        # the test git repos have no commits.
-        with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
+        # We have to patch "does_version_contain_version_at" because the test
+        # git repos have no commits.
+        with patch("datalad_metalad.aggregate.does_version_contain_version_at") as p:
 
             # Ensure that the root version is found
-            p.return_value = [version_base.format(index="a")]
+            p.return_value = True
 
             meta_aggregate(
                 str(root_dataset_dir),
@@ -226,6 +226,7 @@ def test_basic_aggregation_into_empty_store():
             for index, result in enumerate(result_objects):
 
                 result_object = result["metadata"]
+
                 _check_root_elements(
                     result_object=result_object,
                     root_dataset_version=a_version,
