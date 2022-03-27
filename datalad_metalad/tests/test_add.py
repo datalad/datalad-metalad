@@ -170,7 +170,7 @@ def test_incomplete_non_mandatory_key_handling(file_name):
             patch("datalad_metalad.add.locked_backend"):
 
         _assert_raise_mke_with_keys(
-            ["root_dataset_version", "dataset_path"],
+            ["root_dataset_version"],
             metadata=file_name,
             additionalvalues=json.dumps({"root_dataset_id": 1}))
 
@@ -387,7 +387,8 @@ def _get_top_nodes(git_repo, dataset_id, dataset_version):
             git_repo.path,
             dataset_id,
             dataset_version,
-            MetadataPath(""))
+            prefix_path=MetadataPath(""),
+            dataset_tree_path=MetadataPath(""))
 
     assert_is_not_none(tree_version_list)
     assert_is_not_none(uuid_set)
@@ -507,8 +508,9 @@ def test_subdataset_add_dataset_end_to_end(file_name):
             root_dataset_id,
             root_dataset_version)
 
-        _, dataset_tree = tree_version_list.get_dataset_tree(
-            root_dataset_version)
+        _, _, dataset_tree = tree_version_list.get_dataset_tree(
+            root_dataset_version,
+            MetadataPath(""))
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
         with ensure_mapped(mrr):
@@ -553,8 +555,9 @@ def test_subdataset_add_file_end_to_end(file_name):
             root_dataset_id,
             root_dataset_version)
 
-        _, dataset_tree = tree_version_list.get_dataset_tree(
-            root_dataset_version)
+        _, _, dataset_tree = tree_version_list.get_dataset_tree(
+            root_dataset_version,
+            MetadataPath(""))
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
         with ensure_mapped(mrr):

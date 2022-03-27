@@ -323,7 +323,9 @@ def copy_uuid_set(destination_metadata_store: str,
                     f"of UUID: {uuid}")
 
                 time_stamp, old_path, element = \
-                    src_version_list.get_versioned_element(pd_version)
+                    src_version_list.get_versioned_element(
+                        primary_data_version=pd_version,
+                        prefix_path=MetadataPath(""))
 
                 new_path = destination_path / old_path
 
@@ -332,10 +334,10 @@ def copy_uuid_set(destination_metadata_store: str,
                     f"{new_path} to UUID: {uuid}")
 
                 dest_version_list.set_versioned_element(
-                    pd_version,
-                    time_stamp,
-                    new_path,
-                    element.deepcopy(
+                    primary_data_version=pd_version,
+                    time_stamp=time_stamp,
+                    prefix_path=new_path,
+                    element=element.deepcopy(
                         new_destination=destination_metadata_store))
 
                 # Unget the versioned element
@@ -344,15 +346,18 @@ def copy_uuid_set(destination_metadata_store: str,
                     f"{pd_version} of UUID: {uuid}")
 
                 dest_version_list.unget_versioned_element(
-                    pd_version,
-                    destination_metadata_store)
+                    primary_data_version=pd_version,
+                    prefix_path=new_path,
+                    new_destination=destination_metadata_store)
 
                 # Remove the source versioned element from memory
                 lgr.debug(
                     f"purging source metadata element for pd version "
                     f"{pd_version} of UUID: {uuid}")
 
-                src_version_list.unget_versioned_element(pd_version)
+                src_version_list.unget_versioned_element(
+                    primary_data_version=pd_version,
+                    prefix_path=old_path)
 
             # Unget the version list in the destination, that should persist it
             lgr.debug(f"persisting copied version list for UUID: {uuid}")
@@ -395,12 +400,12 @@ def copy_tree_version_list(destination_metadata_store: str,
                            destination_tree_version_list: TreeVersionList,
                            source_tree_version_list: TreeVersionList,
                            destination_path: MetadataPath):
-    """Copy the source tree to the versioned or unversioned destination path
+    """Copy the source tree to the versioned or un-versioned destination path
 
     For each source_tree in source_tree_version_list we do:
 
     1. Check whether it has an un-versioned root-path.
-       (Case 1): If so, we extend the unversioned root-path by
+       (Case 1): If so, we extend the un-versioned root-path by
        "destination path", copy the existing tree, and are done.
 
     2. We check whether there exists a destination_tree in
@@ -443,14 +448,16 @@ def copy_tree_version_list(destination_metadata_store: str,
                     destination_path=destination_path
                 )
                 destination_tree_version_list.set_dataset_tree(
-                    dest_version,
-                    str(time.time()),
-                    dest_dataset_tree)
+                    primary_data_version=dest_version,
+                    time_stamp=str(time.time()),
+                    prefix_path=MetadataPath(""),
+                    dataset_tree=dest_dataset_tree)
 
                 # Save newly created tree-copy to new destination
                 destination_tree_version_list.unget_dataset_tree(
-                    dest_version,
-                    destination_metadata_store)
+                    primary_data_version=dest_version,
+                    prefix_path=MetadataPath(""),
+                    new_destination=destination_metadata_store)
 
                 break
 
@@ -469,14 +476,15 @@ def copy_tree_version_list(destination_metadata_store: str,
             copied_dataset_tree.read_in()
 
             destination_tree_version_list.set_dataset_tree(
-                source_version,
-                str(time.time()),
-                copied_dataset_tree,
-                destination_path)
+                primary_data_version=source_version,
+                time_stamp=str(time.time()),
+                prefix_path=destination_path,
+                dataset_tree=copied_dataset_tree)
 
             # Save newly created tree-copy to new destination
             destination_tree_version_list.unget_dataset_tree(
                 source_version,
+                destination_path,
                 destination_metadata_store)
 
         # Source should not need saving, so we purge it

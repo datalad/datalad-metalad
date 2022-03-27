@@ -91,6 +91,8 @@ class AddParameter:
     root_dataset_version: Optional[str]
     dataset_path: Optional[MetadataPath]
 
+    unversioned_path: Optional[MetadataPath]
+
     extractor_name: str
     extractor_version: str
     extraction_time: float
@@ -174,12 +176,12 @@ class Add(Interface):
         "extracted_metadata")
 
     optional_keys = (
-        "path",)
+        "path",
+        "dataset_path")
 
     required_additional_keys = (
         "root_dataset_id",
-        "root_dataset_version",
-        "dataset_path")
+        "root_dataset_version")
 
     required_keys_lines = "\n".join(map(repr, required_keys))
     required_additional_keys_lines = "\n".join(
@@ -206,11 +208,34 @@ class Add(Interface):
 
             'path'
 
-            It may in addition contain either all or none of the
-            following keys (they are used to add metadata element
-            as a sub-dataset element, i.e. perform aggregation):
+            If the metadata should refer to a sub-dataset element (that means
+            if an "aggregated" record should be stored, see meta-aggregate
+            for more info), the
+            following key indicates the path of the sub-dataset from the
+            root of the "containing dataset":
+            
+            'dataset_path'
+
+            The containing dataset, aka. the "root dataset", is the dataset
+            version, specified by dataset-id and version that contains the 
+            given sub-dataset version
+            at the path 'dataset_path'. If the containing dataset, aka. the
+            "root dataset", is known, it can be specified by providing the
+            following keys:
 
             {required_additional_keys_lines}            
+
+            If the version of the root dataset that contains the given
+            subdataset at the given path is not known, the "root_dataset_*"-keys
+            can be omitted. Such a situation might arise, if the sub-dataset
+            metadata was extracted in an old version of the sub-dataset, and
+            the relation of this old version to the root-dataset is not known
+            (we assume that the root-dataset would be the dataset to which the
+            metadata is added.) In this case the metadata is added with an
+            "anonymous" root dataset, but with the given sub-dataset-path.
+            
+            (This makes sense, if the sub-dataset at the given path contains a
+            version that is defined in the metadata, i.e. in dataset_version),
             """,
             constraints=EnsureStr()),
         additionalvalues=Parameter(
@@ -378,6 +403,10 @@ def add_finite_set(metadata_objects: List[JSONType],
                 f"attempting to add metadata: '{json.dumps(metadata)}' to "
                 f"metadata store {metadata_store}")
 
+            unversioned_path = "root_dataset_id" not in metadata \
+                               and "root_dataset_version" not in metadata \
+                               and "dataset_path" in metadata
+
             add_parameter = AddParameter(
                 result_path=(
                         metadata_store
@@ -395,11 +424,18 @@ def add_finite_set(metadata_objects: List[JSONType],
 
                 root_dataset_id=(
                     UUID(metadata["root_dataset_id"])
-                    if "root_dataset_id" in metadata
+                    if "root_dataset_id" in metadata and unversioned_path is False
                     else None),
                 root_dataset_version=metadata.get("root_dataset_version", None),
-                dataset_path=MetadataPath(
-                    metadata.get("dataset_path", "")),
+                dataset_path=(
+                    MetadataPath(metadata["dataset_path"])
+                    if "dataset_path" in metadata and unversioned_path is False
+                    else None),
+
+                unversioned_path=(
+                    MetadataPath(metadata["dataset_path"])
+                    if unversioned_path is True
+                    else None),
 
                 extractor_name=metadata["extractor_name"],
                 extractor_version=metadata["extractor_version"],
@@ -484,7 +520,20 @@ def process_parameters(metadata: dict,
                        additional_values: dict,
                        allow_override: bool,
                        allow_unknown: bool):
+    """Check validity of parameter
 
+    non-aggregated:
+    dataset_path: <not set> or <".">
+
+    aggregated: with versioned path:
+    dataset_path: <non-empty dataset path>
+    root_dataset_id: <dataset id>
+    root_dataset_version: <version>
+
+    aggregated: with un-versioned path:
+    dataset_path: <non-empty dataset path>
+
+    """
     overridden_keys = [
         key
         for key in additional_values
@@ -590,25 +639,37 @@ def _get_top_nodes(realm: Path,
                    ap: AddParameter
                    ) -> Tuple[TreeVersionList, UUIDSet, MetadataRootRecord]:
 
+    # The dataset tree path is used to store the dataset metadata root record,
+    # if none does yet exist.
+    dataset_tree_path = MetadataPath("")
+
     if ap.root_dataset_id is None:
+        # This is either a non-aggregated add operation or an add operation
+        # with an un-versioned path. In every case the internal dataset-tree
+        # path is "". If set, the un-versioned path is stored in the version
+        # list.
         return get_top_nodes_and_metadata_root_record(
-            default_mapper_family,
-            str(realm),
-            ap.dataset_id,
-            ap.dataset_version,
-            MetadataPath(""),
+            mapper_family=default_mapper_family,
+            realm=str(realm),
+            dataset_id=ap.dataset_id,
+            primary_data_version=ap.dataset_version,
+            prefix_path=ap.unversioned_path,
+            dataset_tree_path=dataset_tree_path,
             auto_create=True)
 
+    # This is an aggregated add. The un-versioned path must be "".
     tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
-        default_mapper_family,
-        str(realm),
-        ap.root_dataset_id,
-        ap.root_dataset_version,
-        MetadataPath(""),
+        mapper_family=default_mapper_family,
+        realm=str(realm),
+        dataset_id=ap.root_dataset_id,
+        primary_data_version=ap.root_dataset_version,
+        prefix_path=MetadataPath(""),
+        dataset_tree_path=dataset_tree_path,
         auto_create=True)
 
-    _, dataset_tree = tree_version_list.get_dataset_tree(
-        ap.root_dataset_version)
+    _, unversioned_path, dataset_tree = tree_version_list.get_dataset_tree(
+        ap.root_dataset_version,
+        MetadataPath(""))
 
     if ap.dataset_path != MetadataPath("") and ap.dataset_path in dataset_tree:
         mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
@@ -636,8 +697,8 @@ def get_tvl_uuid_mrr_metadata_file_tree(
     """
     Read tree version list, uuid set, metadata root record, dataset-level
     metadata, and filetree from the metadata store, for the given root
-    dataset id, root dataset version, dataset id, dataset version, and
-    dataset path.
+    dataset id, root dataset version, dataset id, dataset version, dataset path,
+    and unversioned path.
 
     This function caches results in order to avoid costly persist operations.
 
@@ -653,7 +714,8 @@ def get_tvl_uuid_mrr_metadata_file_tree(
         ap.root_dataset_version,
         ap.dataset_id,
         ap.dataset_version,
-        ap.dataset_path)
+        ap.dataset_path,
+        ap.unversioned_path)
 
     if cache_key not in ap.top_node_cache:
 
