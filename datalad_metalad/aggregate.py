@@ -408,77 +408,31 @@ def copy_tree_version_list(destination_metadata_store: str,
        (Case 1): If so, we extend the un-versioned root-path by
        "destination path", copy the existing tree, and are done.
 
-    2. We check whether there exists a destination_tree in
-       destination_tree_version_list that has the source tree with the given
-       version at the given path.
+    2. If case 1 is not given, we do the following:
+       For every destination_tree in destination_tree_version_list that has a
+       source_tree with the given version at the given path, we copy the
+       source_tree into the dataset_tree of the destination_tree. (Case 2)
 
-       (Case 2): If that is the case, the source_tree is copied into the
-       dataset_tree of the destination_tree, and we are done.
-
-    (Case 3): Otherwise, the source_tree_version_list entry is copied
-    into the destination tree version list with an "unversioned path" and
-    the version of the source_tree.
+    3. If case 2 appeared, the source_tree_version_list entry is copied
+       into the destination tree version list with an "un-versioned path" and
+       the version of the source_tree. (Case 3)
     """
     for stv_info in source_tree_version_list.versioned_elements:
         source_version, (_, source_path, source_dataset_tree) = stv_info
         source_dataset_tree = cast(DatasetTree, source_dataset_tree)
 
-        is_contained = False
-        for dtv_info in destination_tree_version_list.versioned_elements:
-            dest_version, (_, dest_path, dest_dataset_tree) = dtv_info
-            dest_dataset_tree = cast(DatasetTree, dest_dataset_tree)
-
-            if source_path != MetadataPath(""):
-                # Case 1: extend anonymous path of dataset tree
-                destination_path = destination_path / source_path
-                break
-
-            is_contained = does_version_contain_version_at(
-                superset_path=Path(destination_metadata_store),
-                superset_version=dest_version,
-                subset_version=source_version,
-                subset_path=destination_path)
-
-            if is_contained is True:
-                # Case 2: copy source tree into dataset tree
-                copy_to_existing(
-                    destination_metadata_store=destination_metadata_store,
-                    root_dataset_tree=dest_dataset_tree,
-                    source_dataset_tree=source_dataset_tree,
-                    destination_path=destination_path
-                )
-                destination_tree_version_list.set_dataset_tree(
-                    primary_data_version=dest_version,
-                    time_stamp=str(time.time()),
-                    prefix_path=MetadataPath(""),
-                    dataset_tree=dest_dataset_tree)
-
-                # Save newly created tree-copy to new destination
-                destination_tree_version_list.unget_dataset_tree(
-                    primary_data_version=dest_version,
-                    prefix_path=MetadataPath(""),
-                    new_destination=destination_metadata_store)
-
-                break
-
-        if is_contained is False:
-            # Case 3: copy anonymously
+        # Case 1: extend un-versioned path of dataset tree
+        if source_path != MetadataPath(""):
+            un_versioned__path = destination_path / source_path
             copied_dataset_tree = source_dataset_tree.deepcopy(
                 "git",
                 destination_metadata_store)
-
-            # TODO: due to the current policy of deepcopy, i.e. write
-            #  out everything that was copied and purge the complete
-            #  object, we have to read in the object after copying it
-            #  only, to write it out again. This is wasteful. We should
-            #  instead specify that the top-level object, here: the
-            #  DatasetTree, is not writen out.
             copied_dataset_tree.read_in()
 
             destination_tree_version_list.set_dataset_tree(
                 primary_data_version=source_version,
                 time_stamp=str(time.time()),
-                prefix_path=destination_path,
+                prefix_path=un_versioned__path,
                 dataset_tree=copied_dataset_tree)
 
             # Save newly created tree-copy to new destination
@@ -486,6 +440,69 @@ def copy_tree_version_list(destination_metadata_store: str,
                 source_version,
                 destination_path,
                 destination_metadata_store)
+
+        else:
+            was_contained = False
+            for dtv_info in destination_tree_version_list.versioned_elements:
+                dest_version, (_, dest_path, dest_dataset_tree) = dtv_info
+                dest_dataset_tree = cast(DatasetTree, dest_dataset_tree)
+
+                # Ignore dataset trees with un-versioned paths:
+                if dest_path != MetadataPath(""):
+                    continue
+
+                is_contained = does_version_contain_version_at(
+                    superset_path=Path(destination_metadata_store),
+                    superset_version=dest_version,
+                    subset_version=source_version,
+                    subset_path=destination_path)
+
+                if is_contained is True:
+                    # Case 2: copy source tree into dataset tree
+                    was_contained = True
+                    copy_to_existing(
+                        destination_metadata_store=destination_metadata_store,
+                        root_dataset_tree=dest_dataset_tree,
+                        source_dataset_tree=source_dataset_tree,
+                        destination_path=destination_path
+                    )
+                    destination_tree_version_list.set_dataset_tree(
+                        primary_data_version=dest_version,
+                        time_stamp=str(time.time()),
+                        prefix_path=MetadataPath(""),
+                        dataset_tree=dest_dataset_tree)
+
+                    # Save newly created tree-copy to new destination
+                    destination_tree_version_list.unget_dataset_tree(
+                        primary_data_version=dest_version,
+                        prefix_path=MetadataPath(""),
+                        new_destination=destination_metadata_store)
+
+            if was_contained is False:
+                # Case 3: copy anonymously
+                copied_dataset_tree = source_dataset_tree.deepcopy(
+                    "git",
+                    destination_metadata_store)
+
+                # TODO: due to the current policy of deepcopy, i.e. write
+                #  out everything that was copied and purge the complete
+                #  object, we have to read in the object after copying it
+                #  only, to write it out again. This is wasteful. We should
+                #  instead specify that the top-level object, here: the
+                #  DatasetTree, is not writen out.
+                copied_dataset_tree.read_in()
+
+                destination_tree_version_list.set_dataset_tree(
+                    primary_data_version=source_version,
+                    time_stamp=str(time.time()),
+                    prefix_path=destination_path,
+                    dataset_tree=copied_dataset_tree)
+
+                # Save newly created tree-copy to new destination
+                destination_tree_version_list.unget_dataset_tree(
+                    source_version,
+                    destination_path,
+                    destination_metadata_store)
 
         # Source should not need saving, so we purge it
         source_tree_version_list.purge()
@@ -498,9 +515,9 @@ def does_version_contain_version_at(superset_path: Path,
                                     subset_version: str,
                                     subset_path: MetadataPath
                                     ) -> bool:
-
     result = subprocess.run([
         f"git",
+        "-P",
         "--git-dir", str(superset_path / ".git"),
         "log",
         f"--find-object={subset_version}",
@@ -513,6 +530,7 @@ def does_version_contain_version_at(superset_path: Path,
     if len(submodule_commits) == 1:
         result = subprocess.run([
             f"git",
+            "-P",
             "--git-dir", str(superset_path / ".git"),
             "log",
             "-n", "1",
@@ -528,6 +546,7 @@ def does_version_contain_version_at(superset_path: Path,
 
     result = subprocess.run([
         f"git",
+        "-P",
         "--git-dir", str(superset_path / ".git"),
         "log",
         f"{start_commit}~{first_index}...{end_commit}",
@@ -536,4 +555,9 @@ def does_version_contain_version_at(superset_path: Path,
         stdout=subprocess.PIPE)
 
     all_submodule_holders = result.stdout.decode().splitlines()
+    lgr.debug(
+        f"does_version_contain_version_at(super-set version={superset_version}"
+        f", subset_version={subset_version}): "
+        f"{superset_version in all_submodule_holders}")
+
     return superset_version in all_submodule_holders
