@@ -509,4 +509,31 @@ def does_version_contain_version_at(superset_path: Path,
         "--", str(subset_path)],
         stdout=subprocess.PIPE)
 
-    return superset_version in result.stdout.decode().splitlines()[-1]
+    submodule_commits = result.stdout.decode().splitlines()
+    if len(submodule_commits) == 1:
+        result = subprocess.run([
+            f"git",
+            "--git-dir", str(superset_path / ".git"),
+            "log",
+            "-n", "1",
+            f"--pretty=tformat:%h",
+            "--no-abbrev"],
+            stdout=subprocess.PIPE)
+        start_commit = result.stdout.decode().splitlines()[0]
+        end_commit = submodule_commits[0]
+        first_index = 0
+    else:
+        start_commit, end_commit = submodule_commits
+        first_index = 1
+
+    result = subprocess.run([
+        f"git",
+        "--git-dir", str(superset_path / ".git"),
+        "log",
+        f"{start_commit}~{first_index}...{end_commit}",
+        f"--pretty=tformat:%h",
+        "--no-abbrev"],
+        stdout=subprocess.PIPE)
+
+    all_submodule_holders = result.stdout.decode().splitlines()
+    return superset_version in all_submodule_holders
