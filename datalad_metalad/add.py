@@ -448,7 +448,7 @@ def add_finite_set(metadata_objects: List[JSONType],
                 unversioned_path=(
                     MetadataPath(metadata["dataset_path"])
                     if un_versioned_path is True
-                    else None),
+                    else MetadataPath("")),
 
                 extractor_name=metadata["extractor_name"],
                 extractor_version=metadata["extractor_version"],

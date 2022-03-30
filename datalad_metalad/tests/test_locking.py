@@ -12,6 +12,7 @@ from datalad.api import (
 )
 from datalad.support.gitrepo import GitRepo
 from datalad.tests.utils import (
+    assert_in,
     eq_,
     skip_if,
 )
@@ -117,3 +118,17 @@ def test_meta_add_locking_end_to_end():
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, dataset_id)
         verify_locking_adds(git_repo, test_process_number)
+
+
+def test_multiple_adds():
+    # This is a regression test. Ensure that newly added records do not
+    # overwrite old records
+    with tempfile.TemporaryDirectory() as temp_dir:
+        git_repo = create_dataset(temp_dir, dataset_id)
+        meta_add(dataset=git_repo.path, metadata=get_metadata(0))
+        meta_add(dataset=git_repo.path, metadata=get_metadata(1))
+        metadata_records = get_all_metadata_records(git_repo)
+        eq_(len(metadata_records), 2)
+        metadata = [mr["metadata"] for mr in metadata_records]
+        assert_in(get_metadata(0), metadata)
+        assert_in(get_metadata(1), metadata)
