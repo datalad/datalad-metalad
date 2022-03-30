@@ -81,7 +81,8 @@ def read_json_object(path_or_object: Union[str, JSONType]) -> JSONType:
     return path_or_object
 
 
-def read_json_objects(path_or_object: Union[str, JSONType]
+def read_json_objects(path_or_object: Union[str, JSONType],
+                      json_lines: bool
                       ) -> List[JSONType]:
 
     if isinstance(path_or_object, str):
@@ -89,7 +90,13 @@ def read_json_objects(path_or_object: Union[str, JSONType]
             metadata_file = sys.stdin
         else:
             metadata_file = open(path_or_object, "tr")
-        path_or_object = json.load(metadata_file)
+        if json_lines is True:
+            path_or_object = [
+                json.loads(line)
+                for line in metadata_file.readlines()
+            ]
+        else:
+            path_or_object = json.load(metadata_file)
 
     return (
         path_or_object

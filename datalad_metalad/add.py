@@ -193,9 +193,10 @@ class Add(Interface):
             metavar="METADATA",
             doc=f"""path of the file that contains the
             metadata that should be added to the metadata store
-            (metadata must be provided as a JSON-serialized metadata
+            (metadata records must be provided as a JSON-serialized metadata
             dictionary). The file may contain a single metadata-record or
-            a JSON-array with multiple metadata-records.
+            a JSON-array with multiple metadata-records. If --json-lines
+            is given, the file may also contain one dictionary per line.
 
             If the path is "-", the metadata file is read from standard input.
 
@@ -280,6 +281,13 @@ class Add(Interface):
             the metadata source does not match the ID of the target
             dataset.""",
             default=False),
+        json_lines=Parameter(
+            args=("--json-lines",),
+            action='store_true',
+            doc="""Interpret metadata input as JSON lines. i.e. expect one
+            metadata record per line. This is the format used by commands like
+            "datalad meta-dump".""",
+            default=False),
         batch_mode=Parameter(
             args=("-b", "--batch-mode",),
             action='store_true',
@@ -302,6 +310,7 @@ class Add(Interface):
             allow_override: bool = False,
             allow_unknown: bool = False,
             allow_id_mismatch: bool = False,
+            json_lines: bool = False,
             batch_mode: bool = False):
 
         additional_values = additionalvalues or dict()
@@ -311,7 +320,7 @@ class Add(Interface):
         additional_values_object = get_json_object(additional_values)
 
         if batch_mode is False:
-            all_metadata_objects = read_json_objects(metadata)
+            all_metadata_objects = read_json_objects(metadata, json_lines)
             yield from add_finite_set(
                 all_metadata_objects,
                 additional_values_object,
