@@ -366,10 +366,12 @@ def dump_from_uuid_set(mapper: str,
                                  if path.version is not None
                                  else list(version_list.versions()))
 
-    for dataset_version in requested_dataset_version:
+    for dataset_version, prefix_path in version_list.versions_and_prefix_paths():
+        if dataset_version not in requested_dataset_version:
+            continue
         try:
             _, dataset_path, metadata_root_record = \
-                version_list.get_versioned_element(dataset_version)
+                version_list.get_versioned_element(dataset_version, prefix_path)
         except KeyError:
             lgr.error(
                 f"could not locate metadata for version {dataset_version} for "
@@ -385,6 +387,7 @@ def dump_from_uuid_set(mapper: str,
             metadata_store,
             path.uuid,
             dataset_version,
+            prefix_path,
             dataset_path,
             metadata_root_record)
 
@@ -394,6 +397,7 @@ def dump_from_uuid_set(mapper: str,
             metadata_store,
             path.uuid,
             dataset_version,
+            prefix_path,
             dataset_path,
             metadata_root_record,
             path.local_path,
