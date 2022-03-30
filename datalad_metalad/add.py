@@ -46,7 +46,10 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
-from dataladmetadatamodel.common import get_top_nodes_and_metadata_root_record
+from dataladmetadatamodel.common import (
+    get_metadata_root_record_from_top_nodes,
+    get_top_nodes_and_metadata_root_record,
+)
 from dataladmetadatamodel.filetree import FileTree
 from dataladmetadatamodel.metadata import (
     ExtractorConfiguration,
@@ -412,9 +415,10 @@ def add_finite_set(metadata_objects: List[JSONType],
                 f"attempting to add metadata: '{json.dumps(metadata)}' to "
                 f"metadata store {metadata_store}")
 
-            unversioned_path = "root_dataset_id" not in metadata \
-                               and "root_dataset_version" not in metadata \
-                               and "dataset_path" in metadata
+            un_versioned_path = \
+                "root_dataset_id" not in metadata \
+                and "root_dataset_version" not in metadata \
+                and "dataset_path" in metadata
 
             add_parameter = AddParameter(
                 result_path=(
@@ -433,17 +437,17 @@ def add_finite_set(metadata_objects: List[JSONType],
 
                 root_dataset_id=(
                     UUID(metadata["root_dataset_id"])
-                    if "root_dataset_id" in metadata and unversioned_path is False
+                    if "root_dataset_id" in metadata and un_versioned_path is False
                     else None),
                 root_dataset_version=metadata.get("root_dataset_version", None),
                 dataset_path=(
                     MetadataPath(metadata["dataset_path"])
-                    if "dataset_path" in metadata and unversioned_path is False
+                    if "dataset_path" in metadata and un_versioned_path is False
                     else None),
 
                 unversioned_path=(
                     MetadataPath(metadata["dataset_path"])
-                    if unversioned_path is True
+                    if un_versioned_path is True
                     else None),
 
                 extractor_name=metadata["extractor_name"],
@@ -717,37 +721,57 @@ def get_tvl_uuid_mrr_metadata_file_tree(
              metadata root records, the dataset level metadata object, and
              the file tree of the dataset given by dataset id and version
     """
-    cache_key = (
-        metadata_store,
-        ap.root_dataset_id,
-        ap.root_dataset_version,
+
+    top_node_cache_key = metadata_store
+    mrr_cache_key = (
+        top_node_cache_key,
         ap.dataset_id,
         ap.dataset_version,
-        ap.dataset_path,
-        ap.unversioned_path)
+        ap.root_dataset_version,
+        ap.dataset_path)
 
-    if cache_key not in ap.top_node_cache:
-
+    if top_node_cache_key not in ap.top_node_cache:
+        # This is the place where the objects that hold all changes are
+        # read in/created. These objects have to be reused, if possible.
         tree_version_list, uuid_set, mrr = _get_top_nodes(metadata_store, ap)
+        ap.top_node_cache[top_node_cache_key] = (tree_version_list, uuid_set)
+        ap.top_node_cache[mrr_cache_key] = (tree_version_list, uuid_set, mrr, None, None)
 
-        dataset_level_metadata = mrr.get_dataset_level_metadata()
+    tree_version_list, uuid_set = ap.top_node_cache[top_node_cache_key]
+
+    if mrr_cache_key not in ap.top_node_cache:
+        mrr = get_metadata_root_record_from_top_nodes(
+            tree_version_list,
+            uuid_set,
+            ap.dataset_id,
+            ap.dataset_version,
+            ap.unversioned_path,
+            ap.dataset_path if ap.dataset_path else MetadataPath(""),
+            True)
+        ap.top_node_cache[mrr_cache_key] = (tree_version_list, uuid_set, mrr, None, None)
+
+    _, _, mrr, dataset_level_metadata, file_tree = ap.top_node_cache[mrr_cache_key]
+    if dataset_level_metadata is None or file_tree is None:
         if dataset_level_metadata is None:
-            dataset_level_metadata = Metadata()
-            mrr.set_dataset_level_metadata(dataset_level_metadata)
+            dataset_level_metadata = mrr.get_dataset_level_metadata()
+            if dataset_level_metadata is None:
+                dataset_level_metadata = Metadata()
+                mrr.set_dataset_level_metadata(dataset_level_metadata)
 
-        file_tree = mrr.get_file_tree()
         if file_tree is None:
-            file_tree = FileTree()
-            mrr.set_file_tree(file_tree)
+            file_tree = mrr.get_file_tree()
+            if file_tree is None:
+                file_tree = FileTree()
+                mrr.set_file_tree(file_tree)
 
-        ap.top_node_cache[cache_key] = (
+        ap.top_node_cache[mrr_cache_key] = (
             tree_version_list,
             uuid_set,
             mrr,
             dataset_level_metadata,
             file_tree)
 
-    return ap.top_node_cache[cache_key]
+    return ap.top_node_cache[mrr_cache_key]
 
 
 def add_file_metadata(metadata_store: Path, ap: AddParameter):
