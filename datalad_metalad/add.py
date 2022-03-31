@@ -402,6 +402,7 @@ def add_finite_set(metadata_objects: List[JSONType],
 
     dataset_id = dataset.id
     metadata_store = dataset.pathobj
+
     tvl_us_cache = dict()
     mrr_cache = dict()
 
@@ -492,9 +493,6 @@ def add_finite_set(metadata_objects: List[JSONType],
 
             if len(result) == 1:
                 yield result[0]
-
-        for mrr, _, _ in mrr_cache.values():
-            mrr.write_out(str(metadata_store))
 
         for tree_version_list, uuid_set in tvl_us_cache.values():
             tree_version_list.write_out(str(metadata_store))
@@ -667,7 +665,7 @@ def _get_top_nodes(realm: Path,
         # path is "". If set, the un-versioned path is stored in the prefix
         # path element in the version list (which confusingly is also called
         # "path".
-        assert ap.dataset_path in (MetadataPath(""), None)
+        assert ap.dataset_path in (top_level_dataset_tree_path, None)
         return get_top_nodes_and_metadata_root_record(
             mapper_family=default_mapper_family,
             realm=str(realm),
@@ -675,6 +673,8 @@ def _get_top_nodes(realm: Path,
             primary_data_version=ap.dataset_version,
             prefix_path=ap.unversioned_path,
             dataset_tree_path=top_level_dataset_tree_path,
+            sub_dataset_id=None,
+            sub_dataset_version=None,
             auto_create=True)
 
     # This is an aggregated add. The inter-dataset path (aka. dataset-tree-path)
@@ -682,52 +682,41 @@ def _get_top_nodes(realm: Path,
     assert ap.dataset_path != MetadataPath("")
     assert ap.unversioned_path == MetadataPath("")
 
-    # We get the tree version list of the parent dataset ("root_dataset") and
-    # read its metadata root record, which is at MetadataPath("").
+    # We get the dataset tree for the root version. From this we have to load
+    # or create a metadata root record for the sub-dataset id and sub-dataset
+    # version and store it at the correct place in the dataset tree, i.e.
+    # at ap.dataset_path.
     tree_version_list, uuid_set, mrr = get_top_nodes_and_metadata_root_record(
         mapper_family=default_mapper_family,
         realm=str(realm),
         dataset_id=ap.root_dataset_id,
         primary_data_version=ap.root_dataset_version,
         prefix_path=ap.unversioned_path,
-        dataset_tree_path=top_level_dataset_tree_path,
+        dataset_tree_path=ap.dataset_path,
+        sub_dataset_id=ap.dataset_id,
+        sub_dataset_version=ap.dataset_version,
         auto_create=True)
 
-    _, _, dataset_tree = tree_version_list.get_dataset_tree(
-        ap.root_dataset_version,
-        MetadataPath(""))
+    if mrr.dataset_identifier != ap.dataset_id:
+        raise ValueError(
+            f"provided metadata claims that the metadata store contains "
+            f"dataset id {ap.dataset_id} at path {ap.dataset_path}, but "
+            f"the id of the stored dataset is {mrr.dataset_identifier}")
 
-    if ap.dataset_path in dataset_tree:
-        destination_mrr = dataset_tree.get_metadata_root_record(ap.dataset_path)
-        if destination_mrr.dataset_identifier != ap.dataset_id:
-            raise ValueError(
-                f"provided metadata claims that the metadata store contains "
-                f"dataset id {ap.dataset_id} at path {ap.dataset_path}, but "
-                f"the id of the stored dataset is "
-                f"{destination_mrr.dataset_identifier}")
-    else:
-        dataset_level_metadata = Metadata()
-        file_tree = FileTree()
-        destination_mrr = MetadataRootRecord(
-            ap.dataset_id,
-            ap.dataset_version,
-            dataset_level_metadata,
-            file_tree)
-        dataset_tree.add_dataset(ap.dataset_path, destination_mrr)
-
-    return tree_version_list, uuid_set, destination_mrr
+    return tree_version_list, uuid_set, mrr
 
 
 def ensure_mrr_elements_exist(mrr: MetadataRootRecord
                               ) -> Tuple[Metadata, FileTree]:
+
     dataset_level_metadata = mrr.get_dataset_level_metadata()
     if dataset_level_metadata is None:
         dataset_level_metadata = Metadata()
         mrr.set_dataset_level_metadata(dataset_level_metadata)
-    file_tree = mrr.get_file_tree()
+    file_tree = mrr.file_tree
     if file_tree is None:
         file_tree = FileTree()
-        mrr.set_file_tree(file_tree)
+        mrr.file_tree = file_tree
     return dataset_level_metadata, file_tree
 
 
@@ -771,22 +760,36 @@ def get_tvl_uuid_mrr_metadata_file_tree(
     if tvl_us_cache_key not in ap.tvl_us_cache:
         read_tree_version_list, read_uuid_set, read_mrr = _get_top_nodes(metadata_store, ap)
         metadata, file_tree = ensure_mrr_elements_exist(read_mrr)
-        ap.tvl_us_cache[metadata_store] = (read_tree_version_list, read_uuid_set)
+        ap.tvl_us_cache[tvl_us_cache_key] = (read_tree_version_list, read_uuid_set)
         ap.mrr_cache[mrr_cache_key] = (read_mrr, metadata, file_tree)
 
     tree_version_list, uuid_set = ap.tvl_us_cache[tvl_us_cache_key]
 
     if mrr_cache_key not in ap.mrr_cache:
         # We have the tree version list and uuid, but not the metadata root
-        # record, fetch or create it
-        mrr = get_metadata_root_record_from_top_nodes(
-            tree_version_list,
-            uuid_set,
-            ap.dataset_id,
-            ap.dataset_version,
-            ap.unversioned_path or MetadataPath(""),
-            ap.dataset_path or MetadataPath(""),
-            True)
+        # record, fetch or create it.
+        if ap.root_dataset_id in (MetadataPath(""), None):
+            mrr = get_metadata_root_record_from_top_nodes(
+                tree_version_list,
+                uuid_set,
+                ap.dataset_id,
+                ap.dataset_version,
+                ap.unversioned_path or MetadataPath(""),
+                ap.dataset_path or MetadataPath(""),
+                None,
+                None,
+                True)
+        else:
+            mrr = get_metadata_root_record_from_top_nodes(
+                tree_version_list,
+                uuid_set,
+                ap.root_dataset_id,
+                ap.root_dataset_version,
+                ap.unversioned_path or MetadataPath(""),
+                ap.dataset_path or MetadataPath(""),
+                ap.dataset_id,
+                ap.dataset_version,
+                True)
         metadata, file_tree = ensure_mrr_elements_exist(mrr)
         ap.mrr_cache[mrr_cache_key] = (mrr, metadata, file_tree)
 
