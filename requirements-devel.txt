@@ -1,11 +1,10 @@
 .
 
 six
-# datalad>=0.16
-git+https://github.com/datalad/datalad.git@7d2c7821397952eec57df0b3aad3ebee38f311e4#egg=datalad
+datalad>=0.15
 nose
 coverage
 sphinx>=1.7.8
 sphinx-rtd-theme
 pyyaml
-datalad-metadata-model>=0.3.0rc2
+datalad-metadata-model==0.3.0,<0.4.0
