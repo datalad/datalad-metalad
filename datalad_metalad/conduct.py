@@ -111,25 +111,29 @@ class Conduct(Interface):
 
     _examples_ = [
         dict(
-            text="Run metalad_core_dataset extractor on the top dataset and "
+            text="Run 'metalad_example_dataset' extractor on the top dataset and "
                  "all subdatasets. Add the resulting metadata in aggregated"
                  "mode. This command uses the provided pipeline"
                  "definition 'extract_metadata'.",
             code_cmd="datalad meta-conduct extract_metadata "
-                     "traverser.path=<dataset path> traverser.type=dataset"
-                     "traverser.recursive=True extractor.type=dataset "
-                     "extractor.extractor_name=metalad_core_dataset "
+                     "traverser.top_level_dir=<dataset path> "
+                     "traverser.item_type=dataset "
+                     "traverser.traverse_sub_datasets=True "
+                     "extractor.extractor_type=dataset "
+                     "extractor.extractor_name=metalad_example_dataset "
                      "adder.aggregate=True"
         ),
         dict(
-            text="Run metalad_core_file extractor on all files of the root "
+            text="Run metalad_example_file extractor on all files of the root "
                  "dataset and the subdatasets. Automatically get the content, "
                  "if it is not present. Drop content that was automatically "
                  "fetched after its metadata has been added.",
             code_cmd="datalad meta-conduct extract_metadata_autoget_autodrop "
-                     "traverser.path=<dataset path> traverser.type=file"
-                     "traverser.recursive=True extractor.type=file "
-                     "extractor.extractor_name=metalad_core_file "
+                     "traverser.top_level_dir=<dataset path> "
+                     "traverser.item_type=file "
+                     "traverser.traverse_sub_datasets=True "
+                     "extractor.extractor_type=file "
+                     "extractor.extractor_name=metalad_example_file "
                      "adder.aggregate=True"
         )
     ]

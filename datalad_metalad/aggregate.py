@@ -138,9 +138,9 @@ class Aggregate(Interface):
     _examples_ = [
         dict(
             text="For example, if the root dataset path is '/home/root_ds', "
-                 "and we want to aggregate metadata of two sub-datasets, e.g. "
-                 "'/home/root_ds/sub_ds1/' and '/home/root_ds/sub_ds2', into "
-                 "the root dataset, we can use the follwing command",
+                 "the following command can be used to aggregate metadata of "
+                 "two sub-datasets, e.g. '/home/root_ds/sub_ds1' and "
+                 "'/home/root_ds/sub_ds2', into the root dataset",
             code_cmd="datalad meta-aggregate -d /home/root_ds "
                      "/home/root_ds/sub_ds1 /home/root_ds/sub_ds2")
     ]

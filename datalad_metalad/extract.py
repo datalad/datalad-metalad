@@ -131,31 +131,31 @@ class Extract(Interface):
 
     _examples_ = [
         dict(
-            text='Use the metalad_core_file-extractor to extract metadata'
+            text='Use the metalad_example_file-extractor to extract metadata'
                  'from the file "subdir/data_file_1.txt". The dataset is '
                  'given by the current working directory',
-            code_cmd="datalad meta-extract metalad_core_file "
+            code_cmd="datalad meta-extract metalad_example_file "
                      "subdir/data_file_1.txt"
         ),
         dict(
-            text='Use the metalad_core_file-extractor to extract metadata '
+            text='Use the metalad_example_file-extractor to extract metadata '
                  'from the file "subdir/data_file_1.txt" in the dataset '
                  '/home/datasets/ds0001',
             code_cmd="datalad meta-extract -d /home/datasets/ds0001 "
-                     "metalad_core_file subdir/data_file_1.txt"
+                     "metalad_example_file subdir/data_file_1.txt"
         ),
         dict(
-            text='Use the metalad_core_dataset-extractor to extract '
+            text='Use the metalad_example_dataset-extractor to extract '
                  'dataset-level metadata from the dataset given by the '
                  'current working directory',
-            code_cmd="datalad meta-extract metalad_core_dataset"
+            code_cmd="datalad meta-extract metalad_example_dataset"
         ),
         dict(
-            text='Use the metalad_core_dataset-extractor to extract '
+            text='Use the metalad_example_dataset-extractor to extract '
                  'dataset-level metadata from the dataset in '
                  '/home/datasets/ds0001',
             code_cmd="datalad meta-extract -d /home/datasets/ds0001 "
-                     "metalad_core_dataset"
+                     "metalad_example_dataset"
         )]
 
     _params_ = dict(

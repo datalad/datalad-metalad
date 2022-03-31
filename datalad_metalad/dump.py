@@ -483,7 +483,7 @@ class Dump(Interface):
             doc="""If set, recursively report on any matching metadata based
                    on given paths or reference dataset. Note, setting this
                    option does not cause any recursion into potential
-                   subdatasets on the filesystem. It merely determines what
+                   sub-datasets on the filesystem. It merely determines what
                    metadata is being reported from the given/discovered
                    reference dataset."""))
 

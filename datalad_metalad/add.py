@@ -114,18 +114,16 @@ class Add(Interface):
     r"""Add metadata to a dataset.
 
     This command reads metadata from a source and adds this metadata
-    to a dataset. A source can be: arguments, standard
-    input, or a local file.
-    The metadata format is a string with the JSON-serialized dictionary
+    to a dataset. The source can either be a file, or standard input.
+    The metadata format is a string with the JSON-serialized dictionary,
+    or list of dictionaries (or individual dictionaries in JSON-Lines format)
     that describes the metadata.
 
     In case of an API-call metadata can also be provided in a python
     dictionary or a list of dictionaries.
 
-    [TODO: add a schema]
-
-    If metadata is read from a source, parameter can overwrite or
-    amend information that is stored in the source.
+    If metadata is read from a source, additional parameter can overwrite or
+    amend information that is provided by the source.
 
     The ADDITIONAL_VALUES arguments can be pre-fixed by '@',
     in which case the pre-fixed argument is interpreted as a file-name and
@@ -141,6 +139,11 @@ class Add(Interface):
                  'dataset in the current directory.',
             code_cmd="datalad meta-add metadata-123.json"),
         dict(
+            text='Add metadata stored in the JSON lines file '
+                 '"metadata-entries.jsonl" to the '
+                 'dataset in the current directory.',
+            code_cmd="datalad meta-add --json-lines metadata-123.json"),
+        dict(
             text='Add metadata stored in the file "metadata-123.json" to the '
                  'dataset "/home/user/dataset_0"',
             code_cmd="datalad meta-add -d /home/user/dataset_0 "
@@ -149,7 +152,7 @@ class Add(Interface):
             text='Add metadata stored in the file "metadata-123.json" to the '
                  'dataset in the current directory and overwrite the '
                  '"dataset_id" value provided in "metadata-123.json"',
-            code_cmd='datalad meta-add -d /home/user/dataset_0 '
+            code_cmd='datalad meta-add -d /home/user/dataset_0 -i '
                      'metadata-123.json \'{"dataset_id": '
                      '"00010203-1011-2021-3031-404142434445"}\''
         ),
@@ -214,7 +217,7 @@ class Add(Interface):
             'path'
 
             If the metadata should refer to a sub-dataset element (that means
-            if an "aggregated" record should be stored, see meta-aggregate
+            if an "aggregated" record should be stored (see meta-aggregate
             for more info), the
             following key indicates the path of the sub-dataset from the
             root of the "containing dataset":
@@ -240,7 +243,9 @@ class Add(Interface):
             "anonymous" root dataset, but with the given sub-dataset-path.
             
             (This makes sense, if the sub-dataset at the given path contains a
-            version that is defined in the metadata, i.e. in dataset_version),
+            version that is defined in the metadata, i.e. in dataset_version.
+            The metadata will then be added to all versions that meet this
+            condition.)
             """,
             constraints=EnsureStr()),
         additionalvalues=Parameter(
