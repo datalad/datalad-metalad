@@ -121,12 +121,18 @@ class Filter(Interface):
 
     _examples_ = [
         dict(
-            text="""Use the provided 'metalad_demo-filter' to build a
+            text="""Use the provided 'metalad_demofilter' to build a
             'histogram' of keys and their content in the metadata of the
             dataset 'root-dataset', iterating over the sub-datasets 'sub-a' and 
             'sub-b'.""",
             code_cmd="""datalad meta-filter metalad_demofilter -d root-dataset
             sub-a sub-b"""
+        ),
+        dict(
+            text="""Apply 'metalad_demofilter' to all directories/sub-datasets
+            of the dataset in the current working directory that start with
+            'subject'.""",
+            code_cmd="""datalad meta-filter metalad_demofilter subject*"""
         ),
     ]
 
@@ -135,8 +141,8 @@ class Filter(Interface):
             args=("-d", "--dataset"),
             doc="""Git repository that contains datalad metadata. If no
                    repository path is given, the metadata store is determined
-                   by the current work directory. This is one metadata source
-                   that is iterated.""",
+                   by the current work directory. All metadata URLs (see below)
+                   are relative to this dataset.""",
             constraints=EnsureDataset() | EnsureNone()),
         filtername=Parameter(
             args=("filtername",),
@@ -147,10 +153,11 @@ class Filter(Interface):
             args=("metadataurls",),
             metavar="METADATA_URL",
             nargs="+",
-            doc="""MetadataRecord URL(s). A list of at least one metadata URL. The
-                   filter will receive a list of iterables, that contains one 
-                   iterable for each metadata URL. The iterables will yields all
-                   metadata-entries that match the respective metadata URL.""",
+            doc="""MetadataRecord URL(s). A list of at least one metadata URL.
+                   The filter will receive a list of iterables, that contains
+                   one iterable for each metadata URL. The iterables will yields
+                   all metadata-entries that match the respective metadata URL.
+                   """,
             constraints=EnsureStr()),
         # TODO: this parameter is specified here in order to print out a
         #  proper help message. It will never be filled by the argument parser
