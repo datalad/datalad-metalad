@@ -389,8 +389,13 @@ def test_override_key_allowed(file_name):
         assert_true(dp.call_count == 1)
 
 
-def _get_top_nodes(git_repo, dataset_id, dataset_version):
+def _get_top_nodes(git_repo,
+                   dataset_id,
+                   dataset_version,
+                   dataset_tree_path=""):
+
     # Ensure that metadata was created
+    print("asdasdasd")
     tree_version_list, uuid_set, mrr = \
         get_top_nodes_and_metadata_root_record(
             mapper_family="git",
@@ -398,7 +403,7 @@ def _get_top_nodes(git_repo, dataset_id, dataset_version):
             dataset_id=dataset_id,
             primary_data_version=dataset_version,
             prefix_path=MetadataPath(""),
-            dataset_tree_path=MetadataPath(""),
+            dataset_tree_path=MetadataPath(dataset_tree_path),
             sub_dataset_id=None,
             sub_dataset_version=None)
 
@@ -518,7 +523,8 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
-            root_dataset_version)
+            root_dataset_version,
+            additional_keys_template["dataset_path"])
 
         _, _, dataset_tree = tree_version_list.get_dataset_tree(
             root_dataset_version,
@@ -565,7 +571,8 @@ def test_subdataset_add_file_end_to_end(file_name):
         tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
-            root_dataset_version)
+            root_dataset_version,
+            additional_keys_template["dataset_path"])
 
         _, _, dataset_tree = tree_version_list.get_dataset_tree(
             root_dataset_version,
@@ -619,7 +626,7 @@ def test_current_dir_add_end_to_end(file_name):
 
         expected = {
             **metadata_template,
-            **additional_keys_template,
+            **additional_keys_unknown_template,
             "type": "dataset",
             "dataset_id": str(another_id),
         }
