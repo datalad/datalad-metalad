@@ -19,10 +19,11 @@ from datalad.support.exceptions import NoDatasetFound
 from datalad.utils import chpwd
 
 from datalad.tests.utils import (
+    assert_in,
     assert_repo_status,
     assert_raises,
     assert_result_count,
-    assert_in,
+    assert_true,
     eq_,
     known_failure_windows,
     with_tempfile,
@@ -93,7 +94,7 @@ def test_dataset_extraction_result(path):
     ds.save()
     assert_repo_status(ds.path)
 
-    extractor_name = "metalad_core_dataset"
+    extractor_name = "metalad_example_dataset"
     extractor_class = get_extractor_class(extractor_name)
     extractor_version = extractor_class(None, None, None).get_version()
 
@@ -117,7 +118,8 @@ def test_dataset_extraction_result(path):
     extracted_metadata = metadata_record["extracted_metadata"]
     eq_(extracted_metadata["id"], ds.id)
     eq_(extracted_metadata["refcommit"], ds.repo.get_hexsha())
-    eq_(extracted_metadata["comment"], "test-implementation of core_dataset")
+    assert_true(extracted_metadata["comment"].startswith(
+        "example dataset extractor executed at "))
 
 
 @with_tree(meta_tree)
@@ -132,7 +134,7 @@ def test_file_extraction_result(ds_path):
     assert_repo_status(ds.path)
 
     file_path = "sub/one"
-    extractor_name = "metalad_core_file"
+    extractor_name = "metalad_example_file"
     extractor_class = get_extractor_class(extractor_name)
     extractor_version = extractor_class(None, None, None).get_version()
 
@@ -160,7 +162,8 @@ def test_file_extraction_result(ds_path):
     assert_in("@id", extracted_metadata)
     eq_(extracted_metadata["type"], "file")
     eq_(extracted_metadata["path"], file_path)
-    eq_(extracted_metadata["comment"], "test-implementation of core_file")
+    assert_true(extracted_metadata["comment"].startswith(
+        "example file extractor executed at "))
 
 
 @with_tree(meta_tree)
@@ -327,7 +330,7 @@ def test_path_parameter_directory(ds_path):
     assert_raises(
         ValueError,
         meta_extract,
-        extractorname="metalad_core_file",
+        extractorname="metalad_example_file",
         dataset=ds,
         path="sub")
 
@@ -347,7 +350,7 @@ def test_path_parameter_recognition(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             result_renderer="disabled")
@@ -370,7 +373,7 @@ def test_extra_parameter_recognition(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             path="--",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
@@ -402,7 +405,7 @@ def test_path_and_extra_parameter_recognition(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
@@ -434,7 +437,7 @@ def test_context_dict_parameter_handling(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             context={"dataset_version": "xyz"},
             path="sub/one",
@@ -460,7 +463,7 @@ def test_context_str_parameter_handling(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             context='{"dataset_version": "rst"}',
             path="sub/one",
@@ -484,7 +487,7 @@ def test_get_context(ds_path):
 
     result = tuple(
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             get_context=True,
             path="sub/one",
@@ -519,7 +522,7 @@ def test_extractor_parameter_handling(ds_path):
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_dataset",
+            extractorname="metalad_example_dataset",
             dataset=ds,
             path="--",
             extractorargs=["k0", "v0", "k1", "v1"],
@@ -533,7 +536,7 @@ def test_extractor_parameter_handling(ds_path):
             patch("datalad_metalad.extract.do_dataset_extraction") as de:
 
         meta_extract(
-            extractorname="metalad_core_file",
+            extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             extractorargs=["k0", "v0", "k1", "v1"],

@@ -54,7 +54,7 @@ def check_api(annex, path):
         # work on empty datasets, or datasets, or without
         # external processes. We skip those here, instead
         # of skipping them later.
-        if extractor_ep.name in ("metalad_core_file",
+        if extractor_ep.name in ("metalad_example_file",
                                  "external_dataset",
                                  "external_file",
                                  "metalad_studyminimeta",
