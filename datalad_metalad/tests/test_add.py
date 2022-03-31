@@ -10,7 +10,6 @@
 """Test metadata adding"""
 import json
 import os
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -40,6 +39,7 @@ from datalad.tests.utils import (
     assert_result_count,
     assert_true,
     eq_,
+    known_failure_windows,
     with_tempfile,
 )
 
@@ -944,6 +944,7 @@ def test_multi_add_regression_1(temp_dir: str):
         assert_not_equal(root_dataset_id, "<unknown>")
 
 
+@known_failure_windows
 @with_tempfile(mkdir=True)
 def test_multi_add_regression_2(temp_dir: str):
     create_dataset_proper(temp_dir)
