@@ -289,7 +289,7 @@ def dump_from_dataset_tree(mapper: str,
                         f"no root dataset record found for version "
                         f"{version} in metadata store "
                         f"{metadata_store}, cannot determine root dataset id")
-                    root_dataset_version = "<unknown>"
+                    root_dataset_version = version
                     root_dataset_identifier = "<unknown>"
                 else:
                     root_dataset_version = root_mrr.dataset_version

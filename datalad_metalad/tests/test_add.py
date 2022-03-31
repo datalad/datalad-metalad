@@ -78,6 +78,13 @@ additional_keys_template = {
 }
 
 
+additional_keys_unknown_template = {
+    "root_dataset_id": "<unknown>",
+    "root_dataset_version": "aaaaaaa0000000000000000222222222",
+    "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
+}
+
+
 def _assert_raise_mke_with_keys(exception_keys: List[str],
                                 *args,
                                 **kwargs):
@@ -655,7 +662,6 @@ def test_add_file_dump_end_to_end(file_name):
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         print(f"meta-add x 1: {time.time() - start_time} s")
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
@@ -668,7 +674,7 @@ def test_add_file_dump_end_to_end(file_name):
 
         expected = {
             **metadata_template,
-            **additional_keys_template,
+            **additional_keys_unknown_template,
             "type": "file",
             "path": test_path,
             "dataset_id": str(another_id)
