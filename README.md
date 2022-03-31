@@ -65,9 +65,17 @@ with the release.
 
 Commands currently under development:
 
-- `meta-export` -- write a flat representation of metadata to a file-system
+- `meta-export` -- write a flat representation of metadata to a file-system. For now you
+  can export your metadata to a JSON-lines file named `metadata-dump.jsonl`:
+    ```
+     datalad meta-dump -d <dataset-path> -r >metadata-dump.jsonl
+    ```
 
-- `meta-import` -- import a flat representation of metadata from a file-system
+- `meta-import` -- import a flat representation of metadata from a file-system. For now you 
+   can import metadata from a JSON-lines file, e.g.  `metadata-dump.jsonl` like this:
+    ```
+     datalad meta-add -d <dataset-path> --json-lines -i metadata-dump.jsonl
+    ```
 
 - `meta-ingest-previous` -- ingest metadata from `metalady<=0.2.1`.
 
