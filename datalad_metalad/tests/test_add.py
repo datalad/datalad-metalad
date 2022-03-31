@@ -10,6 +10,7 @@
 """Test metadata adding"""
 import json
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -31,8 +32,10 @@ from datalad.cmd import BatchedCommand
 from datalad.support.exceptions import IncompleteResultsError
 from datalad.tests.utils import (
     assert_dict_equal,
+    assert_equal,
     assert_in,
     assert_is_not_none,
+    assert_not_equal,
     assert_raises,
     assert_result_count,
     assert_true,
@@ -70,6 +73,13 @@ metadata_template = {
 
 additional_keys_template = {
     "root_dataset_id": str(default_id),
+    "root_dataset_version": "aaaaaaa0000000000000000222222222",
+    "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
+}
+
+
+additional_keys_unknown_template = {
+    "root_dataset_id": "<unknown>",
     "root_dataset_version": "aaaaaaa0000000000000000222222222",
     "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
 }
@@ -170,7 +180,7 @@ def test_incomplete_non_mandatory_key_handling(file_name):
             patch("datalad_metalad.add.locked_backend"):
 
         _assert_raise_mke_with_keys(
-            ["root_dataset_version", "dataset_path"],
+            ["root_dataset_version"],
             metadata=file_name,
             additionalvalues=json.dumps({"root_dataset_id": 1}))
 
@@ -379,15 +389,23 @@ def test_override_key_allowed(file_name):
         assert_true(dp.call_count == 1)
 
 
-def _get_top_nodes(git_repo, dataset_id, dataset_version):
+def _get_top_nodes(git_repo,
+                   dataset_id,
+                   dataset_version,
+                   dataset_tree_path=""):
+
     # Ensure that metadata was created
+    print("asdasdasd")
     tree_version_list, uuid_set, mrr = \
         get_top_nodes_and_metadata_root_record(
-            "git",
-            git_repo.path,
-            dataset_id,
-            dataset_version,
-            MetadataPath(""))
+            mapper_family="git",
+            realm=git_repo.path,
+            dataset_id=dataset_id,
+            primary_data_version=dataset_version,
+            prefix_path=MetadataPath(""),
+            dataset_tree_path=MetadataPath(dataset_tree_path),
+            sub_dataset_id=None,
+            sub_dataset_version=None)
 
     assert_is_not_none(tree_version_list)
     assert_is_not_none(uuid_set)
@@ -505,10 +523,12 @@ def test_subdataset_add_dataset_end_to_end(file_name):
         tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
-            root_dataset_version)
+            root_dataset_version,
+            additional_keys_template["dataset_path"])
 
-        _, dataset_tree = tree_version_list.get_dataset_tree(
-            root_dataset_version)
+        _, _, dataset_tree = tree_version_list.get_dataset_tree(
+            root_dataset_version,
+            MetadataPath(""))
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
         with ensure_mapped(mrr):
@@ -551,10 +571,12 @@ def test_subdataset_add_file_end_to_end(file_name):
         tree_version_list, _, mrr = _get_top_nodes(
             git_repo,
             root_dataset_id,
-            root_dataset_version)
+            root_dataset_version,
+            additional_keys_template["dataset_path"])
 
-        _, dataset_tree = tree_version_list.get_dataset_tree(
-            root_dataset_version)
+        _, _, dataset_tree = tree_version_list.get_dataset_tree(
+            root_dataset_version,
+            MetadataPath(""))
 
         mrr = dataset_tree.get_metadata_root_record(dataset_tree_path)
         with ensure_mapped(mrr):
@@ -604,7 +626,7 @@ def test_current_dir_add_end_to_end(file_name):
 
         expected = {
             **metadata_template,
-            **additional_keys_template,
+            **additional_keys_unknown_template,
             "type": "dataset",
             "dataset_id": str(another_id),
         }
@@ -647,7 +669,6 @@ def test_add_file_dump_end_to_end(file_name):
         res = meta_add(metadata=file_name, dataset=git_repo.path)
         print(f"meta-add x 1: {time.time() - start_time} s")
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
@@ -660,7 +681,7 @@ def test_add_file_dump_end_to_end(file_name):
 
         expected = {
             **metadata_template,
-            **additional_keys_template,
+            **additional_keys_unknown_template,
             "type": "file",
             "path": test_path,
             "dataset_id": str(another_id)
@@ -799,7 +820,7 @@ def test_cache_age(temp_dir: str):
     # Ensure that maximum cache age is three
     datalad_metalad.add.max_cache_age = 2
     with \
-            patch("datalad_metalad.add.flush_cache") as fc, \
+            patch("datalad_metalad.add.flush_metadata_cache") as fc, \
             patch("datalad_metalad.add._stdin_reader") as stdin_mock:
 
         stdin_mock.return_value = slow_feed()
@@ -854,3 +875,92 @@ def test_batch_mode_end_to_end(temp_dir: str):
     eq_(bc(""),
         f'{{"status": "ok", "succeeded": {len(json_objects)}, "failed": 0}}')
     bc.close()
+
+
+unknown_error_lines_json = \
+"""{"type": "dataset", "dataset_path": "study-95", "dataset_id": "5599d916-dc76-11ea-8d5f-7cdd908c7490", "dataset_version": "73ad0039ade25bd0f6b0dbf9dd13006e3721cc38", "extraction_time": 1647789778.6307757, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 4}}
+{"type": "dataset", "dataset_path": "study-95", "dataset_id": "5599d916-dc76-11ea-8d5f-7cdd908c7490", "dataset_version": "73ad0039ade25bd0f6b0dbf9dd13006e3721cc38", "extraction_time": 1648565892.8312778, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 5}}
+{"type": "dataset", "dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "extraction_time": 1648477352.674133, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 6}}
+{"type": "dataset", "dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "extraction_time": 1648565711.668348, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 7}}
+{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1647851151.4307828, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_studyminimeta", "extractor_version": "0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 1}}
+{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1648477354.3841684, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 2}}
+{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1648565713.58595, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 3}}
+"""
+
+
+critical_lines_json = \
+"""{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1647851151.4307828, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_studyminimeta", "extractor_version": "0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 1}}
+{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1648477354.3841684, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 2}}
+{"type": "dataset", "root_dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "root_dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "dataset_path": "study-99", "dataset_id": "52b2f098-dc76-11ea-a6da-7cdd908c7490", "dataset_version": "a9ff17c0c344d6dc91ead0141f2b9927f11064bc", "extraction_time": 1648565713.58595, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 3}}
+{"type": "dataset", "dataset_path": "study-95", "dataset_id": "5599d916-dc76-11ea-8d5f-7cdd908c7490", "dataset_version": "73ad0039ade25bd0f6b0dbf9dd13006e3721cc38", "extraction_time": 1647789778.6307757, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 4}}
+{"type": "dataset", "dataset_path": "study-95", "dataset_id": "5599d916-dc76-11ea-8d5f-7cdd908c7490", "dataset_version": "73ad0039ade25bd0f6b0dbf9dd13006e3721cc38", "extraction_time": 1648565892.8312778, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 5}}
+{"type": "dataset", "dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "extraction_time": 1648477352.674133, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core_dataset", "extractor_version": "0.0.1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 6}}
+{"type": "dataset", "dataset_id": "84e51a9a-dc8b-11ea-ae66-7cdd908c7490", "dataset_version": "0281546196aaddfa88ea1b5f40396a5960ed7040", "extraction_time": 1648565711.668348, "agent_name": "Christian M\u00f6nch", "agent_email": "christian.moench@web.de", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"test-data": 7}}
+"""
+
+
+@with_tempfile(mkdir=True)
+def test_add_regression_1(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    json_objects = [
+        json.loads(json_string)
+        for json_string in critical_lines_json.splitlines()
+    ]
+    for json_object in json_objects:
+        for result in meta_add(dataset=temp_dir,
+                               metadata=json_object,
+                               allow_id_mismatch=True):
+            eq_(result["status"], "ok")
+
+    results = list(meta_dump(dataset=temp_dir, path="", recursive=True))
+    assert_equal(len(results), len(json_objects))
+    for result in results:
+        eq_(result["status"], "ok")
+        root_dataset_id = result["metadata"].get("root_dataset_id", None)
+        assert_not_equal(root_dataset_id, "<unknown>")
+
+
+@with_tempfile(mkdir=True)
+def test_multi_add_regression_1(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    json_objects = [
+        json.loads(json_string)
+        for json_string in critical_lines_json.splitlines()
+    ]
+    for result in meta_add(dataset=temp_dir,
+                           metadata=json_objects,
+                           allow_id_mismatch=True):
+        eq_(result["status"], "ok")
+
+    results = list(meta_dump(dataset=temp_dir, path="*", recursive=True))
+    for result in results:
+        print(result["metadata"])
+    assert_equal(len(results), len(json_objects))
+    for result in results:
+        eq_(result["status"], "ok")
+        root_dataset_id = result["metadata"].get("root_dataset_id", None)
+        assert_not_equal(root_dataset_id, "<unknown>")
+
+
+@with_tempfile(mkdir=True)
+def test_multi_add_regression_2(temp_dir: str):
+    create_dataset_proper(temp_dir)
+
+    with tempfile.NamedTemporaryFile(mode="tw") as json_input:
+        json_input.write(critical_lines_json)
+        json_input.flush()
+
+        for result in meta_add(dataset=temp_dir,
+                               metadata=json_input.name,
+                               json_lines=True,
+                               allow_id_mismatch=True):
+            eq_(result["status"], "ok")
+
+        results = list(meta_dump(dataset=temp_dir, path="", recursive=True))
+        assert_equal(len(results), len(critical_lines_json.splitlines()))
+        for result in results:
+            eq_(result["status"], "ok")
+            root_dataset_id = result["metadata"].get("root_dataset_id", None)
+            assert_not_equal(root_dataset_id, "<unknown>")

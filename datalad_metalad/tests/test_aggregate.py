@@ -44,14 +44,17 @@ def _check_root_elements(result_object: dict,
                          root_dataset_id: Optional[str],
                          root_dataset_version: Optional[str]):
 
-    if dataset_path is None:
+    if dataset_path is None or dataset_path == "":
         # Ensure that identical values, i.e. dataset_id and
         # dataset_version, and empty values, i.e. dataset_path, are
         # not present in the result.
         assert_not_in("root_dataset_id", result_object)
         assert_not_in("root_dataset_version", result_object)
         assert_not_in("dataset_path", result_object)
-
+    elif dataset_path != "":
+        assert_not_in("root_dataset_id", result_object)
+        assert_not_in("root_dataset_version", result_object)
+        eq_(result_object["dataset_path"], dataset_path)
     else:
         eq_(result_object["root_dataset_id"], root_dataset_id)
         eq_(result_object["root_dataset_version"], root_dataset_version)
@@ -87,12 +90,12 @@ def test_basic_aggregation():
                 dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
-        # We have to patch "get_root_version_for_subset_version" because
-        # the test git repos have no commits.
-        with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
+        # We have to patch "does_version_contain_version_at" because the test
+        # git repos have no commits.
+        with patch("datalad_metalad.aggregate.does_version_contain_version_at") as p:
 
-            # Ensure that the root version is found
-            p.return_value = [version_base.format(index=0)]
+            # Ensure that the sub-datasets are not copied into one another
+            p.return_value = False
 
             result = meta_aggregate(
                 str(root_dataset_dir),
@@ -108,8 +111,8 @@ def test_basic_aggregation():
             zero_version = version_base.format(index=0)
             check_parameters = [
                 dict(dataset_path=None, root_dataset_id=None),
-                dict(dataset_path="subdataset_1", root_dataset_id=str(root_id)),
                 dict(dataset_path="subdataset_0", root_dataset_id=str(root_id)),
+                dict(dataset_path="subdataset_1", root_dataset_id=str(root_id)),
             ]
 
             for index, result in enumerate(result_objects):
@@ -122,22 +125,22 @@ def test_basic_aggregation():
 
                 eq_(result_object["dataset_id"], [
                     str(root_id),
-                    str(sub_1_id),
                     str(sub_0_id),
+                    str(sub_1_id),
                 ][index])
 
                 eq_(
                     result_object["dataset_version"], [
                         version_base.format(index=0),
-                        version_base.format(index=2),
                         version_base.format(index=1),
+                        version_base.format(index=2),
                     ][index])
 
                 eq_(result_object["extractor_name"], "test_dataset")
                 eq_(result_object["extracted_metadata"]["content"], [
                     "metadata-content_0",
-                    "metadata-content_2",
                     "metadata-content_1",
+                    "metadata-content_2",
                 ][index])
 
             # Test a second aggregation
@@ -199,12 +202,13 @@ def test_basic_aggregation_into_empty_store():
                 dataset_version=version_base.format(index=index),
                 metadata_content=f"metadata-content_{index}")
 
-        # We have to patch "get_root_version_for_subset_version" because
-        # the test git repos have no commits.
-        with patch("datalad_metalad.aggregate.get_root_version_for_subset_version") as p:
+        # We have to patch "does_version_contain_version_at" because the test
+        # git repos have no commits and we want the code to assume that the
+        # sub-datasets are at the given path in the given version.
+        with patch("datalad_metalad.aggregate.does_version_contain_version_at") as p:
 
-            # Ensure that the root version is found
-            p.return_value = [version_base.format(index="a")]
+            # Ensure that the sub-datasets are not copied into one another
+            p.return_value = False
 
             meta_aggregate(
                 str(root_dataset_dir),
@@ -219,31 +223,32 @@ def test_basic_aggregation_into_empty_store():
 
             a_version = version_base.format(index="a")
             check_parameters = [
-                dict(dataset_path="subdataset_1", root_dataset_id="<unknown>"),
                 dict(dataset_path="subdataset_0", root_dataset_id="<unknown>"),
+                dict(dataset_path="subdataset_1", root_dataset_id="<unknown>"),
             ]
 
             for index, result in enumerate(result_objects):
 
                 result_object = result["metadata"]
+
                 _check_root_elements(
                     result_object=result_object,
                     root_dataset_version=a_version,
                     **(check_parameters[index]))
 
                 eq_(result_object["dataset_id"], [
-                        str(sub_1_id),
                         str(sub_0_id),
+                        str(sub_1_id),
                     ][index])
 
                 eq_(
                     result_object["dataset_version"], [
-                        version_base.format(index=1),
                         version_base.format(index=0),
+                        version_base.format(index=1),
                     ][index])
 
                 eq_(result_object["extractor_name"], "test_dataset")
                 eq_(result_object["extracted_metadata"]["content"], [
-                    "metadata-content_1",
                     "metadata-content_0",
+                    "metadata-content_1",
                 ][index])

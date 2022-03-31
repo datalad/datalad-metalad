@@ -24,8 +24,6 @@ def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
     git_repo_path = Path(git_repo.path)
     datalad_dir = git_repo_path / ".datalad"
     datalad_dir.mkdir()
-    datalad_lock_dir = datalad_dir / "locks"
-    datalad_lock_dir.mkdir()
 
     datalad_config = datalad_dir / "config"
     datalad_config.write_text(
@@ -47,8 +45,6 @@ def create_dataset_proper(directory: Union[str, Path],
         where='dataset')
     ds.save()
     assert_repo_status(ds.path)
-    datalad_lock_dir = ds.pathobj / "locks"
-    datalad_lock_dir.mkdir()
 
     sub_dataset_names = sub_dataset_names or []
     for sub_dataset_name in sub_dataset_names:
