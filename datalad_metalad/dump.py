@@ -283,66 +283,66 @@ def dump_from_dataset_tree(mapper: str,
         for _, prefix_path, dataset_tree in vpd_iterable:
             root_mrr = dataset_tree.get_metadata_root_record(MetadataPath(""))
 
-            with ensure_mapped(root_mrr):
-                if root_mrr is None:
-                    lgr.debug(
-                        f"no root dataset record found for version "
-                        f"{version} in metadata store "
-                        f"{metadata_store}, cannot determine root dataset id")
-                    root_dataset_version = version
-                    root_dataset_identifier = "<unknown>"
-                else:
+            if root_mrr is None:
+                lgr.debug(
+                    f"no root dataset record found for version "
+                    f"{version} in metadata store "
+                    f"{metadata_store}, cannot determine root dataset id")
+                root_dataset_version = version
+                root_dataset_identifier = "<unknown>"
+            else:
+                with ensure_mapped(root_mrr):
                     root_dataset_version = root_mrr.dataset_version
                     root_dataset_identifier = root_mrr.dataset_identifier
 
-                # Create a tree search object to search for the specified datasets
-                tree_search = MTreeSearch(dataset_tree.mtree)
+            # Create a tree search object to search for the specified datasets
+            tree_search = MTreeSearch(dataset_tree.mtree)
 
-                if prefix_path == MetadataPath(""):
-                    search_results = tree_search.search_pattern(
-                        pattern=metadata_url.dataset_path,
-                        recursive=recursive,
-                        item_indicator=datalad_root_record_name)
-                else:
-                    search_results = tree_search.search_pattern(
-                        pattern=metadata_url.dataset_path,
-                        recursive=recursive,
-                        item_indicator=datalad_root_record_name)
+            if prefix_path == MetadataPath(""):
+                search_results = tree_search.search_pattern(
+                    pattern=metadata_url.dataset_path,
+                    recursive=recursive,
+                    item_indicator=datalad_root_record_name)
+            else:
+                search_results = tree_search.search_pattern(
+                    pattern=metadata_url.dataset_path,
+                    recursive=recursive,
+                    item_indicator=datalad_root_record_name)
 
-                result_count = 0
-                for path, node, _ in search_results:
-                    result_count += 1
+            result_count = 0
+            for path, node, _ in search_results:
+                result_count += 1
 
-                    mrr = cast(
-                        MetadataRootRecord,
-                        node.get_child(datalad_root_record_name))
+                mrr = cast(
+                    MetadataRootRecord,
+                    node.get_child(datalad_root_record_name))
 
-                    yield from show_dataset_metadata(
-                        mapper,
-                        metadata_store,
-                        root_dataset_identifier,
-                        root_dataset_version,
-                        prefix_path,
-                        path,
-                        mrr)
+                yield from show_dataset_metadata(
+                    mapper,
+                    metadata_store,
+                    root_dataset_identifier,
+                    root_dataset_version,
+                    prefix_path,
+                    path,
+                    mrr)
 
-                    yield from show_file_tree_metadata(
-                        mapper,
-                        metadata_store,
-                        root_dataset_identifier,
-                        root_dataset_version,
-                        prefix_path,
-                        path,
-                        mrr,
-                        metadata_url.local_path,
-                        recursive)
+                yield from show_file_tree_metadata(
+                    mapper,
+                    metadata_store,
+                    root_dataset_identifier,
+                    root_dataset_version,
+                    prefix_path,
+                    path,
+                    mrr,
+                    metadata_url.local_path,
+                    recursive)
 
-                if result_count == 0:
-                    lgr.error(
-                        f"search pattern '{str(metadata_url.dataset_path)}' does not "
-                        f"match any dataset in dataset-tree of dataset "
-                        f"{root_dataset_identifier}@{root_dataset_version} (stored on "
-                        f"{mapper}:{metadata_store})")
+            if result_count == 0:
+                lgr.error(
+                    f"search pattern '{str(metadata_url.dataset_path)}' does not "
+                    f"match any dataset in dataset-tree of dataset "
+                    f"{root_dataset_identifier}@{root_dataset_version} (stored on "
+                    f"{mapper}:{metadata_store})")
 
 
 def dump_from_uuid_set(mapper: str,
