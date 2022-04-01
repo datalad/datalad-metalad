@@ -8,16 +8,17 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """MetadataRecord extractor for files stored in Datalad's own core storage"""
 import logging
+import time
 from uuid import UUID
 
 from .. import get_file_id
 from .base import DataOutputCategory, ExtractorResult, FileMetadataExtractor
 
 
-lgr = logging.getLogger('datalad.metadata.extractors.metalad_core_file')
+lgr = logging.getLogger('datalad.metadata.extractors.metalad_example_file')
 
 
-class DataladCoreFileExtractor(FileMetadataExtractor):
+class MetaladExampleFileExtractor(FileMetadataExtractor):
 
     def get_data_output_category(self) -> DataOutputCategory:
         return DataOutputCategory.IMMEDIATE
@@ -47,5 +48,5 @@ class DataladCoreFileExtractor(FileMetadataExtractor):
                 "type": self.file_info.type,
                 "path": self.file_info.intra_dataset_path,
                 "content_byte_size": self.file_info.byte_size,
-                "comment": "test-implementation of core_file"
+                "comment": f"example file extractor executed at {time.time()}"
             })

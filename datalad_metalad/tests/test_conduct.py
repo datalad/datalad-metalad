@@ -179,7 +179,7 @@ def test_extract():
                     f"provider.item_type=both",
                     f"provider.traverse_sub_datasets=True",
                     f"testproc1.extractor_type=dataset",
-                    f"testproc1.extractor_name=metalad_core_dataset",
+                    f"testproc1.extractor_name=metalad_example_dataset",
                     f"testproc2.extractor_type=dataset",
                     f"testproc2.extractor_name=metalad_core"],
                 configuration=extract_pipeline))

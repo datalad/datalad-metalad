@@ -41,12 +41,6 @@ BACKEND = "backend"
 META_FILTER = "meta_filter"
 
 
-#@dataclass(eq=True, frozen=True)
-#class ExtractionParameter:
-#    args: List
-#    kwargs: Dict
-
-
 @dataclass(eq=True, frozen=True)
 class AggregationInfo:
     root_dataset_id: UUID
@@ -119,7 +113,7 @@ class MetadataRecord:
             dataset_id=UUID(json_obj["dataset_id"]),
             dataset_version=json_obj["dataset_version"],
             extracted_metadata=json_obj["extracted_metadata"],
-            path=MetadataPath(json_obj[PATH]),
+            path=MetadataPath(json_obj.get(PATH, ".")),
             aggregation_info=aggregation_info)
 
 

@@ -9,6 +9,7 @@
 """
 Run a metadata filter on a set of metadata elements
 """
+import json
 import logging
 from pathlib import Path
 from typing import (
@@ -34,6 +35,7 @@ from datalad.support.constraints import (
     EnsureStr,
 )
 from datalad.support.param import Parameter
+from datalad.ui import ui
 
 from .dump import (
     dump_from_dataset_tree,
@@ -106,12 +108,12 @@ class Filter(Interface):
 
     Take a number of metadata elements and run a filter on it.
 
-    The result of the filter operation will be written to stdout
-    and can, for example, by passed to meta-add.
+    The result of the filter operation will be written to stdout and can, for
+    example, be passed to meta-add.
 
-    The filter can be configured by passingkey-value pairs given as additional
+    The filter can be configured by passing key-value pairs given as additional
     arguments. Each key-value pair consists of two arguments, first the key,
-    then the value. The key value pairs have to be speparated by '++' from the
+    then the value. The key value pairs have to be separated by '++' from the
     metadata coordinates
     """
 
@@ -119,8 +121,18 @@ class Filter(Interface):
 
     _examples_ = [
         dict(
-            text="""Some example""",
-            code_cmd="datalad meta-filter ..."
+            text="""Use the provided 'metalad_demofilter' to build a
+            'histogram' of keys and their content in the metadata of the
+            dataset 'root-dataset', iterating over the sub-datasets 'sub-a' and 
+            'sub-b'.""",
+            code_cmd="""datalad meta-filter metalad_demofilter -d root-dataset
+            sub-a sub-b"""
+        ),
+        dict(
+            text="""Apply 'metalad_demofilter' to all directories/sub-datasets
+            of the dataset in the current working directory that start with
+            'subject'.""",
+            code_cmd="""datalad meta-filter metalad_demofilter subject*"""
         ),
     ]
 
@@ -129,7 +141,8 @@ class Filter(Interface):
             args=("-d", "--dataset"),
             doc="""Git repository that contains datalad metadata. If no
                    repository path is given, the metadata store is determined
-                   by the current work directory.""",
+                   by the current work directory. All metadata URLs (see below)
+                   are relative to this dataset.""",
             constraints=EnsureDataset() | EnsureNone()),
         filtername=Parameter(
             args=("filtername",),
@@ -140,10 +153,11 @@ class Filter(Interface):
             args=("metadataurls",),
             metavar="METADATA_URL",
             nargs="+",
-            doc="""MetadataRecord URL(s). A list of at least one metadata URL. The
-                   filter will receive a list of iterables, that contains one 
-                   iterable for each metadata URL. The iterables will yields all
-                   metadata-entries that match the respective metadata URL.""",
+            doc="""MetadataRecord URL(s). A list of at least one metadata URL.
+                   The filter will receive a list of iterables, that contains
+                   one iterable for each metadata URL. The iterables will yields
+                   all metadata-entries that match the respective metadata URL.
+                   """,
             constraints=EnsureStr()),
         # TODO: this parameter is specified here in order to print out a
         #  proper help message. It will never be filled by the argument parser
@@ -220,6 +234,37 @@ class Filter(Interface):
                 metadata_record=metadata_record,
                 metadata_source=path,
                 backend="git").as_json_obj()
+
+    @staticmethod
+    def custom_result_renderer(res, **kwargs):
+        if res["status"] != "ok" or res.get("action", "") != 'meta_filter':
+            # logging complained about this already
+            return
+
+        metadata_record = res.get("metadata_record", None)
+        if metadata_record is not None:
+            path = (
+                {"path": str(metadata_record["path"])}
+                if "path" in metadata_record
+                else {}
+            )
+
+            dataset_path = (
+                {"dataset_path": str(metadata_record["dataset_path"])}
+                if "dataset_path" in metadata_record
+                else {}
+            )
+
+            ui.message(json.dumps({
+                **metadata_record,
+                **path,
+                **dataset_path,
+                "dataset_id": str(metadata_record["dataset_id"])
+            }))
+
+        context = res.get("context")
+        if context is not None:
+            ui.message(json.dumps(context))
 
 
 def run_filter(filter_name: str,

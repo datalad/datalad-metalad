@@ -8,15 +8,16 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """MetadataRecord extractor for dataset information stored in Datalad's own core storage"""
 import logging
+import time
 from uuid import UUID
 
 from .base import DataOutputCategory, ExtractorResult, DatasetMetadataExtractor
 
 
-lgr = logging.getLogger('datalad.metadata.extractors.metalad_core_dataset')
+lgr = logging.getLogger('datalad.metadata.extractors.metalad_example_dataset')
 
 
-class DataladCoreDatasetExtractor(DatasetMetadataExtractor):
+class MetaladExampleDatasetExtractor(DatasetMetadataExtractor):
 
     def get_id(self) -> UUID:
         return UUID("b3c487ea-e670-4801-bcdc-29639bf1269b")
@@ -42,5 +43,6 @@ class DataladCoreDatasetExtractor(DatasetMetadataExtractor):
             immediate_data={
                 "id": self.dataset.id,
                 "refcommit": self.dataset.repo.get_hexsha(),
-                "comment": "test-implementation of core_dataset"
+                "comment": f"example dataset extractor "
+                           f"executed at {time.time()}"
             })

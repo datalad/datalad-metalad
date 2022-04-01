@@ -58,13 +58,13 @@ argument_parser.add_argument(
 
 argument_parser.add_argument(
     "-f", "--file-extractor",
-    type=str, default="metalad_core_file",
-    help="file extractor name (default: metalad_core_file)")
+    type=str, default="metalad_example_file",
+    help="file extractor name (default: metalad_example_file)")
 
 argument_parser.add_argument(
     "-d", "--dataset-extractor",
-    type=str, default="metalad_core_dataset",
-    help="dataset extractor name (default: metalad_core_dataset)")
+    type=str, default="metalad_example_dataset",
+    help="dataset extractor name (default: metalad_example_dataset)")
 
 argument_parser.add_argument(
     "-m", "--metadata-store",

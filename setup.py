@@ -37,8 +37,8 @@ setup(
         ],
         'datalad.metadata.extractors': [
             'metalad_core=datalad_metalad.extractors.core:DataladCoreExtractor',
-            'metalad_core_dataset=datalad_metalad.extractors.core_dataset:DataladCoreDatasetExtractor',
-            'metalad_core_file=datalad_metalad.extractors.core_file:DataladCoreFileExtractor',
+            'metalad_example_dataset=datalad_metalad.extractors.metalad_example_dataset:MetaladExampleDatasetExtractor',
+            'metalad_example_file=datalad_metalad.extractors.metalad_example_file:MetaladExampleFileExtractor',
             'metalad_external_dataset=datalad_metalad.extractors.external_dataset:ExternalDatasetExtractor',
             'metalad_external_file=datalad_metalad.extractors.external_file:ExternalFileExtractor',
             'metalad_annex=datalad_metalad.extractors.annex:AnnexMetadataExtractor',
