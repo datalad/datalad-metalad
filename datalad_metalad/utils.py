@@ -46,10 +46,20 @@ def check_dataset(dataset_or_path: Union[Dataset, str],
     if isinstance(dataset_or_path, Dataset):
         dataset = dataset_or_path
     else:
-        dataset = require_dataset(
-            dataset_or_path,
-            purpose=purpose,
-            check_installed=True)
+        try:
+            dataset = require_dataset(
+                dataset_or_path,
+                purpose=purpose,
+                check_installed=True)
+        except ValueError as ve:
+            # This except clause translates datalad version 0.15 exceptions to
+            # datalad version 0.16 exceptions
+            if ve.args and ve.args[0].startswith("No installed dataset found "):
+                raise NoDatasetFound(
+                    "No valid datalad dataset found at: "
+                    f"{dataset_or_path}")
+            else:
+                raise
 
     if not dataset.repo:
         raise NoDatasetFound(
