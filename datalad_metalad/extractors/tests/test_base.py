@@ -8,11 +8,9 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test all extractors at a basic level"""
 
-from nose import SkipTest
 from pkg_resources import iter_entry_points
-from six import (
-    text_type,
-)
+
+from nose import SkipTest
 
 from datalad.api import (
     Dataset,
@@ -120,16 +118,25 @@ def test_api_annex():
 @with_tempfile(mkdir=True)
 def test_plainest(path):
 
-    # Expect an exception if no dataset exists
+    # Expect an exception if no dataset exists. Depending on the
+    # dataset version ValueError or NoDatasetFound is raised.
+    from datalad import __version__
+    major, minor, patch = tuple(map(int, __version__.split(".")))
+
+    if major == 0 and minor <= 15:
+        expected_exception = ValueError
+    else:
+        expected_exception = NoDatasetFound
+
     assert_raises(
-        NoDatasetFound,
+        expected_exception,
         meta_extract, dataset=path, extractorname='metalad_core')
 
     r = GitRepo(path, create=True)
     # Expect an exception, when the dataset is unusable because it has
     # no dataset id
     assert_raises(
-        NoDatasetFound,
+        expected_exception,
         meta_extract, dataset=path, extractorname='metalad_core')
 
     # Expect proper extract run on a proper dataset.
