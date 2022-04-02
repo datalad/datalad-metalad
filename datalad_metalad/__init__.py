@@ -3,7 +3,6 @@
 __docformat__ = 'restructuredtext'
 
 import os
-from .version import __version__
 from collections.abc import Mapping
 from six import iteritems
 import hashlib
@@ -391,7 +390,6 @@ def get_agent_id(name, email):
 
 from datalad import setup_package
 from datalad import teardown_package
-
 
 
 from ._version import get_versions
