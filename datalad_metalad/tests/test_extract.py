@@ -77,8 +77,8 @@ def _check_metadata_record(metadata_record: dict,
     eq_(metadata_record["extractor_version"], extractor_version)
     eq_(metadata_record["extractor_name"], extractor_name)
     eq_(metadata_record["extraction_parameter"], extraction_parameter)
-    eq_(metadata_record["agent_name"], "DataLad Tester")
-    eq_(metadata_record["agent_email"], "test@example.com")
+    eq_(metadata_record["agent_name"], dataset.config.get("user.name"))
+    eq_(metadata_record["agent_email"], dataset.config.get("user.email"))
     if path is not None:
         eq_(metadata_record["path"], MetadataPath(path))
 
