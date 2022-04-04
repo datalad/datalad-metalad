@@ -1,3 +1,5 @@
 ignore:
   - "datalad_metalad/_version.py"
   - "versioneer.py"
+  - "^datalad_metalad/_version.py",
+  - "^versioneer.py"
