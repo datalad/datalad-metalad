@@ -45,8 +45,12 @@
 #     respective CI run configuration).
 
 
-# no cheap repository clones because we use versioneer
+# Do not use cheap repository clones because we use versioneer, and versioneer
+# needs git-info to create a PEP440 compliant version number
 shallow_clone: false
+
+# Do not build a branch, if a PR with the branch exists
+skip_branch_with_pr: true
 
 
 environment:
