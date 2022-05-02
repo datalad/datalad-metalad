@@ -10,7 +10,11 @@
 """Test metadata extraction"""
 import subprocess
 from uuid import UUID
-from typing import Optional
+from typing import (
+    IO,
+    Optional,
+    Union,
+)
 from unittest.mock import patch
 
 from datalad.distribution.dataset import Dataset
@@ -33,8 +37,13 @@ from datalad.tests.utils import (
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from .utils import create_dataset
-from ..extract import get_extractor_class
 from ..exceptions import ExtractorNotFoundError
+from ..extract import get_extractor_class
+from ..extractors.base import (
+    DatasetMetadataExtractor,
+    DataOutputCategory,
+    ExtractorResult,
+)
 
 
 meta_tree = {
@@ -583,6 +592,7 @@ def test_external_extractor(ds_path):
 
 @with_tree(meta_tree)
 def test_external_extractor_categories(ds_path):
+
     ds = Dataset(ds_path).create(force=True)
     ds.config.add(
         'datalad.metadata.exclude-path',
@@ -604,3 +614,67 @@ def test_external_extractor_categories(ds_path):
                     "command", ["python", "-c", "print('True')"]
                 ],
                 result_renderer="disabled")
+
+
+@with_tree(meta_tree)
+def test_get_required_content_called(ds_path):
+
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save()
+    assert_repo_status(ds.path)
+
+    class TestExtractor(DatasetMetadataExtractor):
+        def __init__(self, dataset, ref_commit, parameter):
+            DatasetMetadataExtractor.__init__(
+                self,
+                dataset,
+                ref_commit,
+                parameter)
+
+            self.required_content_called = False
+
+        def get_required_content(self):
+            self.required_content_called = True
+
+        def get_id(self) -> UUID:
+            return UUID(int=10)
+
+        def get_version(self):
+            return "0.0.1"
+
+        def get_data_output_category(self) -> DataOutputCategory:
+            return DataOutputCategory.IMMEDIATE
+
+        def extract(self,
+                    output_location: Optional[Union[IO, str]] = None
+                    ) -> ExtractorResult:
+            return ExtractorResult(
+                extractor_version="0.0.1",
+                extraction_parameter={},
+                extraction_success=self.required_content_called,
+                datalad_result_dict={
+                    "status": "ok",
+                    "action": "extract",
+                },
+                immediate_data={
+                    "required_content_called": self.required_content_called
+                }
+            )
+
+    with patch("datalad_metalad.extract.get_extractor_class") as gec_mock:
+        gec_mock.return_value = TestExtractor
+        result = meta_extract(
+            extractorname="test_name",
+            dataset=ds,
+            path="--",
+            extractorargs=["k0", "v0", "k1", "v1"],
+            result_renderer="disabled")
+        assert_true(
+            result[0]
+            ["metadata_record"]
+            ["extracted_metadata"]
+            ["required_content_called"])
