@@ -412,10 +412,21 @@ def perform_dataset_metadata_extraction(ep: ExtractionArguments,
         raise NotImplementedError(
             f"Output category {output_category} not supported")
 
+    result_template = {
+        "action": "meta_extract",
+        "path": ep.local_source_object_path
+    }
+
+    # Let the extractor get the files it requires
+    if extractor.get_required_content() is False:
+        yield {
+            "status": "impossible",
+            **result_template
+        }
+
     # Process results
     result = extractor.extract(None)
-    result.datalad_result_dict["action"] = "meta_extract"
-    result.datalad_result_dict["path"] = ep.local_source_object_path
+    result.datalad_result_dict.update(result_template)
     if result.extraction_success:
         result.datalad_result_dict["metadata_record"] = dict(
             type="dataset",

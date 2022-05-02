@@ -51,18 +51,7 @@ class ExternalExtractor:
             else None
         )
 
-        for entry in ("command", "extractor-id", "data-output-category", "version"):
-            if entry in self.parameter:
-                del self.parameter[entry]
-
-        # Remaining elements in self.parameter should be arguments to
-        # the external command. Their keys should be integers. They
-        # determine the order in which the values are presented to the
-        # external extractor.
-        self.command_arguments = [
-            self.parameter[str(key)]
-            for key in sorted(map(int, self.parameter.keys()))
-        ]
+        self.command_arguments = parameter.get("arguments", [])
 
         self.extractor_id = (
             UUID(provided_extractor_id)
@@ -72,8 +61,16 @@ class ExternalExtractor:
         self.required_content_acquired = False
 
     def _execute(self, args: List[str]) -> str:
+        if isinstance(self.external_command, list):
+            head = self.external_command
+        elif isinstance(self.external_command, str):
+            head = [self.external_command]
+        else:
+            raise ValueError(
+                f"Unsupported type for command: {type(self.external_command)}")
+
         return subprocess.run(
-            [self.external_command] + args,
+            head + args,
             check=True,
             stdout=subprocess.PIPE).stdout.decode().strip()
 

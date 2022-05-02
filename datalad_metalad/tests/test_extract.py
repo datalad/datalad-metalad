@@ -559,16 +559,22 @@ def test_external_extractor(ds_path):
     ds.save()
     assert_repo_status(ds.path)
 
-    for path, extractor_name in (("--", "metalad_external_dataset"), ("sub/one", "metalad_external_file")):
+    extractor = """
+    import sys
+    
+    if sys.argv
+    """
+    for path, extractor_name in (("--", "metalad_external_dataset"),
+                                 ("sub/one", "metalad_external_file")):
         result = meta_extract(
             extractorname=extractor_name,
             dataset=ds,
             path=path,
             extractorargs=[
                 "data-output-category", "IMMEDIATE",
-                "command", "python",
-                "0", "-c",
-                "1", "print('True')"],
+                "command", ["python", "-c", "print('True')"],
+                "arguments", ["-c", "print('True')"]
+            ],
             result_renderer="disabled")
         eq_(len(result), 1)
         eq_(result[0]["status"], "ok")
