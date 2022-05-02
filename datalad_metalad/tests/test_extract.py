@@ -601,7 +601,6 @@ def test_external_extractor_categories(ds_path):
                 path=path,
                 extractorargs=[
                     "data-output-category", output_category,
-                    "command", "python",
-                    "0", "-c",
-                    "1", "print('True')"],
+                    "command", ["python", "-c", "print('True')"]
+                ],
                 result_renderer="disabled")
