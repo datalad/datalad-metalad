@@ -1,9 +1,7 @@
 """DataLad MetaLad extension"""
 import os
-from collections.abc import Mapping
-from six import iteritems
 import hashlib
-from datalad.utils import Path
+
 from datalad.support.digests import Digester
 
 
@@ -106,6 +104,9 @@ def get_agent_id(name, email):
         email
     ).encode('utf-8')).hexdigest()
 
+
+from datalad import setup_package
+from datalad import teardown_package
 
 from ._version import get_versions
 __version__ = get_versions()['version']
