@@ -2,7 +2,13 @@
 from pathlib import Path
 from unittest import mock
 
-from datalad.tests.utils import with_tree
+from datalad.api import meta_extract
+from datalad.distribution.dataset import Dataset
+from datalad.tests.utils import (
+    with_tempfile,
+    with_tree
+)
+
 from ..studyminimeta.ldcreator import LDCreator
 from ..studyminimeta.main import StudyMiniMetaExtractor
 
@@ -596,3 +602,16 @@ def test_file_handling(dataset_mock, directory_path: str):
 def test_process_type():
     results = tuple(StudyMiniMetaExtractor()(None, None, "unsupported", None))
     assert results == tuple()
+
+
+@with_tempfile(mkdir=True)
+def test_package_availability(path=None):
+    dataset = Dataset(path)
+    dataset.create()
+    (Path(path) / ".studyminimeta.yaml").write_text(proper_yaml_1)
+    results = tuple(meta_extract(
+        "metalad_studyminimeta",
+        dataset=path
+    ))
+    assert results[0]["status"] == "ok"
+    assert results[0]["metadata_record"]["extractor_name"] == "metalad_studyminimeta"
