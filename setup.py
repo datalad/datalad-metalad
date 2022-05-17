@@ -22,6 +22,7 @@ setup(
               'datalad_metalad.pipeline.processor',
               'datalad_metalad.pipeline.provider',
               'datalad_metalad.extractors',
+              'datalad_metalad.extractors.studyminimeta',
               'datalad_metalad.filters',
               'datalad_metalad.indexers',
               'datalad_metalad.pathutils',
