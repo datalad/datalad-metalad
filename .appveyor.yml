@@ -182,7 +182,7 @@ test_script:
   - cmd: md __testhome__
   - sh: mkdir __testhome__
   - cd __testhome__
-    # run test selecion (--traverse-namespace needed from Python 3.8 onwards)
+    # run test selection
   - cmd: python -m nose -v --with-cov --cover-package datalad_metalad ..\%DTS%
   - sh:  python -m nose -v --with-cov --cover-package datalad_metalad ../${DTS}
 
