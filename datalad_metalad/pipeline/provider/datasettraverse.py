@@ -103,7 +103,7 @@ class DatasetTraverser(Provider):
             raise ValueError(f"{item_type.lower()} is not a known item_type. "
                              f"Known types are: {', '.join(known_types)}")
 
-        self.top_level_dir = Path(top_level_dir).absolute()
+        self.top_level_dir = Path(top_level_dir).absolute().resolve()
         self.item_set = self.name_to_item_set[item_type.lower()]
         self.traverse_sub_datasets = traverse_sub_datasets
         self.root_dataset = require_dataset(self.top_level_dir,
