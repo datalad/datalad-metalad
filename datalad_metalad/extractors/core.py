@@ -144,7 +144,8 @@ class DataladCoreExtractor(MetadataExtractor):
             }
             subdsid = ds.subdatasets(
                 contains=subds['path'],
-                return_type='item-or-list').get('gitmodule_datalad-id', None)
+                return_type='item-or-list',
+                result_renderer="disabled").get('gitmodule_datalad-id', None)
             if subdsid:
                 subdsinfo['identifier'] = 'datalad:{}'.format(subdsid)
             parts.append(subdsinfo)
