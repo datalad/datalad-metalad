@@ -16,22 +16,29 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     setup_requires=SETUP_REQUIRES,
-    packages=['datalad_metalad',
-              'datalad_metalad.pipeline',
-              'datalad_metalad.pipeline.consumer',
-              'datalad_metalad.pipeline.pipelines',
-              'datalad_metalad.pipeline.processor',
-              'datalad_metalad.pipeline.provider',
-              'datalad_metalad.extractors',
-              'datalad_metalad.extractors.studyminimeta',
-              'datalad_metalad.extractors.tests',
-              'datalad_metalad.filters',
-              'datalad_metalad.indexers',
-              'datalad_metalad.indexers.tests',
-              'datalad_metalad.pathutils',
-              'datalad_metalad.pathutils.tests',
-              'datalad_metalad.tests',
-              'datalad_metalad.metadatatypes'],
+    packages=[
+        'datalad_metalad',
+          'datalad_metalad.pipeline',
+          'datalad_metalad.pipeline.consumer',
+          'datalad_metalad.pipeline.processor',
+          'datalad_metalad.pipeline.provider',
+          'datalad_metalad.extractors',
+          'datalad_metalad.extractors.studyminimeta',
+          'datalad_metalad.extractors.tests',
+          'datalad_metalad.filters',
+          'datalad_metalad.indexers',
+          'datalad_metalad.indexers.tests',
+          'datalad_metalad.pathutils',
+          'datalad_metalad.pathutils.tests',
+          'datalad_metalad.tests',
+          'datalad_metalad.metadatatypes'
+    ],
+    package_dir={
+        'datalad_metalad.pipeline': 'datalad_metalad/pipeline'
+    },
+    package_data={
+        'datalad_metalad.pipeline': ['pipelines/*.json']
+    },
     entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
