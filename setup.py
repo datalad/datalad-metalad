@@ -28,7 +28,7 @@ setup(
               'datalad_metalad.pathutils',
               'datalad_metalad.tests',
               'datalad_metalad.metadatatypes'],
-    package_data={'datalad_metalad.pipeline': ['pipeline/pipelines/*.json']},
+    package_data={'datalad_metalad.pipeline': ['datalad_metalad/pipeline/pipelines/*.json']},
     entry_points={
         'datalad.extensions': [
             'metalad=datalad_metalad:command_suite',
