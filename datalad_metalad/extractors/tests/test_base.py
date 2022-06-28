@@ -121,7 +121,12 @@ def test_plainest(path):
     # Expect an exception if no dataset exists. Depending on the
     # dataset version ValueError or NoDatasetFound is raised.
     from datalad import __version__
-    major, minor, patch = tuple(map(int, __version__.split(".")))
+    major, minor, patch = tuple(
+        map(
+            lambda s: int(s.split("+")[0]),
+            __version__.split(".")[0:3]
+        )
+    )
 
     if major == 0 and minor <= 15:
         expected_exception = ValueError
