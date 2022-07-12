@@ -73,6 +73,8 @@ default_mapper_family = "git"
 
 lgr = logging.getLogger("datalad.metadata.extract")
 
+argument_delimiter = "++"
+
 
 @dataclass
 class ExtractionArguments:
@@ -197,10 +199,15 @@ class Extract(Interface):
         extractorargs=Parameter(
             args=("extractorargs",),
             metavar="EXTRACTOR_ARGUMENTS",
-            doc="""Extractor arguments given as string arguments to the
-            extractor. If dataset level extraction is performed, i.e. no path
-            is required, specify '--' as path to prevent interpretation of
-            the first extractor argument as path.""",
+            doc=f"""Extractor arguments given as string arguments to the
+            extractor. The extractor arguments are interpreted as key-value
+            pairs. The first argument is the name of the key, the next argument
+            is the value for that key, and so on. Consequently, there should be
+            an even number of extractor arguments.
+            
+            If dataset level extraction is performed, i.e. no path
+            is required, specify '{argument_delimiter}' as path to prevent
+            interpretation of the first extractor argument as path.""",
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -218,7 +225,7 @@ class Extract(Interface):
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = extractorargs
-        path = None if path == "--" else path
+        path = None if path == argument_delimiter else path
         context = (
             {}
             if context is None
