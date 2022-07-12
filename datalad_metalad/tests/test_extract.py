@@ -384,8 +384,9 @@ def test_extra_parameter_recognition(ds_path):
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
-            path="++",
-            extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
+            force_dataset_level=True,
+            path="k1",
+            extractorargs=["v1", "k2", "v2", "k3", "v3"],
             result_renderer="disabled")
 
         eq_(fe.call_count, 0)
@@ -533,8 +534,9 @@ def test_extractor_parameter_handling(ds_path):
         meta_extract(
             extractorname="metalad_example_dataset",
             dataset=ds,
-            path="++",
-            extractorargs=["k0", "v0", "k1", "v1"],
+            force_dataset_level=True,
+            path="k0",
+            extractorargs=["v0", "k1", "v1"],
             result_renderer="disabled")
 
         eq_(fe.call_count, 0)
@@ -568,12 +570,7 @@ def test_external_extractor(ds_path):
     ds.save()
     assert_repo_status(ds.path)
 
-    extractor = """
-    import sys
-    
-    if sys.argv
-    """
-    for path, extractor_name in (("++", "metalad_external_dataset"),
+    for path, extractor_name in ((None, "metalad_external_dataset"),
                                  ("sub/one", "metalad_external_file")):
         result = meta_extract(
             extractorname=extractor_name,
@@ -601,7 +598,7 @@ def test_external_extractor_categories(ds_path):
     ds.save()
     assert_repo_status(ds.path)
 
-    for path, extractor_name in (("++", "metalad_external_dataset"),
+    for path, extractor_name in ((None, "metalad_external_dataset"),
                                  ("sub/one", "metalad_external_file")):
         for output_category in ("DIRECTORY", "FILE"):
             assert_raises(
@@ -671,7 +668,7 @@ def test_get_required_content_called(ds_path):
         result = meta_extract(
             extractorname="test_name",
             dataset=ds,
-            path="++",
+            path=None,
             extractorargs=["k0", "v0", "k1", "v1"],
             result_renderer="disabled")
         assert_true(

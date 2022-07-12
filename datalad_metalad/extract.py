@@ -73,8 +73,6 @@ default_mapper_family = "git"
 
 lgr = logging.getLogger("datalad.metadata.extract")
 
-argument_delimiter = "++"
-
 
 @dataclass
 class ExtractionArguments:
@@ -120,13 +118,15 @@ class Extract(Interface):
 
     The extractor configuration can be parameterized with key-value pairs
     given as additional arguments. Each key-value pair consists of two
-    arguments, first the key, followed by the value. If no path is given,
-    and you want to provide key-value pairs, you have to give the path
-    "++", to prevent that the first key is interpreted as path.
+    arguments, first the key, followed by the value. If dataset level extraction
+    should be performed and you want to provide extractor arguments, you have to
+    specify '--force_dataset_level' to ensure dataset-level extraction. i.e. to
+    prevent interpretation of the key of the first extractor argument as path
+    for a file-level extraction.
 
     The command can also take legacy datalad-metalad extractors and
     will execute them in either "content" or "dataset" mode, depending
-    on the presence of the "path"-parameter.
+    on the whether file-level- or dataset-level extraction is requested.
     """
 
     result_renderer = "tailored"
@@ -196,18 +196,23 @@ class Extract(Interface):
             given parameters and exit. The context can be used in subsequent
             calls to meta-extract with identical parameter, except from
             --get-context, to speed up the execution of meta-extract."""),
+        force_dataset_level=Parameter(
+            args=("--force-dataset-level",),
+            action="store_true"),
         extractorargs=Parameter(
             args=("extractorargs",),
             metavar="EXTRACTOR_ARGUMENTS",
-            doc=f"""Extractor arguments given as string arguments to the
+            doc="""Extractor arguments given as string arguments to the
             extractor. The extractor arguments are interpreted as key-value
             pairs. The first argument is the name of the key, the next argument
             is the value for that key, and so on. Consequently, there should be
             an even number of extractor arguments.
             
-            If dataset level extraction is performed, i.e. no path
-            is required, specify '{argument_delimiter}' as path to prevent
-            interpretation of the first extractor argument as path.""",
+            If dataset level extraction should be performed and you want to
+            provide extractor arguments. you have tp specify
+            '--force-dataset-level' to ensure dataset-level extraction. i.e. to
+            prevent interpretation of the key of the first extractor argument
+            as path for a file-level extraction.""",
             nargs="*",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -220,12 +225,15 @@ class Extract(Interface):
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
             get_context: bool = False,
+            force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
 
         # Get basic arguments
         extractor_name = extractorname
-        extractor_args = extractorargs
-        path = None if path == argument_delimiter else path
+        extractor_args = ([path] + extractorargs
+                          if force_dataset_level
+                          else extractorargs)
+        path = None if force_dataset_level else path
         context = (
             {}
             if context is None

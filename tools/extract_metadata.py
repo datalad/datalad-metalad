@@ -237,7 +237,7 @@ def get_dataset_level_extract_cmdline(dataset_path: Path,
         "-d", str(dataset_path),
         arguments.dataset_extractor,
     ] + (
-        ["++"] + metalad_arguments
+        ["--force-dataset-level"] + metalad_arguments
         if metalad_arguments
         else [])
 
