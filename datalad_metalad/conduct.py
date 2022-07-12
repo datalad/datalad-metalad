@@ -111,8 +111,8 @@ class Conduct(Interface):
 
     _examples_ = [
         dict(
-            text="Run 'metalad_example_dataset' extractor on the top dataset and "
-                 "all subdatasets. Add the resulting metadata in aggregated"
+            text="Run 'metalad_example_dataset' extractor on the top dataset "
+                 "and all subdatasets. Add the resulting metadata in aggregated"
                  "mode. This command uses the provided pipeline"
                  "definition 'extract_metadata'.",
             code_cmd="datalad meta-conduct extract_metadata "
@@ -173,9 +173,7 @@ class Conduct(Interface):
                    with the name of the pipeline element, followed by ".",
                    the keyname, a "=", and the value. The pipeline element
                    arguments are identified by the pattern
-                   "<name>.<key>=<value>". If an optional path has the same
-                   structure as a pipeline element argument, the pipeline 
-                   element arguments can be terminated by "++"."""),
+                   "<name>.<key>=<value>"."""),
     )
 
     @staticmethod
@@ -188,7 +186,7 @@ class Conduct(Interface):
             processing_mode: str = "process",
             pipeline_help: bool = False):
 
-        element_arguments, file_path = split_arguments(arguments, "++")
+        element_arguments = arguments
         conduct_configuration = read_json_object(configuration)
 
         elements = [
