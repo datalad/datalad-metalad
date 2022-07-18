@@ -743,9 +743,13 @@ def legacy_get_file_info(dataset: Dataset,
     status = None
     if isinstance(dataset.repo, AnnexRepo):
         status = annex_status(dataset.repo, [path])
+        if status and status[path].get("status") == "error":
+            raise ValueError(
+                f"error getting status for file: {path}: "
+                f"{status.get('error_message', '')}")
     if not status:
         status = dataset.repo.status([path], untracked="no")
-    if not status or "path" not in status:
+    if not status or path not in status:
         raise ValueError(f"untracked file: {path}")
     return {
         "path": str(path),
@@ -758,7 +762,6 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
     if issubclass(ea.extractor_class, MetadataExtractor):
 
         # Call metalad legacy extractor with a single status record.
-
         file_path = ea.source_dataset.pathobj / ea.file_tree_path
         # Determine the file type:
         extractor = ea.extractor_class()
