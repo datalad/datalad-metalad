@@ -170,11 +170,14 @@ class Extract(Interface):
             metavar="FILE",
             nargs="?",
             doc="""Path of a file or dataset to extract metadata
-            from. If this argument is provided, we assume a file
+            from. The path should be relative to the root of the dataset.
+            If this argument is provided, we assume a file
             extractor is requested, if the path is not given, or
             if it identifies the root of a dataset, i.e. "", we
             assume a dataset level metadata extractor is
-            specified.""",
+            specified.
+            You might provide an absolute file path, but it has to contain
+            the dataset path as prefix.""",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
@@ -259,11 +262,22 @@ class Extract(Interface):
             )
             return
 
+        path_object = None
+        if path is not None:
+            path_object = Path(path)
+            if path_object.is_absolute():
+                dataset_path = (
+                    Path(dataset)
+                    if isinstance(dataset, str)
+                    else dataset.pathobj
+                )
+                path_object = path_object.relative_to(
+                    dataset_path.resolve().absolute()
+                )
+
+        _, file_tree_path = get_path_info(source_dataset, path_object, None)
+
         extractor_class = get_extractor_class(extractor_name)
-        _, file_tree_path = get_path_info(
-            source_dataset,
-            Path(path) if path else None,
-            None)
 
         extraction_arguments = ExtractionArguments(
             source_dataset=source_dataset,
@@ -731,7 +745,7 @@ def legacy_get_file_info(dataset: Dataset,
         status = annex_status(dataset.repo, [path])
     if not status:
         status = dataset.repo.status([path], untracked="no")
-    if not status:
+    if not status or "path" not in status:
         raise ValueError(f"untracked file: {path}")
     return {
         "path": str(path),
