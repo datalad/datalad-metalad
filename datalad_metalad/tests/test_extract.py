@@ -8,14 +8,17 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
+import os
 import subprocess
-from uuid import UUID
+import unittest.mock
+from pathlib import Path
 from typing import (
     IO,
     Optional,
     Union,
 )
 from unittest.mock import patch
+from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
 from datalad.api import meta_extract
@@ -676,3 +679,57 @@ def test_get_required_content_called(ds_path):
             ["metadata_record"]
             ["extracted_metadata"]
             ["required_content_called"])
+
+
+@with_tempfile(mkdir=True)
+def test_path_assembly(temp_dir):
+
+    def check_with_file_path(dfe_mock: type(unittest.mock.MagicMock),
+                             file_path: Path,
+                             expected_path: str):
+        meta_extract(
+            dataset="..",
+            extractorname="metalad_core",
+            path=str(file_path)
+        )
+        call = dfe_mock.mock_calls[0]
+        extraction_arguments = call.args[0]
+        eq_(extraction_arguments.local_source_object_path, file_path.absolute())
+        eq_(extraction_arguments.file_tree_path, MetadataPath(expected_path))
+
+    ds_path = Path(temp_dir) / "dataset"
+    ds = Dataset(ds_path).create()
+    subdir_path = ds_path / "sub1"
+    subdir_path.mkdir()
+    file_name = "info.txt"
+    file_path = subdir_path / file_name
+    file_path.write_text("some content")
+    ds.save()
+
+    start_dir = os.getcwd()
+    os.chdir(str(subdir_path))
+    with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
+        # Check absolute path
+        check_with_file_path(dfe_mock, file_path.absolute(), "sub1/info.txt")
+        check_with_file_path(dfe_mock, file_path, "sub1/info.txt")
+
+    os.chdir(start_dir)
+
+
+@with_tempfile(mkdir=True)
+def test_not_tracked_error_catching(temp_dir):
+    # expect a value error, if the provided file is not tracked.
+    ds_path = Path(temp_dir) / "dataset"
+    ds = Dataset(ds_path).create()
+    file_name = "info.txt"
+    file_path = ds.pathobj / file_name
+    file_path.write_text("some content")
+    ds.save()
+
+    assert_raises(
+        ValueError,
+        meta_extract,
+        dataset=ds,
+        extractorname="metalad_core",
+        path="no_such_file.txt"
+    )
