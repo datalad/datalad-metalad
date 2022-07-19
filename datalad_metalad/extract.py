@@ -40,6 +40,7 @@ from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
 from datalad.metadata.extractors.base import BaseMetadataExtractor
+from datalad.runner.runner import WitlessRunner
 from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
@@ -304,6 +305,8 @@ class Extract(Interface):
             yield from do_file_extraction(extraction_arguments)
         else:
             yield from do_dataset_extraction(extraction_arguments)
+        print("EXTRACT: EXTERNAL CALLS:", WitlessRunner.calls)
+        print("EXTRACT: EXTERNAL RUNTIME TOTAL:", WitlessRunner.accumulated_runtime)
         return
 
     @staticmethod
