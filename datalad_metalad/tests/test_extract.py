@@ -603,8 +603,7 @@ def test_path_assembly(temp_dir):
             extractorname="metalad_core",
             path=str(file_path)
         )
-        call = dfe_mock.mock_calls[0]
-        extraction_arguments = call.args[0]
+        extraction_arguments = dfe_mock.call_args[0][0]
         eq_(extraction_arguments.local_source_object_path, file_path.absolute())
         eq_(extraction_arguments.file_tree_path, MetadataPath(expected_path))
 
