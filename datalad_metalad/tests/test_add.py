@@ -38,6 +38,7 @@ from datalad.tests.utils import (
     assert_raises,
     assert_result_count,
     assert_true,
+    chpwd,
     eq_,
     known_failure_windows,
     with_tempfile,
@@ -607,15 +608,11 @@ def test_current_dir_add_end_to_end(file_name):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
-        execute_directory = Path.cwd()
-        os.chdir(git_repo.pathobj)
-
-        res = meta_add(metadata=file_name)
-        assert_result_count(res, 1)
-        assert_result_count(res, 1, type='dataset')
-        assert_result_count(res, 0, type='file')
-
-        os.chdir(execute_directory)
+        with chpwd(git_repo.pathobj):
+            res = meta_add(metadata=file_name)
+            assert_result_count(res, 1)
+            assert_result_count(res, 1, type='dataset')
+            assert_result_count(res, 0, type='file')
 
         results = tuple(meta_dump(dataset=git_repo.pathobj,
                                   recursive=True,
