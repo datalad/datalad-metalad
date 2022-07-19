@@ -26,6 +26,7 @@ from datalad.support.exceptions import NoDatasetFound
 from datalad.utils import chpwd
 
 from datalad.tests.utils import (
+    assert_cwd_unchanged,
     assert_in,
     assert_repo_status,
     assert_raises,
@@ -682,6 +683,7 @@ def test_get_required_content_called(ds_path):
 
 
 @with_tempfile(mkdir=True)
+@assert_cwd_unchanged()# ok_to_chdir=True)
 def test_path_assembly(temp_dir):
 
     def check_with_file_path(dfe_mock: type(unittest.mock.MagicMock),
@@ -706,14 +708,11 @@ def test_path_assembly(temp_dir):
     file_path.write_text("some content")
     ds.save()
 
-    start_dir = os.getcwd()
-    os.chdir(str(subdir_path))
-    with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
-        # Check absolute path
-        check_with_file_path(dfe_mock, file_path.absolute(), "sub1/info.txt")
-        check_with_file_path(dfe_mock, file_path, "sub1/info.txt")
-
-    os.chdir(start_dir)
+    with chpwd(str(subdir_path)):
+        with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
+            # Check absolute path
+            check_with_file_path(dfe_mock, file_path.absolute(), "sub1/info.txt")
+            check_with_file_path(dfe_mock, file_path, "sub1/info.txt")
 
 
 @with_tempfile(mkdir=True)
