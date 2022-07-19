@@ -32,7 +32,7 @@ def test_custom_dsmeta(path):
     ds.config.add('datalad.metadata.nativetype',
                   'metalad_runprov',
                   where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
     # run when there are no run records
     res = ds.meta_extract(extractorname='metalad_runprov')

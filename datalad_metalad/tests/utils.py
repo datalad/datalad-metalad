@@ -43,7 +43,7 @@ def create_dataset_proper(directory: Union[str, Path],
         'datalad.metadata.exclude-path',
         '.metadata',
         where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 
     sub_dataset_names = sub_dataset_names or []
@@ -111,7 +111,8 @@ def add_dataset_level_metadata(metadata_store: Path,
             **base_elements,
             "type": "dataset"
         },
-        dataset=metadata_store)
+        dataset=metadata_store,
+        result_renderer="disabled")
 
 
 def add_file_level_metadata(metadata_store: Path,
@@ -136,4 +137,5 @@ def add_file_level_metadata(metadata_store: Path,
             "type": "file",
             "path": str(file_path)
         },
-        dataset=metadata_store)
+        dataset=metadata_store,
+        result_renderer="disabled")

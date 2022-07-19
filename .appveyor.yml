@@ -183,8 +183,8 @@ test_script:
   - sh: mkdir __testhome__
   - cd __testhome__
     # run test selection
-  - cmd: python -m nose -v --with-cov --cover-package datalad_metalad ..\%DTS%
-  - sh:  python -m nose -v --with-cov --cover-package datalad_metalad ../${DTS}
+  - cmd: python -m nose --traverse-namespace -v --with-cov --cover-package datalad_metalad ..\%DTS%
+  - sh:  python -m nose --traverse-namespace -v --with-cov --cover-package datalad_metalad ../${DTS}
 
 
 after_test:
