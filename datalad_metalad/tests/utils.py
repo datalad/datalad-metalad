@@ -43,7 +43,7 @@ def create_dataset_proper(directory: Union[str, Path],
         'datalad.metadata.exclude-path',
         '.metadata',
         where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 
     sub_dataset_names = sub_dataset_names or []

@@ -42,7 +42,7 @@ from ...tests.utils import create_dataset_proper
 @with_tree(tree={'file.dat': ''})
 def check_api(annex, path):
     ds = Dataset(path).create(force=True, annex=annex)
-    ds.save()
+    ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 
     processed_extractors, skipped_extractors = [], []

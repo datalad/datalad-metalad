@@ -58,6 +58,17 @@ meta_tree = {
 }
 
 
+def _create_dataset_at_path(ds_path):
+    ds = Dataset(ds_path).create(force=True)
+    ds.config.add(
+        'datalad.metadata.exclude-path',
+        '.metadata',
+        where='dataset')
+    ds.save(result_renderer="disabled")
+    assert_repo_status(ds.path)
+    return ds
+
+
 @with_tempfile(mkdir=True)
 def test_empty_dataset_error(path):
     # go into virgin dir to avoid detection of any dataset
@@ -97,15 +108,9 @@ def _check_metadata_record(metadata_record: dict,
 
 
 @with_tree(meta_tree)
-def test_dataset_extraction_result(path):
+def test_dataset_extraction_result(ds_path):
 
-    ds = Dataset(path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     extractor_name = "metalad_example_dataset"
     extractor_class = get_extractor_class(extractor_name)
@@ -138,13 +143,7 @@ def test_dataset_extraction_result(path):
 @with_tree(meta_tree)
 def test_file_extraction_result(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     file_path = "sub/one"
     extractor_name = "metalad_example_file"
@@ -182,13 +181,7 @@ def test_file_extraction_result(ds_path):
 @with_tree(meta_tree)
 def test_legacy1_dataset_extraction_result(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     extractor_name = "metalad_core"
     extractor_version = "1"
@@ -219,13 +212,7 @@ def test_legacy1_dataset_extraction_result(ds_path):
 @with_tree(meta_tree)
 def test_legacy2_dataset_extraction_result(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     extractor_name = "datalad_core"
     extractor_version = "un-versioned"
@@ -254,13 +241,7 @@ def test_legacy2_dataset_extraction_result(ds_path):
 @with_tree(meta_tree)
 def test_legacy1_file_extraction_result(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     file_path = "sub/one"
     extractor_name = "metalad_core"
@@ -294,13 +275,7 @@ def test_legacy1_file_extraction_result(ds_path):
 @with_tree(meta_tree)
 def test_legacy2_file_extraction_result(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     file_path = "sub/one"
     extractor_name = "datalad_core"
@@ -332,13 +307,7 @@ def test_legacy2_file_extraction_result(ds_path):
 @with_tree(meta_tree)
 def test_path_parameter_directory(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     assert_raises(
         ValueError,
@@ -351,13 +320,7 @@ def test_path_parameter_directory(ds_path):
 @with_tree(meta_tree)
 def test_path_parameter_recognition(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -374,13 +337,7 @@ def test_path_parameter_recognition(ds_path):
 @with_tree(meta_tree)
 def test_extra_parameter_recognition(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -407,13 +364,7 @@ def test_extra_parameter_recognition(ds_path):
 @with_tree(meta_tree)
 def test_path_and_extra_parameter_recognition(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -439,13 +390,7 @@ def test_path_and_extra_parameter_recognition(ds_path):
 @with_tree(meta_tree)
 def test_context_dict_parameter_handling(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -465,13 +410,7 @@ def test_context_dict_parameter_handling(ds_path):
 @with_tree(meta_tree)
 def test_context_str_parameter_handling(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -491,13 +430,7 @@ def test_context_str_parameter_handling(ds_path):
 @with_tree(meta_tree)
 def test_get_context(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     result = tuple(
         meta_extract(
@@ -524,13 +457,7 @@ def test_get_context(ds_path):
 @with_tree(meta_tree)
 def test_extractor_parameter_handling(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     with patch("datalad_metalad.extract.do_file_extraction") as fe, \
          patch("datalad_metalad.extract.do_dataset_extraction") as de:
@@ -566,13 +493,7 @@ def test_extractor_parameter_handling(ds_path):
 @with_tree(meta_tree)
 def test_external_extractor(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     for path, extractor_name in ((None, "metalad_external_dataset"),
                                  ("sub/one", "metalad_external_file")):
@@ -594,13 +515,7 @@ def test_external_extractor(ds_path):
 @with_tree(meta_tree)
 def test_external_extractor_categories(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     for path, extractor_name in ((None, "metalad_external_dataset"),
                                  ("sub/one", "metalad_external_file")):
@@ -621,13 +536,7 @@ def test_external_extractor_categories(ds_path):
 @with_tree(meta_tree)
 def test_get_required_content_called(ds_path):
 
-    ds = Dataset(ds_path).create(force=True)
-    ds.config.add(
-        'datalad.metadata.exclude-path',
-        '.metadata',
-        where='dataset')
-    ds.save()
-    assert_repo_status(ds.path)
+    ds = _create_dataset_at_path(ds_path)
 
     class TestExtractor(DatasetMetadataExtractor):
         def __init__(self, dataset, ref_commit, parameter):
@@ -706,7 +615,7 @@ def test_path_assembly(temp_dir):
     file_name = "info.txt"
     file_path = subdir_path / file_name
     file_path.write_text("some content")
-    ds.save()
+    ds.save(result_renderer="disabled")
 
     with chpwd(str(subdir_path)):
         with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
@@ -723,7 +632,7 @@ def test_not_tracked_error_catching(temp_dir):
     file_name = "info.txt"
     file_path = ds.pathobj / file_name
     file_path.write_text("some content")
-    ds.save()
+    ds.save(result_renderer="disabled")
 
     assert_raises(
         ValueError,

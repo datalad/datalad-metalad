@@ -16,12 +16,12 @@ def make_ds_hierarchy_with_metadata(path):
     """
     ds = Dataset(path).create(force=True)
     create_tree(ds.path, {'file.dat': 'content'})
-    ds.save()
+    ds.save(result_renderer="disabled")
     ds.repo.set_metadata('file.dat', reset={'tag': ['one', 'two']})
     subds = ds.create('sub')
     # we need one real piece of content for metadata extraction
     (subds.pathobj / 'real').write_text(text_type('real'))
-    ds.save(recursive=True)
+    ds.save(recursive=True, result_renderer="disabled")
     return ds, subds
 
 

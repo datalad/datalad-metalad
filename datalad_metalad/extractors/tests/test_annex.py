@@ -33,7 +33,7 @@ def test_annex_contentmeta(path):
     mfile_path.parent.mkdir()
     mfile_path.write_text(u'nothing')
     (ds.pathobj / 'ignored').write_text(u'nometa')
-    ds.save()
+    ds.save(result_renderer="disabled")
     ds.repo.set_metadata(
         text_type(mfile_path.relative_to(ds.pathobj)),
         init={'tag': 'mytag', 'fancy': 'this?'}

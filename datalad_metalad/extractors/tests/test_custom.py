@@ -94,7 +94,7 @@ def test_custom_dsmeta(path):
     sample_jsonld_.update({'@id': ds.id})
     # enable custom extractor
     # use default location
-    ds.save()
+    ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
     res = ds.meta_extract(extractorname='metalad_custom')
     assert_status('ok', res)
@@ -108,7 +108,7 @@ def test_custom_dsmeta(path):
         'datalad.metadata.custom-dataset-source',
         'nothere',
         where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
         on_failure='ignore',
@@ -128,7 +128,7 @@ def test_custom_dsmeta(path):
         # always POSIX!
         'down/customloc',
         where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
         on_failure='ignore',
@@ -142,7 +142,7 @@ def test_custom_dsmeta(path):
         # put back default
         '.metadata/dataset.json',
         where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
         on_failure='ignore',
@@ -169,7 +169,7 @@ def test_custom_contentmeta(path):
     ds.config.add('datalad.metadata.custom-content-source',
                   '{freldir}/_{fname}.dl.json',
                   where='dataset')
-    ds.save()
+    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
         path="sub/one",
@@ -203,7 +203,7 @@ def test_custom_contentmeta(path):
     })
 def test_custom_content_broken(path):
     ds = Dataset(path).create(force=True)
-    ds.save()
+    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
         path='sub/one',
