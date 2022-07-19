@@ -111,7 +111,8 @@ def add_dataset_level_metadata(metadata_store: Path,
             **base_elements,
             "type": "dataset"
         },
-        dataset=metadata_store)
+        dataset=metadata_store,
+        result_renderer="disabled")
 
 
 def add_file_level_metadata(metadata_store: Path,
@@ -136,4 +137,5 @@ def add_file_level_metadata(metadata_store: Path,
             "type": "file",
             "path": str(file_path)
         },
-        dataset=metadata_store)
+        dataset=metadata_store,
+        result_renderer="disabled")

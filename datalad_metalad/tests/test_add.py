@@ -113,7 +113,8 @@ def test_unknown_key_reporting(file_name):
 
         _assert_raise_mke_with_keys(
             ["strange_key_name"],
-            metadata=file_name)
+            metadata=file_name,
+            result_renderer="disabled")
 
 
 @with_tempfile
@@ -136,7 +137,8 @@ def test_unknown_key_allowed(file_name):
         meta_add(
             metadata=file_name,
             dataset=git_repo.path,
-            allow_unknown=True)
+            allow_unknown=True,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 0)
         assert_true(dp.call_count == 1)
@@ -162,7 +164,8 @@ def test_optional_keys(file_name):
         meta_add(
             metadata=file_name,
             dataset=git_repo.path,
-            allow_unknown=True)
+            allow_unknown=True,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 1)
         assert_true(dp.call_count == 0)
@@ -183,7 +186,8 @@ def test_incomplete_non_mandatory_key_handling(file_name):
         _assert_raise_mke_with_keys(
             ["root_dataset_version"],
             metadata=file_name,
-            additionalvalues=json.dumps({"root_dataset_id": 1}))
+            additionalvalues=json.dumps({"root_dataset_id": 1}),
+            result_renderer="disabled")
 
 
 @with_tempfile
@@ -201,7 +205,8 @@ def test_override_key_reporting(file_name):
             ["dataset_id"],
             metadata=file_name,
             additionalvalues=json.dumps(
-                {"dataset_id": "a2010203-1011-2021-3031-404142434445"}))
+                {"dataset_id": "a2010203-1011-2021-3031-404142434445"}),
+            result_renderer="disabled")
 
 
 def test_object_parameter():
@@ -218,7 +223,8 @@ def test_object_parameter():
                 "type": "file",
                 "path": "d1/d1.1./f1.1.1"
             },
-            dataset=git_repo.path)
+            dataset=git_repo.path,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 1)
         assert_true(dp.call_count == 0)
@@ -240,7 +246,8 @@ def test_additional_values_object_parameter():
             additionalvalues={
                 "path": "d1/d1.1./f1.1.1"
             },
-            dataset=git_repo.path)
+            dataset=git_repo.path,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 1)
         assert_true(dp.call_count == 0)
@@ -295,7 +302,8 @@ def test_id_mismatch_allowed(file_name):
                 {"dataset_id": "a1010203-1011-2021-3031-404142434445"}),
             dataset=git_repo.path,
             allow_override=True,
-            allow_id_mismatch=True)
+            allow_id_mismatch=True,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 0)
         assert_true(dp.call_count == 1)
@@ -358,7 +366,8 @@ def test_root_id_mismatch_allowed(file_name):
                 }),
             dataset=git_repo.path,
             allow_override=True,
-            allow_id_mismatch=True)
+            allow_id_mismatch=True,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 0)
         assert_true(dp.call_count == 1)
@@ -384,7 +393,8 @@ def test_override_key_allowed(file_name):
             additionalvalues=json.dumps(
                 {"dataset_id": str(default_id)}),
             allow_override=True,
-            dataset=git_repo.path)
+            dataset=git_repo.path,
+            result_renderer="disabled")
 
         assert_true(fp.call_count == 0)
         assert_true(dp.call_count == 1)
@@ -396,7 +406,6 @@ def _get_top_nodes(git_repo,
                    dataset_tree_path=""):
 
     # Ensure that metadata was created
-    print("asdasdasd")
     tree_version_list, uuid_set, mrr = \
         get_top_nodes_and_metadata_root_record(
             mapper_family="git",
@@ -444,7 +453,10 @@ def test_add_dataset_end_to_end(file_name):
 
         git_repo = create_dataset(temp_dir, default_id)
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        res = meta_add(
+            metadata=file_name,
+            dataset=git_repo.path,
+            result_renderer="disabled")
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='dataset')
         assert_result_count(res, 0, type='file')
@@ -474,7 +486,10 @@ def test_add_file_end_to_end(file_name):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        res = meta_add(
+            metadata=file_name,
+            dataset=git_repo.path,
+            result_renderer="disabled")
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
@@ -510,7 +525,10 @@ def test_subdataset_add_dataset_end_to_end(file_name):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        res = meta_add(
+            metadata=file_name,
+            dataset=git_repo.path,
+            result_renderer="disabled")
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='dataset')
         assert_result_count(res, 0, type='file')
@@ -558,7 +576,10 @@ def test_subdataset_add_file_end_to_end(file_name):
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, default_id)
 
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
+        res = meta_add(
+            metadata=file_name,
+            dataset=git_repo.path,
+            result_renderer="disabled")
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
         assert_result_count(res, 0, type='dataset')
@@ -609,7 +630,7 @@ def test_current_dir_add_end_to_end(file_name):
         git_repo = create_dataset(temp_dir, default_id)
 
         with chpwd(git_repo.pathobj):
-            res = meta_add(metadata=file_name)
+            res = meta_add(metadata=file_name, result_renderer="disabled")
             assert_result_count(res, 1)
             assert_result_count(res, 1, type='dataset')
             assert_result_count(res, 0, type='file')
@@ -659,12 +680,16 @@ def test_add_file_dump_end_to_end(file_name):
         import time
 
         start_time = time.time()
-        res = meta_add(metadata=[], dataset=git_repo.path)
-        print(f"meta-add x 0: {time.time() - start_time} s")
+        res = meta_add(
+            metadata=[],
+            dataset=git_repo.path,
+            result_renderer="disabled")
 
         start_time = time.time()
-        res = meta_add(metadata=file_name, dataset=git_repo.path)
-        print(f"meta-add x 1: {time.time() - start_time} s")
+        res = meta_add(
+            metadata=file_name,
+            dataset=git_repo.path,
+            result_renderer="disabled")
 
         assert_result_count(res, 1)
         assert_result_count(res, 1, type='file')
@@ -734,14 +759,21 @@ def check_multi_adding(metadata: Union[str, List],
                     patch("datalad_metalad.add.sys") as sys_mock:
 
                 stdin_mock.return_value = iter(metadata)
-                meta_add(metadata="-", dataset=git_repo.path, batch_mode=True)
+                meta_add(
+                    metadata="-",
+                    dataset=git_repo.path,
+                    batch_mode=True,
+                    result_renderer="disabled")
                 assert_in(
                     call.stdout.write(
                         f'{{"status": "ok", "succeeded": '
                         f'{file_count * metadata_count}, "failed": 0}}\n'),
                     sys_mock.mock_calls)
         else:
-            res = meta_add(metadata=metadata, dataset=git_repo.path)
+            res = meta_add(
+                metadata=metadata,
+                dataset=git_repo.path,
+                result_renderer="disabled")
             assert_result_count(res, file_count * metadata_count)
 
         print(
@@ -826,7 +858,8 @@ def test_cache_age(temp_dir: str):
             metadata="-",
             dataset=temp_dir,
             allow_id_mismatch=True,
-            batch_mode=True)
+            batch_mode=True,
+            result_renderer="disabled")
 
         assert_true(fc.call_count >= 2)
 
@@ -845,7 +878,8 @@ def test_batch_mode(temp_dir: str):
             metadata="-",
             dataset=temp_dir,
             allow_id_mismatch=True,
-            batch_mode=True)
+            batch_mode=True,
+            result_renderer="disabled")
 
         assert_in(
             call.stdout.write(
@@ -907,7 +941,8 @@ def test_add_regression_1(temp_dir: str):
     for json_object in json_objects:
         for result in meta_add(dataset=temp_dir,
                                metadata=json_object,
-                               allow_id_mismatch=True):
+                               allow_id_mismatch=True,
+                               result_renderer="disabled"):
             eq_(result["status"], "ok")
 
     results = list(meta_dump(dataset=temp_dir, path="", recursive=True))
@@ -928,12 +963,13 @@ def test_multi_add_regression_1(temp_dir: str):
     ]
     for result in meta_add(dataset=temp_dir,
                            metadata=json_objects,
-                           allow_id_mismatch=True):
+                           allow_id_mismatch=True,
+                           result_renderer="disabled"):
         eq_(result["status"], "ok")
 
     results = list(meta_dump(dataset=temp_dir, path="*", recursive=True))
     for result in results:
-        print(result["metadata"])
+        assert_in("metadata", result)
     assert_equal(len(results), len(json_objects))
     for result in results:
         eq_(result["status"], "ok")
@@ -953,7 +989,8 @@ def test_multi_add_regression_2(temp_dir: str):
         for result in meta_add(dataset=temp_dir,
                                metadata=json_input.name,
                                json_lines=True,
-                               allow_id_mismatch=True):
+                               allow_id_mismatch=True,
+                               result_renderer="disabled"):
             eq_(result["status"], "ok")
 
         results = list(meta_dump(dataset=temp_dir, path="", recursive=True))

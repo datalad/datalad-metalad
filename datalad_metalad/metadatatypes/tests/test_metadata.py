@@ -43,9 +43,8 @@ def test_basic():
         path=MetadataPath("d1/file_1.txt")
     )
 
-    print(md)
-    print(md.as_json_obj())
-    print(md.as_json_str())
+    md.as_json_obj()
+    md.as_json_str()
 
 
 def test_uuid_conversion():
@@ -63,11 +62,9 @@ def test_uuid_conversion():
         path=MetadataPath("d1/file_1.txt")
     )
 
-    print(md)
-    print(md.as_json_obj())
-    print(md.as_json_str())
+    md.as_json_obj()
+    md.as_json_str()
 
 
 def test_from_json():
     md = MetadataRecord.from_json(test_json_1)
-    print(md)

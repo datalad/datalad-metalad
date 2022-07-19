@@ -68,6 +68,7 @@ def perform_concurrent_adds(locked: bool,
                 locked=locked,
                 metadata=get_metadata(index),
                 dataset=git_repo.path,
+                result_renderer="disabled"
             )
             for index in range(count)
         ])
@@ -125,8 +126,14 @@ def test_multiple_adds():
     # overwrite old records
     with tempfile.TemporaryDirectory() as temp_dir:
         git_repo = create_dataset(temp_dir, dataset_id)
-        meta_add(dataset=git_repo.path, metadata=get_metadata(0))
-        meta_add(dataset=git_repo.path, metadata=get_metadata(1))
+        meta_add(
+            dataset=git_repo.path,
+            metadata=get_metadata(0),
+            result_renderer="disabled")
+        meta_add(
+            dataset=git_repo.path,
+            metadata=get_metadata(1),
+            result_renderer="disabled")
         metadata_records = get_all_metadata_records(git_repo)
         eq_(len(metadata_records), 2)
         metadata = [mr["metadata"] for mr in metadata_records]
