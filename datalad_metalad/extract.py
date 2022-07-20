@@ -53,6 +53,7 @@ from .extractors.base import (
 )
 
 from datalad.support.constraints import (
+    EnsureInt,
     EnsureNone,
     EnsureStr,
 )
@@ -61,6 +62,7 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from .exceptions import ExtractorNotFoundError
+from .pipeline.patchgitrunner import patch_git_runner
 from .utils import (
     args_to_dict,
     check_dataset,
@@ -192,6 +194,13 @@ class Extract(Interface):
             will not have re-gather this data. Keys and values are strings.
             meta-extract will look for the following key: 'dataset_version'.""",
             constraints=EnsureDataset() | EnsureNone()),
+        cache_port=Parameter(
+            args=("-p", "--cache-port"),
+            doc="""Context, a JSON-serialized dictionary that provides
+            constant data which has been gathered before, so meta-extract
+            will not have re-gather this data. Keys and values are strings.
+            meta-extract will look for the following key: 'dataset_version'.""",
+            constraints=EnsureInt() | EnsureNone()),
         get_context=Parameter(
             args=("--get-context",),
             action="store_true",
@@ -227,9 +236,13 @@ class Extract(Interface):
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
+            cache_port: Optional[int] = None,
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
+
+        if cache_port is not None:
+            patch_git_runner(cache_port)
 
         # Get basic arguments
         extractor_name = extractorname
