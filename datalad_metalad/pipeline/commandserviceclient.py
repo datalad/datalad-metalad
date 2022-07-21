@@ -1,9 +1,9 @@
 import json
-import os
 from typing import (
     Dict,
     List,
     Optional,
+    Union,
 )
 
 import requests
@@ -15,6 +15,7 @@ caching_command_service_url = 'http://localhost:{port}/command'
 
 def execute(port: int,
             cmd: List[str],
+            stdin: Optional[Union[str, bytes]],
             workdir: str,
             environment: Optional[Dict] = None
             ) -> Dict:
@@ -22,6 +23,7 @@ def execute(port: int,
         caching_command_service_url.format(port=port),
         json={
             "cmd": cmd,
+            "stdin": stdin,
             "cwd": workdir,
             "env": environment
         })

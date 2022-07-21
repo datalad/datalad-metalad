@@ -47,6 +47,7 @@ def _cached_run(self,
     return execute(
         port,
         cmd=cmd,
+        stdin=stdin,
         workdir=cwd,
         environment=env
     )
