@@ -57,6 +57,8 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
 
     @authorize_request
     def do_POST(self):
+        CommandRequestHandler.active_connections += 1
+        sys.stdout.write("\r                 \r" + "#" * CommandRequestHandler.active_connections)
         if self.path in self.route:
             if self.headers.get("clear-cache", None):
                 CommandRequestHandler.cache = dict()
@@ -64,6 +66,8 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
             content = self.rfile.read(content_len).decode("utf-8")
             results = self.route[self.path](content)
             self.send_result(*results)
+        CommandRequestHandler.active_connections -= 1
+        sys.stdout.write("\r                 \r" + "#" * CommandRequestHandler.active_connections)
 
     def send_result(self, code: int, message: str, content: bytes):
         self.send_response(code, message)

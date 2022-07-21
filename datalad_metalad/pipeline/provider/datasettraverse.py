@@ -24,6 +24,7 @@ from datalad.support.constraints import (
 )
 
 from .base import Provider
+from ..patchgitrunner import patch_git_runner
 from ..documentedinterface import (
     DocumentedInterface,
     ParameterEntry,
@@ -95,7 +96,8 @@ class DatasetTraverser(Provider):
                  *,
                  top_level_dir: Union[str, Path],
                  item_type: str,
-                 traverse_sub_datasets: bool = False
+                 traverse_sub_datasets: bool = False,
+                 server_port: int = 0
                  ):
 
         known_types = tuple(DatasetTraverser.name_to_item_set.keys())
@@ -110,6 +112,10 @@ class DatasetTraverser(Provider):
                                             purpose="dataset_traversal")
         self.fs_base_path = Path(resolve_path(self.top_level_dir,
                                               self.root_dataset))
+
+        if server_port != 0:
+            patch_git_runner(server_port)
+
         self.seen = dict()
 
     def _already_visited(self, dataset: Dataset, relative_element_path: Path):

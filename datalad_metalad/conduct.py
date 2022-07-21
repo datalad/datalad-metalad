@@ -175,7 +175,7 @@ class Conduct(Interface):
                 "NB! It should be noted, that results will only be "
                 "reproducible, if the processed datasets are not modified "
                 "during the runtime of `meta-conduct`!",
-            constraints=EnsureInt(),
+            constraints=EnsureInt()|EnsureNone(),
             default=None),
         configuration=Parameter(
             args=("configuration",),
@@ -204,7 +204,7 @@ class Conduct(Interface):
             max_workers: Optional[int] = None,
             processing_mode: str = "process",
             pipeline_help: bool = False,
-            use_command_service: bool = False):
+            use_command_service: Optional[int] = None):
 
         element_arguments = arguments
         conduct_configuration = read_json_object(configuration)
@@ -214,6 +214,8 @@ class Conduct(Interface):
                 server_port = start_server()
             else:
                 server_port = use_command_service
+        else:
+            server_port = None
 
         elements = [
             element
@@ -241,7 +243,9 @@ class Conduct(Interface):
 
         if pipeline_help is True:
             for name, class_instance in class_instances.items():
+                print(f"  /========={'=' * len(name)}\\")
                 print(f"== Element: {name} =============================")
+                print(f"  \\========={'=' * len(name)}/")
                 print(class_instance.interface_documentation.get_description())
                 print(f".. Variables: {'.' * len(name)}............................")
                 print(class_instance.interface_documentation.get_entry_description(name))
