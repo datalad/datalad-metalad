@@ -37,8 +37,11 @@ def execute(port: int,
         )
     if "--json" in cmd and "annex" in cmd:
         # Assume annex was called with --json flag. In this case `stdout` should
-        # contain a serialized json object.
-        result["stdout_json"] = [json.loads(stdout)]
+        # contain lines with one serialized json object per line.
+        result["stdout_json"] = [
+            json.loads(line)
+            for line in stdout.splitlines()
+        ]
         result["stdout"] = ""
     return result
 

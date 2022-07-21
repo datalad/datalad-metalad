@@ -39,12 +39,16 @@ from datalad.support.constraints import (
 )
 from datalad.support.param import Parameter
 
+from .pipeline.commandservice import (
+    start_server,
+    stop_server,
+)
+from .pipeline.consumer.base import Consumer
 from .pipeline.pipelinedata import (
     PipelineData,
     PipelineDataState,
 )
 from .pipeline.pipelineelement import PipelineElement
-from .pipeline.consumer.base import Consumer
 from .pipeline.processor.base import Processor
 from .pipeline.provider.base import Provider
 from .metadatatypes import JSONType
@@ -158,6 +162,21 @@ class Conduct(Interface):
             doc="Show documentation for the elements in the pipeline and exit.",
             action="store_true",
             default=False),
+        use_command_service=Parameter(
+            args=("--use-command-service",),
+            metavar="PORT",
+            doc="Use a command service that executes commands and caches their"
+                "results. This has the potential to reduce the number of "
+                "running processes dramatically and to improve performance. "
+                "Currently `meta-extract` supports the use of a command "
+                "service. The argument is the port on which a command service"
+                "is running on the local host. If the port number is 0, a"
+                "command service will be created.  \n"
+                "NB! It should be noted, that results will only be "
+                "reproducible, if the processed datasets are not modified "
+                "during the runtime of `meta-conduct`!",
+            constraints=EnsureInt(),
+            default=None),
         configuration=Parameter(
             args=("configuration",),
             metavar="CONFIGURATION",
@@ -184,10 +203,17 @@ class Conduct(Interface):
             arguments: List[str],
             max_workers: Optional[int] = None,
             processing_mode: str = "process",
-            pipeline_help: bool = False):
+            pipeline_help: bool = False,
+            use_command_service: bool = False):
 
         element_arguments = arguments
         conduct_configuration = read_json_object(configuration)
+
+        if use_command_service is not None:
+            if use_command_service == 0:
+                server_port = start_server()
+            else:
+                server_port = use_command_service
 
         elements = [
             element
@@ -258,6 +284,11 @@ class Conduct(Interface):
         processor_instances = [
             get_class_instance(spec)(
                 **{
+                    ** (
+                        {"server_port": server_port}
+                        if server_port is not None
+                        else {}
+                    ),
                     **spec["arguments"],
                     **evaluated_constructor_args[spec["name"]]
                 }
@@ -282,6 +313,9 @@ class Conduct(Interface):
                 provider_instance,
                 processor_instances,
                 consumer_instance)
+
+        if use_command_service == 0:
+            stop_server(server_port)
 
 
 def process_parallel(executor,

@@ -3,6 +3,7 @@
  This server aims at consolidating identical command line calls, by
  executing them once and caching the result.
 """
+import concurrent.futures
 import json
 import logging
 import subprocess
@@ -13,12 +14,16 @@ from http.server import (
 )
 from typing import Tuple
 
+import requests
+
 from datalad_metalad.metadatatypes import JSONType
 
 
 port = None
 
 logger = logging.getLogger("datalad.commandservice")
+
+executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
 
 
 def authorize_request(function):
@@ -101,6 +106,28 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
         }
 
 
+def get_server(requested_port: int = 0) -> ThreadingHTTPServer:
+    return ThreadingHTTPServer(
+        ("127.0.0.1", requested_port),
+        CommandRequestHandler
+    )
+
+
+def start_server(requested_port: int = 0) -> int:
+    popen = subprocess.Popen(
+        args=["python", __file__, str(requested_port)],
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1
+    )
+    assigned_port = popen.stdout.readline()
+    return int(assigned_port)
+
+
+def stop_server(port: int):
+    request_result = requests.get(f"http://localhost:{port}/exit"),
+
+
 if __name__ == "__main__":
     requested_port = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     http_server = ThreadingHTTPServer(
@@ -110,6 +137,7 @@ if __name__ == "__main__":
 
     port = http_server.server_port
     print(port)
+
     try:
         logging.basicConfig(level=logging.DEBUG)
         http_server.serve_forever()

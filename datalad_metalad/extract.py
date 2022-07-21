@@ -194,12 +194,10 @@ class Extract(Interface):
             will not have re-gather this data. Keys and values are strings.
             meta-extract will look for the following key: 'dataset_version'.""",
             constraints=EnsureDataset() | EnsureNone()),
-        cache_port=Parameter(
-            args=("-p", "--cache-port"),
-            doc="""Context, a JSON-serialized dictionary that provides
-            constant data which has been gathered before, so meta-extract
-            will not have re-gather this data. Keys and values are strings.
-            meta-extract will look for the following key: 'dataset_version'.""",
+        service_port=Parameter(
+            args=("-p", "--service-port"),
+            doc="""The port on localhost on which a caching command service is
+            running.""",
             constraints=EnsureInt() | EnsureNone()),
         get_context=Parameter(
             args=("--get-context",),
@@ -236,13 +234,13 @@ class Extract(Interface):
             path: Optional[str] = None,
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
-            cache_port: Optional[int] = None,
+            service_port: Optional[int] = None,
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
 
-        if cache_port is not None:
-            patch_git_runner(cache_port)
+        if service_port is not None:
+            patch_git_runner(service_port)
 
         # Get basic arguments
         extractor_name = extractorname

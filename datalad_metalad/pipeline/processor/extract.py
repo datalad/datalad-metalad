@@ -71,11 +71,13 @@ class MetadataExtractor(Processor):
     def __init__(self,
                  *,
                  extractor_type: str,
-                 extractor_name: str
+                 extractor_name: str,
+                 server_port: int = 0
                  ):
 
         self.extractor_type = extractor_type.lower()
         self.extractor_name = extractor_name
+        self.server_port = server_port
 
     def process(self, pipeline_data: PipelineData) -> PipelineData:
 
@@ -111,6 +113,9 @@ class MetadataExtractor(Processor):
         else:
             logger.warning(f"ignoring unknown type {object_type}")
             return pipeline_data
+
+        if self.server_port != 0:
+            kwargs["service_port"] = self.server_port
 
         results = []
         for extract_result in meta_extract(**kwargs):

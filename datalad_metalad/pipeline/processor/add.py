@@ -61,7 +61,8 @@ class MetadataAdder(Processor):
 
     def __init__(self,
                  *,
-                 aggregate: bool = False
+                 aggregate: bool = False,
+                 server_port: int = 0
                  ):
 
         super().__init__()
