@@ -1,4 +1,6 @@
 import json
+import os
+import sys
 from typing import (
     Dict,
     List,
@@ -49,5 +51,4 @@ def execute(port: int,
 
 
 if __name__ == "__main__":
-    import sys
-    print(execute(int(sys.argv[1]), sys.argv[2:], os.getcwd()))
+    print(execute(int(sys.argv[1]), sys.argv[2:], None, os.getcwd()))
