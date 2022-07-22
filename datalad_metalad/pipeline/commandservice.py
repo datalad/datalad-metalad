@@ -74,7 +74,8 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path in self.route:
             if self.headers.get("clear-cache", None):
-                CommandRequestHandler.cache = dict()
+                with self.lock:
+                    CommandRequestHandler.cache = dict()
             content_len = int(self.headers.get("content-length", 0))
             content = self.rfile.read(content_len).decode("utf-8")
             results = self.route[self.path](content)
@@ -95,14 +96,19 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
         CommandRequestHandler.cache = dict()
 
     def handle_command(self, json_string: str) -> Tuple[int, str, bytes]:
-        if json_string in self.cache:
-            logging.debug(f"return cached result for command: {json_string}")
-            return 200, "OK (cached)", self.cache[json_string]
+        with self.lock:
+            if json_string in self.cache:
+                command_spec, result = self.cache[json_string]
+                logging.debug(
+                    f"return cached result for command: {command_spec['cmd']}")
+                return 200, "OK (cached)", result
 
-        logging.debug(f"running command: {json_string}")
-        result_dict = self.run_command(json.loads(json_string))
+        command_spec = json.loads(json_string)
+        logging.debug(f"running command: {command_spec['cmd']}")
+        result_dict = self.run_command(command_spec)
         result_content = json.dumps(result_dict).encode("utf-8")
-        self.cache[json_string] = result_content
+        with self.lock:
+            self.cache[json_string] = command_spec, result_content
         return 200, "OK", result_content
 
     def run_command(self, command_spec: JSONType) -> JSONType:
