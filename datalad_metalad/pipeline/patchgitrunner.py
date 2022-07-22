@@ -1,4 +1,5 @@
 import logging
+import threading
 from functools import partialmethod
 from typing import (
     Callable,
@@ -17,6 +18,8 @@ from .commandserviceclient import execute
 
 logger = logging.getLogger("datalad.runner.cached")
 original_run: Optional[Callable] = None
+
+lock = threading.Lock()
 
 
 def _cached_run(self,
@@ -63,13 +66,17 @@ def _cached_run(self,
 
 def patch_git_runner(port: int):
     global original_run
-    if original_run is None:
-        original_run = git_runner.GitWitlessRunner.run
-        git_runner.GitWitlessRunner.run = partialmethod(_cached_run, port)
+
+    with lock:
+        if original_run is None:
+            original_run = git_runner.GitWitlessRunner.run
+            git_runner.GitWitlessRunner.run = partialmethod(_cached_run, port)
 
 
 def unpatch_git_runner():
     global original_run
-    if original_run is not None:
-        git_runner.GitWitlessRunner.run = original_run
-        original_run = None
+
+    with lock:
+        if original_run is not None:
+            git_runner.GitWitlessRunner.run = original_run
+            original_run = None
