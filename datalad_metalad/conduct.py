@@ -281,6 +281,11 @@ class Conduct(Interface):
         provider_instance = get_class_instance(
             conduct_configuration["provider"])(
             **{
+                ** (
+                    {"server_port": server_port}
+                    if server_port is not None
+                    else {}
+                ),
                 **conduct_configuration["provider"]["arguments"],
                 **evaluated_constructor_args[provider_name]
             })
