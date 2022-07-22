@@ -53,23 +53,25 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
         }
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
-    @authorize_request
-    def do_GET(self):
+    def setup(self) -> None:
         with CommandRequestHandler.lock:
             CommandRequestHandler.active_connections += 1
-        meter.set_value(CommandRequestHandler.active_connections)
-        if self.path in self.route:
-            self.route[self.path]()
+            meter.set_value(CommandRequestHandler.active_connections)
+        BaseHTTPRequestHandler.setup(self)
+
+    def finish(self) -> None:
         with CommandRequestHandler.lock:
             CommandRequestHandler.active_connections -= 1
-        meter.set_value(CommandRequestHandler.active_connections)
-        meter.display(True)
+            meter.set_value(CommandRequestHandler.active_connections)
+        BaseHTTPRequestHandler.finish(self)
+
+    @authorize_request
+    def do_GET(self):
+        if self.path in self.route:
+            self.route[self.path]()
 
     @authorize_request
     def do_POST(self):
-        with CommandRequestHandler.lock:
-            CommandRequestHandler.active_connections += 1
-        meter.set_value(CommandRequestHandler.active_connections)
         if self.path in self.route:
             if self.headers.get("clear-cache", None):
                 CommandRequestHandler.cache = dict()
@@ -77,10 +79,6 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
             content = self.rfile.read(content_len).decode("utf-8")
             results = self.route[self.path](content)
             self.send_result(*results)
-        with CommandRequestHandler.lock:
-            CommandRequestHandler.active_connections -= 1
-        meter.set_value(CommandRequestHandler.active_connections)
-        meter.display(True)
 
     def send_result(self, code: int, message: str, content: bytes):
         self.send_response(code, message)
