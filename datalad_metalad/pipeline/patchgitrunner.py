@@ -6,7 +6,12 @@ from typing import (
 )
 
 import datalad.runner.gitrunner as git_runner
+from datalad.runner.nonasyncrunner import (
+    STDERR_FILENO,
+    STDOUT_FILENO,
+)
 from datalad.runner.protocol import GeneratorMixIn
+
 from .commandserviceclient import execute
 
 
@@ -23,18 +28,14 @@ def _cached_run(self,
                 env=None,
                 timeout=None,
                 exception_on_error=True,
+                enforce_local=False,
                 **kwargs):
 
-    # The stdin check should actually be:
-    # `stdin not isinstance(stdin, (str, bytes, type(None))):`
-    # But then we should implement sending str or byte stdin to the server
-    if (
-            issubclass(protocol, GeneratorMixIn)
-            or not isinstance(stdin, (str, bytes, type(None)))):
-
+    if enforce_local or not isinstance(stdin, (str, bytes, type(None))):
         logger.debug(
-            "calling original run due to a generator protocol or a non static "
-            "stdin value"
+            "calling original run because `enforce_local` is True"
+            if enforce_local
+            else "calling original run due to a non-static stdin value"
         )
         return original_run(
             self, cmd, protocol, stdin, cwd, env, timeout, exception_on_error,
@@ -44,13 +45,20 @@ def _cached_run(self,
     cwd = cwd or self.cwd
     env = self._get_adjusted_env(env or self.env, cwd=cwd)
     logger.debug(f"calling http://localhost:{port}/command")
-    return execute(
+    result = execute(
         port,
         cmd=cmd,
         stdin=stdin,
         workdir=cwd,
         environment=env
     )
+    if issubclass(protocol, GeneratorMixIn):
+        return [
+            (file_no, result[key])
+            for key, file_no in (("stderr", STDERR_FILENO), ("stdout", STDOUT_FILENO))
+            if key in result
+        ]
+    return result
 
 
 def patch_git_runner(port: int):
@@ -63,5 +71,5 @@ def patch_git_runner(port: int):
 def unpatch_git_runner():
     global original_run
     if original_run is not None:
-        git_runner.GitWitlessRunner._get_chunked_results = original_run
+        git_runner.GitWitlessRunner.run = original_run
         original_run = None
