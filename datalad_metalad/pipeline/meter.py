@@ -4,15 +4,30 @@ import time
 
 
 class Meter:
+
+    spinner_characters = (" >.. ", " .>. ", " ..> ",
+                          " ..< ", " .<. ", " <.. ",)  #("|", "/", "-", "\\", "|", "/", "-", "\\")
+
     def __init__(self, initial_value: int = 0):
         self.value = initial_value
         self.active = sys.stdout.isatty()
         self.last_display_time = 0.0
         self.last_displayed_value = None
+        self.spinner_state = 0
         self.lock = threading.Lock()
+
+    def _update_spinner(self, standalone: bool = False):
+        self.spinner_state += 1
+        self.spinner_state %= len(Meter.spinner_characters)
+        print(
+            Meter.spinner_characters[self.spinner_state],
+            end="\r" if standalone is True else "",
+            flush=standalone
+        )
 
     def _display_immediately(self, current_time: float):
         if self.value == self.last_displayed_value:
+            self._update_spinner(standalone=True)
             self.last_display_time = current_time
             return
 
@@ -24,6 +39,7 @@ class Meter:
             if self.last_displayed_value > self.value:
                 display_string += " " * (self.last_displayed_value - self.value)
 
+        self._update_spinner()
         print(display_string + "\r", end='', flush=True)
         self.last_displayed_value = self.value
         self.last_display_time = current_time
