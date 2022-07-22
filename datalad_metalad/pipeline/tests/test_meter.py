@@ -16,7 +16,7 @@ print()
 
 
 meter = Meter()
-for value in (14, 18, 18, 19, 18, 19, 17, 13):
+for value in (14, 18, 18, 19, 0, 0, 18, 0):
     meter.set_value(value, force=True)
     time.sleep(sleep_time)
 
