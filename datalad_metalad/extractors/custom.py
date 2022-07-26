@@ -28,7 +28,7 @@ from datalad.log import log_progress
 from datalad.support.json_py import load as jsonload
 from datalad.dochelpers import exc_str
 from datalad.utils import (
-    assure_list,
+    ensure_list,
     Path,
     PurePosixPath,
 )
@@ -132,7 +132,7 @@ def _get_dsmeta_srcfiles(ds):
     cfg_srcfiles = ds.config.obtain(
         'datalad.metadata.custom-dataset-source',
         [])
-    cfg_srcfiles = assure_list(cfg_srcfiles)
+    cfg_srcfiles = ensure_list(cfg_srcfiles)
     # OK to be always POSIX
     srcfiles = ['.metadata/dataset.json'] \
         if not cfg_srcfiles and op.lexists(

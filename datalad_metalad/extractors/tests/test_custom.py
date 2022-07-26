@@ -11,7 +11,7 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_repo_status,
     assert_result_count,
     assert_status,
@@ -88,7 +88,7 @@ testmeta = {
             'dataset.json': jsondumps(sample_jsonld)},
         'down': {
             'customloc': jsondumps(testmeta)}})
-def test_custom_dsmeta(path):
+def test_custom_dsmeta(path=None):
     ds = Dataset(path).create(force=True)
     sample_jsonld_ = dict(sample_jsonld)
     sample_jsonld_.update({'@id': ds.id})
@@ -107,7 +107,7 @@ def test_custom_dsmeta(path):
     ds.config.add(
         'datalad.metadata.custom-dataset-source',
         'nothere',
-        where='dataset')
+        scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
@@ -127,7 +127,7 @@ def test_custom_dsmeta(path):
         'datalad.metadata.custom-dataset-source',
         # always POSIX!
         'down/customloc',
-        where='dataset')
+        scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
@@ -141,7 +141,7 @@ def test_custom_dsmeta(path):
         'datalad.metadata.custom-dataset-source',
         # put back default
         '.metadata/dataset.json',
-        where='dataset')
+        scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
@@ -163,12 +163,12 @@ def test_custom_dsmeta(path):
             '_one.dl.json': '{"some":"thing"}',
         }
     })
-def test_custom_contentmeta(path):
+def test_custom_contentmeta(path=None):
     ds = Dataset(path).create(force=True)
     # use custom location
     ds.config.add('datalad.metadata.custom-content-source',
                   '{freldir}/_{fname}.dl.json',
-                  where='dataset')
+                  scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
         extractorname='metalad_custom',
@@ -201,7 +201,7 @@ def test_custom_contentmeta(path):
             'one': '1',
         }
     })
-def test_custom_content_broken(path):
+def test_custom_content_broken(path=None):
     ds = Dataset(path).create(force=True)
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(

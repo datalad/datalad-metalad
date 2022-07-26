@@ -20,7 +20,7 @@ from datalad.api import (
     meta_dump,
 )
 from datalad.support.exceptions import InsufficientArgumentsError
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_not_in,
     assert_raises,
     assert_result_count,

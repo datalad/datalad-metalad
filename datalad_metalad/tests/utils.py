@@ -12,7 +12,7 @@ from datalad.api import (
 )
 from datalad.distribution.dataset import Dataset
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.utils import assert_repo_status
+from datalad.tests.utils_pytest import assert_repo_status
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
@@ -42,7 +42,7 @@ def create_dataset_proper(directory: Union[str, Path],
     ds.config.add(
         'datalad.metadata.exclude-path',
         '.metadata',
-        where='dataset')
+        scope='branch')
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 

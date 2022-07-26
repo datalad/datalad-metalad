@@ -4,7 +4,7 @@ from unittest import mock
 
 from datalad.api import meta_extract
 from datalad.distribution.dataset import Dataset
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     with_tempfile,
     with_tree
 )
@@ -506,7 +506,7 @@ study:
 
 @mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({".studyminimeta.yaml": proper_yaml_1})
-def test_successful_yaml_parsing(dataset_mock, directory_path: str):
+def test_successful_yaml_parsing(dataset_mock=None, directory_path=None):
 
     dataset_mock.configure_mock(**{
         "pathobj": Path(directory_path),
@@ -524,7 +524,7 @@ def test_successful_yaml_parsing(dataset_mock, directory_path: str):
 
 @mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({"some_dir": {"somefile.yaml": proper_yaml_1}})
-def test_config_honouring(dataset_mock, directory_path: str):
+def test_config_honouring(dataset_mock=None, directory_path=None):
 
     dataset_mock.configure_mock(**{
         "pathobj": Path(directory_path),
@@ -542,7 +542,7 @@ def test_config_honouring(dataset_mock, directory_path: str):
 
 @mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({".studyminimeta.yaml": error_yaml_1})
-def test_unsuccessful_yaml_parsing(dataset_mock, directory_path: str):
+def test_unsuccessful_yaml_parsing(dataset_mock=None, directory_path=None):
 
     dataset_mock.configure_mock(**{
         "pathobj": Path(directory_path),
@@ -562,7 +562,7 @@ def test_unsuccessful_yaml_parsing(dataset_mock, directory_path: str):
 
 @mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({'.studyminimeta.yaml': error_yaml_2})
-def test_schema_violation(dataset_mock, directory_path: str):
+def test_schema_violation(dataset_mock=None, directory_path=None):
 
     dataset_mock.configure_mock(**{
         "pathobj": Path(directory_path),
@@ -581,7 +581,7 @@ def test_schema_violation(dataset_mock, directory_path: str):
 
 @mock.patch("datalad.distribution.dataset.Dataset")
 @with_tree({"some_file.yaml": error_yaml_1})
-def test_file_handling(dataset_mock, directory_path: str):
+def test_file_handling(dataset_mock=None, directory_path=None):
 
     dataset_mock.configure_mock(**{
         "pathobj": Path(directory_path),

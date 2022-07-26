@@ -11,7 +11,7 @@ from datalad.api import (
     meta_dump,
 )
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_in,
     eq_,
     skip_if,

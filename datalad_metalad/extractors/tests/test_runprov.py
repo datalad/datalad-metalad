@@ -11,7 +11,7 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_in,
     assert_not_in,
     assert_repo_status,
@@ -25,13 +25,13 @@ from datalad.tests.utils import (
 
 @known_failure_windows
 @with_tree({'existing_file': 'some_content'})
-def test_custom_dsmeta(path):
+def test_custom_dsmeta(path=None):
     ds = Dataset(path).create(force=True)
     # enable custom extractor
     # use default location
     ds.config.add('datalad.metadata.nativetype',
                   'metalad_runprov',
-                  where='dataset')
+                  scope='branch')
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
     # run when there are no run records

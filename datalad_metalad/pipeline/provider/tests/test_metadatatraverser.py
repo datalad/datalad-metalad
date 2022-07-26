@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from datalad.tests.utils import assert_equal
+from datalad.tests.utils_pytest import assert_equal
 
 from ..metadatatraverse import (
     MetadataTraverseResult,
