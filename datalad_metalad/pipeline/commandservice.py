@@ -6,6 +6,7 @@
 import concurrent.futures
 import json
 import logging
+import os
 import subprocess
 import sys
 import threading
@@ -27,14 +28,24 @@ logger = logging.getLogger("datalad.commandservice")
 
 executor = concurrent.futures.ProcessPoolExecutor(max_workers=1)
 
+token_variable_name = "DATALAD_CCS_TOKEN"
+header_name = "x-datalad-authorization"
+
 
 def authorize_request(function):
-    def _inner_function(self):
-        if self.client_address[0] != '127.0.0.1':
-            self.send_response(403)
-            self.end_headers()
+    def _inner_function(request_handler):
+        if request_handler.client_address[0] != '127.0.0.1':
+            request_handler.send_response(401)
+            request_handler.end_headers()
             return
-        return function(self)
+        if CommandRequestHandler.verify_token:
+            if request_handler.headers.get(header_name, True) \
+                    != os.environ.get(token_variable_name, False):
+                logger.debug("No token provided or token did not match")
+                request_handler.send_response(401)
+                request_handler.end_headers()
+                return
+        return function(request_handler)
     return _inner_function
 
 
@@ -44,6 +55,7 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
     cache_clearing_requested = False
     active_connections = 0
     lock = threading.Lock()
+    verify_token = True
 
     def __init__(self, *args, **kwargs):
         self.route = {
@@ -150,6 +162,9 @@ def stop_server(port: int):
 
 
 if __name__ == "__main__":
+    if "--dont-verify-token" in sys.argv:
+        sys.argv.remove("--dont-verify-token")
+        CommandRequestHandler.verify_token = False
     requested_port = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     http_server = ThreadingHTTPServer(
         ("127.0.0.1", requested_port),
