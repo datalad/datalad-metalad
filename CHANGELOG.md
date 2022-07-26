@@ -1,3 +1,14 @@
+# 0.4.1 (Tue Jul 26 2022)
+
+### Bug Fix
+
+- Fix issue #172 from [datalad-catalog](https://github.com/datalad/datalad-catalog/issues/172)  ([@christian-monch](https://github.com/christian-monch))
+
+### Authors: 1
+
+- Christian Mönch ([@christian-monch](https://github.com/christian-monch))
+
+
 # 0.4.0 (Tue Jun 21 2022)
 
 
