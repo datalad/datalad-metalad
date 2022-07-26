@@ -11,13 +11,7 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-# API commands needed
-from datalad.api import (
-    create,
-    save,
-    meta_extract,
-)
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_equal,
     assert_result_count,
     known_failure_windows,

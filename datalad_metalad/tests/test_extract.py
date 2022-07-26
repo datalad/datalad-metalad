@@ -25,7 +25,7 @@ from datalad.api import (
 )
 from datalad.distribution.dataset import Dataset
 from datalad.support.exceptions import NoDatasetFound
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_cwd_unchanged,
     assert_in,
     assert_repo_status,

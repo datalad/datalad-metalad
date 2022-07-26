@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_equal,
     chpwd,
     with_tempfile,

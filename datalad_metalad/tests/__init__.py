@@ -3,7 +3,7 @@ from datalad.api import (
     Dataset,
     save,
 )
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     create_tree,
 )
 

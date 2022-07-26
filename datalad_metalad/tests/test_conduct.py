@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict
 
 from datalad.api import meta_conduct
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_equal,
     assert_true,
     eq_,

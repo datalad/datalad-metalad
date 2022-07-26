@@ -11,7 +11,7 @@
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_in,
     assert_not_in,
     assert_repo_status,

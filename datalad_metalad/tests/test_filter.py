@@ -7,30 +7,16 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Test metadata extraction"""
-import subprocess
-from uuid import UUID
-from typing import Optional
+"""Test filters"""
 from unittest.mock import patch
 
-from datalad.distribution.dataset import Dataset
 from datalad.api import meta_filter
 from datalad.utils import chpwd
 
-from datalad.tests.utils import (
-    assert_repo_status,
+from datalad.tests.utils_pytest import (
     assert_raises,
-    assert_result_count,
-    assert_in,
-    eq_,
-    known_failure_windows,
     with_tempfile,
-    with_tree
 )
-
-from dataladmetadatamodel.metadatapath import MetadataPath
-
-from ..extract import get_extractor_class
 
 
 meta_tree = {

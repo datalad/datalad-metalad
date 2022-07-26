@@ -1,4 +1,4 @@
-from datalad.tests.utils import eq_
+from datalad.tests.utils_pytest import eq_
 
 from .common import MOCKED_STUDYMINIMETA_JSONLD
 from ..studyminimeta import STUDYMINIMETA_FORMAT_NAME, StudyMiniMetaIndexer

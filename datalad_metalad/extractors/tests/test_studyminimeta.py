@@ -4,7 +4,7 @@ from unittest import mock
 
 from datalad.api import meta_extract
 from datalad.distribution.dataset import Dataset
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     with_tempfile,
     with_tree
 )

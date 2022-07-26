@@ -29,7 +29,7 @@ from datalad.api import (
 )
 from datalad.cmd import BatchedCommand
 from datalad.support.exceptions import IncompleteResultsError
-from datalad.tests.utils import (
+from datalad.tests.utils_pytest import (
     assert_dict_equal,
     assert_equal,
     assert_in,
