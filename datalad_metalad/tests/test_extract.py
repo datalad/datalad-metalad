@@ -8,7 +8,6 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
-import os
 import subprocess
 import unittest.mock
 from pathlib import Path
@@ -20,11 +19,12 @@ from typing import (
 from unittest.mock import patch
 from uuid import UUID
 
+from datalad.api import (
+    create,
+    meta_extract,
+)
 from datalad.distribution.dataset import Dataset
-from datalad.api import meta_extract
 from datalad.support.exceptions import NoDatasetFound
-from datalad.utils import chpwd
-
 from datalad.tests.utils import (
     assert_cwd_unchanged,
     assert_in,
@@ -37,7 +37,7 @@ from datalad.tests.utils import (
     with_tempfile,
     with_tree
 )
-
+from datalad.utils import chpwd
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from .utils import create_dataset
@@ -51,11 +51,13 @@ from ..extractors.base import (
 
 
 meta_tree = {
-    'sub': {
-        'one': '1',
-        'nothing': '2',
+    "sub": {
+        "one": "1",
+        "nothing": "2",
     },
 }
+
+common_kwargs = dict(result_renderer="disabled")
 
 
 def _create_dataset_at_path(ds_path):
@@ -64,28 +66,30 @@ def _create_dataset_at_path(ds_path):
         'datalad.metadata.exclude-path',
         '.metadata',
         where='dataset')
-    ds.save(result_renderer="disabled")
+    ds.save(**common_kwargs)
     assert_repo_status(ds.path)
     return ds
 
 
 @with_tempfile(mkdir=True)
-def test_empty_dataset_error(path):
+def test_empty_dataset_error(path=None):
     # go into virgin dir to avoid detection of any dataset
     with chpwd(path):
         assert_raises(
             NoDatasetFound,
-            meta_extract, extractorname="metalad_core")
+            meta_extract,
+            extractorname="metalad_core")
 
 
 @with_tempfile(mkdir=True)
-def test_unknown_extractor_error(path):
+def test_unknown_extractor_error(path=None):
     # ensure failure on unavailable metadata extractor
     create_dataset(path, UUID(int=0))
     with chpwd(path):
         assert_raises(
             ExtractorNotFoundError,
-            meta_extract, extractorname="bogus__")
+            meta_extract,
+            extractorname="bogus__")
 
 
 def _check_metadata_record(metadata_record: dict,
@@ -108,7 +112,7 @@ def _check_metadata_record(metadata_record: dict,
 
 
 @with_tree(meta_tree)
-def test_dataset_extraction_result(ds_path):
+def test_dataset_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -119,7 +123,7 @@ def test_dataset_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -141,7 +145,7 @@ def test_dataset_extraction_result(ds_path):
 
 
 @with_tree(meta_tree)
-def test_file_extraction_result(ds_path):
+def test_file_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -154,7 +158,7 @@ def test_file_extraction_result(ds_path):
         extractorname=extractor_name,
         path=file_path,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -179,7 +183,7 @@ def test_file_extraction_result(ds_path):
 
 
 @with_tree(meta_tree)
-def test_legacy1_dataset_extraction_result(ds_path):
+def test_legacy1_dataset_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -189,7 +193,7 @@ def test_legacy1_dataset_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -210,7 +214,7 @@ def test_legacy1_dataset_extraction_result(ds_path):
 
 
 @with_tree(meta_tree)
-def test_legacy2_dataset_extraction_result(ds_path):
+def test_legacy2_dataset_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -220,7 +224,7 @@ def test_legacy2_dataset_extraction_result(ds_path):
     res = meta_extract(
         extractorname=extractor_name,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='dataset')
@@ -239,7 +243,7 @@ def test_legacy2_dataset_extraction_result(ds_path):
 
 
 @with_tree(meta_tree)
-def test_legacy1_file_extraction_result(ds_path):
+def test_legacy1_file_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -251,7 +255,7 @@ def test_legacy1_file_extraction_result(ds_path):
         extractorname=extractor_name,
         path=file_path,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -273,7 +277,7 @@ def test_legacy1_file_extraction_result(ds_path):
 
 @known_failure_windows
 @with_tree(meta_tree)
-def test_legacy2_file_extraction_result(ds_path):
+def test_legacy2_file_extraction_result(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -285,7 +289,7 @@ def test_legacy2_file_extraction_result(ds_path):
         extractorname=extractor_name,
         path=file_path,
         dataset=ds,
-        result_renderer="disabled")
+        **common_kwargs)
 
     assert_result_count(res, 1)
     assert_result_count(res, 1, type='file')
@@ -305,7 +309,7 @@ def test_legacy2_file_extraction_result(ds_path):
 
 
 @with_tree(meta_tree)
-def test_path_parameter_directory(ds_path):
+def test_path_parameter_directory(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -318,7 +322,7 @@ def test_path_parameter_directory(ds_path):
 
 
 @with_tree(meta_tree)
-def test_path_parameter_recognition(ds_path):
+def test_path_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -329,13 +333,13 @@ def test_path_parameter_recognition(ds_path):
             extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
-            result_renderer="disabled")
+            **common_kwargs)
         eq_(fe.call_count, 1)
         eq_(de.call_count, 0)
 
 
 @with_tree(meta_tree)
-def test_extra_parameter_recognition(ds_path):
+def test_extra_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -348,7 +352,7 @@ def test_extra_parameter_recognition(ds_path):
             force_dataset_level=True,
             path="k1",
             extractorargs=["v1", "k2", "v2", "k3", "v3"],
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
@@ -362,7 +366,7 @@ def test_extra_parameter_recognition(ds_path):
 
 
 @with_tree(meta_tree)
-def test_path_and_extra_parameter_recognition(ds_path):
+def test_path_and_extra_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -374,7 +378,7 @@ def test_path_and_extra_parameter_recognition(ds_path):
             dataset=ds,
             path="sub/one",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
@@ -388,7 +392,7 @@ def test_path_and_extra_parameter_recognition(ds_path):
 
 
 @with_tree(meta_tree)
-def test_context_dict_parameter_handling(ds_path):
+def test_context_dict_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -400,7 +404,7 @@ def test_context_dict_parameter_handling(ds_path):
             dataset=ds,
             context={"dataset_version": "xyz"},
             path="sub/one",
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].source_dataset_version, "xyz")
@@ -408,7 +412,7 @@ def test_context_dict_parameter_handling(ds_path):
 
 
 @with_tree(meta_tree)
-def test_context_str_parameter_handling(ds_path):
+def test_context_str_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -420,7 +424,7 @@ def test_context_str_parameter_handling(ds_path):
             dataset=ds,
             context='{"dataset_version": "rst"}',
             path="sub/one",
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(fe.call_count, 1)
         eq_(fe.call_args[0][0].source_dataset_version, "rst")
@@ -428,7 +432,7 @@ def test_context_str_parameter_handling(ds_path):
 
 
 @with_tree(meta_tree)
-def test_get_context(ds_path):
+def test_get_context(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -438,7 +442,7 @@ def test_get_context(ds_path):
             dataset=ds,
             get_context=True,
             path="sub/one",
-            result_renderer="disabled"))
+            **common_kwargs))
 
     version = subprocess.run(
         [
@@ -455,7 +459,7 @@ def test_get_context(ds_path):
 
 
 @with_tree(meta_tree)
-def test_extractor_parameter_handling(ds_path):
+def test_extractor_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -468,7 +472,7 @@ def test_extractor_parameter_handling(ds_path):
             force_dataset_level=True,
             path="k0",
             extractorargs=["v0", "k1", "v1"],
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(fe.call_count, 0)
         eq_(de.call_count, 1)
@@ -482,7 +486,7 @@ def test_extractor_parameter_handling(ds_path):
             dataset=ds,
             path="sub/one",
             extractorargs=["k0", "v0", "k1", "v1"],
-            result_renderer="disabled")
+            **common_kwargs)
 
         eq_(de.call_count, 0)
         eq_(fe.call_count, 1)
@@ -491,7 +495,7 @@ def test_extractor_parameter_handling(ds_path):
 
 
 @with_tree(meta_tree)
-def test_external_extractor(ds_path):
+def test_external_extractor(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -506,14 +510,14 @@ def test_external_extractor(ds_path):
                 "command", ["python", "-c", "print('True')"],
                 "arguments", ["-c", "print('True')"]
             ],
-            result_renderer="disabled")
+            **common_kwargs)
         eq_(len(result), 1)
         eq_(result[0]["status"], "ok")
         eq_(result[0]["metadata_record"]["extracted_metadata"], "True")
 
 
 @with_tree(meta_tree)
-def test_external_extractor_categories(ds_path):
+def test_external_extractor_categories(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -530,11 +534,11 @@ def test_external_extractor_categories(ds_path):
                     "data-output-category", output_category,
                     "command", ["python", "-c", "print('True')"]
                 ],
-                result_renderer="disabled")
+                **common_kwargs)
 
 
 @with_tree(meta_tree)
-def test_get_required_content_called(ds_path):
+def test_get_required_content_called(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
@@ -583,7 +587,7 @@ def test_get_required_content_called(ds_path):
             dataset=ds,
             path=None,
             extractorargs=["k0", "v0", "k1", "v1"],
-            result_renderer="disabled")
+            **common_kwargs)
         assert_true(
             result[0]
             ["metadata_record"]
@@ -614,7 +618,7 @@ def test_path_assembly(temp_dir):
     file_name = "info.txt"
     file_path = subdir_path / file_name
     file_path.write_text("some content")
-    ds.save(result_renderer="disabled")
+    ds.save(**common_kwargs)
 
     with chpwd(str(subdir_path)):
         with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
@@ -631,7 +635,7 @@ def test_not_tracked_error_catching(temp_dir):
     file_name = "info.txt"
     file_path = ds.pathobj / file_name
     file_path.write_text("some content")
-    ds.save(result_renderer="disabled")
+    ds.save(**common_kwargs)
 
     assert_raises(
         ValueError,
@@ -639,4 +643,28 @@ def test_not_tracked_error_catching(temp_dir):
         dataset=ds,
         extractorname="metalad_core",
         path="no_such_file.txt"
+    )
+
+
+@with_tempfile(mkdir=True)
+def test_symlink_handling(tmp_dir_path_str=None):
+    tmp_dir = Path(tmp_dir_path_str)
+
+    super_ds = create(tmp_dir / "super")
+    super_ds.save(**common_kwargs)
+    create(
+        dataset=str(tmp_dir / "super"),
+        path=str(tmp_dir / "super" / "sub"),
+    )
+    super_ds.save(recursive=True, **common_kwargs)
+
+    (tmp_dir / "tmp").mkdir()
+    (tmp_dir / "tmp" / "link").symlink_to(tmp_dir / "super")
+
+    result = tuple(
+        meta_extract(
+            dataset=str(tmp_dir / "tmp" / "link"),
+            extractorname="metalad_core",
+            **common_kwargs,
+        )
     )
