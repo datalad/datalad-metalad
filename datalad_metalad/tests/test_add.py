@@ -98,7 +98,7 @@ def _assert_raise_mke_with_keys(exception_keys: List[str],
 
 
 @with_tempfile
-def test_unknown_key_reporting(file_name):
+def test_unknown_key_reporting(file_name=None):
 
     json.dump({
             **metadata_template,
@@ -118,7 +118,7 @@ def test_unknown_key_reporting(file_name):
 
 
 @with_tempfile
-def test_unknown_key_allowed(file_name):
+def test_unknown_key_allowed(file_name=None):
 
     json.dump({
             **metadata_template,
@@ -145,7 +145,7 @@ def test_unknown_key_allowed(file_name):
 
 
 @with_tempfile
-def test_optional_keys(file_name):
+def test_optional_keys(file_name=None):
 
     json.dump({
             **metadata_template,
@@ -172,7 +172,7 @@ def test_optional_keys(file_name):
 
 
 @with_tempfile
-def test_incomplete_non_mandatory_key_handling(file_name):
+def test_incomplete_non_mandatory_key_handling(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -191,7 +191,7 @@ def test_incomplete_non_mandatory_key_handling(file_name):
 
 
 @with_tempfile
-def test_override_key_reporting(file_name):
+def test_override_key_reporting(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -254,7 +254,7 @@ def test_additional_values_object_parameter():
 
 
 @with_tempfile
-def test_id_mismatch_detection(file_name):
+def test_id_mismatch_detection(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -282,7 +282,7 @@ def test_id_mismatch_detection(file_name):
 
 
 @with_tempfile
-def test_id_mismatch_allowed(file_name):
+def test_id_mismatch_allowed(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -310,7 +310,7 @@ def test_id_mismatch_allowed(file_name):
 
 
 @with_tempfile
-def test_root_id_mismatch_detection(file_name):
+def test_root_id_mismatch_detection(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -342,7 +342,7 @@ def test_root_id_mismatch_detection(file_name):
 
 
 @with_tempfile
-def test_root_id_mismatch_allowed(file_name):
+def test_root_id_mismatch_allowed(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -374,7 +374,7 @@ def test_root_id_mismatch_allowed(file_name):
 
 
 @with_tempfile
-def test_override_key_allowed(file_name):
+def test_override_key_allowed(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -442,7 +442,7 @@ def _get_metadata_content(metadata):
 
 
 @with_tempfile
-def test_add_dataset_end_to_end(file_name):
+def test_add_dataset_end_to_end(file_name=None):
     json.dump({
             **metadata_template,
             "type": "dataset"
@@ -473,7 +473,7 @@ def test_add_dataset_end_to_end(file_name):
 
 
 @with_tempfile
-def test_add_file_end_to_end(file_name):
+def test_add_file_end_to_end(file_name=None):
 
     test_path = "d_0/d_0.0/f_0.0.0"
 
@@ -510,7 +510,7 @@ def test_add_file_end_to_end(file_name):
 
 
 @with_tempfile
-def test_subdataset_add_dataset_end_to_end(file_name):
+def test_subdataset_add_dataset_end_to_end(file_name=None):
 
     json.dump({
             **{
@@ -559,7 +559,7 @@ def test_subdataset_add_dataset_end_to_end(file_name):
 
 
 @with_tempfile
-def test_subdataset_add_file_end_to_end(file_name):
+def test_subdataset_add_file_end_to_end(file_name=None):
 
     test_path = "d_1/d_1.0/f_1.0.0"
 
@@ -614,7 +614,7 @@ def test_subdataset_add_file_end_to_end(file_name):
 
 
 @with_tempfile
-def test_current_dir_add_end_to_end(file_name):
+def test_current_dir_add_end_to_end(file_name=None):
 
     json.dump({
             **{
@@ -660,7 +660,7 @@ def test_current_dir_add_end_to_end(file_name):
 
 
 @with_tempfile
-def test_add_file_dump_end_to_end(file_name):
+def test_add_file_dump_end_to_end(file_name=None):
 
     test_path = "d_1/d_1.0/f_1.0.0"
 
@@ -832,12 +832,12 @@ def test_add_multiple_file_records_end_to_end():
 
 
 @with_tempfile
-def test_add_multiple_metadata_records_end_to_end(file_name: str):
+def test_add_multiple_metadata_records_end_to_end(file_name=None):
     _check_file_multiple_end_to_end_test(1, 1000, file_name)
 
 
 @with_tempfile(mkdir=True)
-def test_cache_age(temp_dir: str):
+def test_cache_age(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     def slow_feed():
@@ -865,7 +865,7 @@ def test_cache_age(temp_dir: str):
 
 
 @with_tempfile(mkdir=True)
-def test_batch_mode(temp_dir: str):
+def test_batch_mode(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
@@ -889,7 +889,7 @@ def test_batch_mode(temp_dir: str):
 
 
 @with_tempfile(mkdir=True)
-def test_batch_mode_end_to_end(temp_dir: str):
+def test_batch_mode_end_to_end(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     json_objects = _create_json_metadata_records(file_count=3, metadata_count=3)
@@ -931,7 +931,7 @@ critical_lines_json = \
 
 
 @with_tempfile(mkdir=True)
-def test_add_regression_1(temp_dir: str):
+def test_add_regression_1(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     json_objects = [
@@ -954,7 +954,7 @@ def test_add_regression_1(temp_dir: str):
 
 
 @with_tempfile(mkdir=True)
-def test_multi_add_regression_1(temp_dir: str):
+def test_multi_add_regression_1(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     json_objects = [
@@ -979,7 +979,7 @@ def test_multi_add_regression_1(temp_dir: str):
 
 @known_failure_windows
 @with_tempfile(mkdir=True)
-def test_multi_add_regression_2(temp_dir: str):
+def test_multi_add_regression_2(temp_dir=None):
     create_dataset_proper(temp_dir)
 
     with tempfile.NamedTemporaryFile(mode="tw") as json_input:

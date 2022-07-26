@@ -27,7 +27,7 @@ from datalad.tests.utils import (
 
 @known_failure_windows
 @with_tempfile
-def test_annex_contentmeta(path):
+def test_annex_contentmeta(path=None):
     ds = Dataset(path).create()
     mfile_path = ds.pathobj / 'sudir' / 'dummy.txt'
     mfile_path.parent.mkdir()

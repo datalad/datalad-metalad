@@ -42,7 +42,7 @@ meta_tree = {
 
 
 @with_tempfile(mkdir=True)
-def test_empty_dataset_filter_error(path):
+def test_empty_dataset_filter_error(path=None):
     # Change into virgin dir to avoid detection of any dataset
     with chpwd(path):
         assert_raises(
@@ -53,7 +53,7 @@ def test_empty_dataset_filter_error(path):
 
 
 @with_tempfile(mkdir=True)
-def test_unknown_filter_error(path):
+def test_unknown_filter_error(path=None):
     # Ensure failure on unavailable metadata filter
     with chpwd(path):
         assert_raises(

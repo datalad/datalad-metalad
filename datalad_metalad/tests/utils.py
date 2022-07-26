@@ -42,7 +42,7 @@ def create_dataset_proper(directory: Union[str, Path],
     ds.config.add(
         'datalad.metadata.exclude-path',
         '.metadata',
-        where='dataset')
+        scope='branch')
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 

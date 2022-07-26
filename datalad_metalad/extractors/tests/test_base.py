@@ -10,7 +10,7 @@
 
 from pkg_resources import iter_entry_points
 
-from nose import SkipTest
+import pytest
 
 from datalad.api import (
     Dataset,
@@ -39,14 +39,15 @@ from ...tests import (
 from ...tests.utils import create_dataset_proper
 
 
-@with_tree(tree={'file.dat': ''})
-def check_api(annex, path):
+@pytest.mark.parametrize("annex", [True, False])
+@with_tree(tree={"file.dat": ""})
+def test_api(path=None, *, annex):
     ds = Dataset(path).create(force=True, annex=annex)
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
 
     processed_extractors, skipped_extractors = [], []
-    for extractor_ep in iter_entry_points('datalad.metadata.extractors'):
+    for extractor_ep in iter_entry_points("datalad.metadata.extractors"):
 
         # There are a number of extractors that do not
         # work on empty datasets, or datasets, or without
@@ -72,22 +73,22 @@ def check_api(annex, path):
             continue
 
         # metalad_core does provide some information about our precious file
-        if extractor_ep.name == 'metalad_core':
+        if extractor_ep.name == "metalad_core":
             assert_result_count(
                 res,
                 1,
                 path=ds.path,
-                type='dataset',
-                status='ok',
+                type="dataset",
+                status="ok",
             )
 
             assert_true(
                 all([
-                    r['metadata_record']['extractor_name'] == extractor_ep.name
+                    r["metadata_record"]["extractor_name"] == extractor_ep.name
                     for r in res]))
 
             extracted_metadata = [
-                r['metadata_record']['extracted_metadata']
+                r["metadata_record"]["extracted_metadata"]
                 for r in res
             ]
 
@@ -101,22 +102,13 @@ def check_api(annex, path):
     assert "metalad_core" in processed_extractors, \
         "Should have managed to find at least the core extractor extractor"
     if skipped_extractors:
-        raise SkipTest(
+        pytest.skip(
             "Not fully tested/succeded since some extractors failed"
             " to load:\n%s" % ("\n".join(skipped_extractors)))
 
 
-def test_api_git():
-    # should tolerate both pure git and annex repos
-    yield check_api, False
-
-
-def test_api_annex():
-    yield check_api, True
-
-
 @with_tempfile(mkdir=True)
-def test_plainest(path):
+def test_plainest(path=None):
 
     # Expect an exception if no dataset exists. Depending on the
     # dataset version ValueError or NoDatasetFound is raised.
@@ -135,27 +127,27 @@ def test_plainest(path):
 
     assert_raises(
         expected_exception,
-        meta_extract, dataset=path, extractorname='metalad_core')
+        meta_extract, dataset=path, extractorname="metalad_core")
 
     r = GitRepo(path, create=True)
     # Expect an exception, when the dataset is unusable because it has
     # no dataset id
     assert_raises(
         expected_exception,
-        meta_extract, dataset=path, extractorname='metalad_core')
+        meta_extract, dataset=path, extractorname="metalad_core")
 
     # Expect proper extract run on a proper dataset.
     dataset = create_dataset_proper(path)
     assert_result_count(
         meta_extract(
             dataset=dataset.path,
-            extractorname='metalad_core',
-            on_failure='ignore',
+            extractorname="metalad_core",
+            on_failure="ignore",
         ),
         1,
-        status='ok',
+        status="ok",
         # message contains exception
-        type='dataset',
+        type="dataset",
         path=r.path,
     )
 
@@ -163,37 +155,38 @@ def test_plainest(path):
 @known_failure_windows
 @with_tempfile
 @with_tempfile
-def test_report(path, orig):
+def test_report(path=None, orig=None):
     origds, subds = make_ds_hierarchy_with_metadata(orig)
     # now clone to a new place to ensure no content is present
     ds = install(source=origds.path, path=path)
     # only dataset-global metadata
-    res = meta_extract(dataset=ds, extractorname='metalad_core')
+    res = meta_extract(dataset=ds, extractorname="metalad_core")
     assert_result_count(res, 1)
     core_dsmeta = _get_dsmeta_from_core_metadata(
-        res[0]['metadata_record']['extracted_metadata']
+        res[0]["metadata_record"]["extracted_metadata"]
     )
     assert_in(
         {
-            '@type': 'Dataset',
-            '@id': 'datalad:{}'.format(subds.repo.get_hexsha()),
-            'identifier': 'datalad:{}'.format(subds.id), 'name': 'sub'
+            "@type": "Dataset",
+            "@id": "datalad:{}".format(subds.repo.get_hexsha()),
+            "identifier": "datalad:{}".format(subds.id),
+            "name": "sub"
         },
-        core_dsmeta['hasPart']
+        core_dsmeta["hasPart"]
     )
     # has not seen the content
     assert_not_in(
-        'contentbytesize',
+        "contentbytesize",
         core_dsmeta
     )
     res = meta_extract(dataset=ds,
-                       extractorname='metalad_annex',
+                       extractorname="metalad_annex",
                        path="file.dat")
     assert(any(
-        dict(tag=['one', 'two']) == r['metadata_record']['extracted_metadata']
+        dict(tag=["one", "two"]) == r["metadata_record"]["extracted_metadata"]
         for r in res
     ))
     # we have a report on file(s)
     assert(len(res) > 0)
     # but no subdataset reports
-    assert_result_count(res, 0, type='dataset')
+    assert_result_count(res, 0, type="dataset")

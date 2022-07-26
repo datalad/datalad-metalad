@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+from typing import Optional
 
 from datalad.tests.utils import (
     assert_equal,
@@ -12,7 +12,7 @@ from ..datasettraverse import DatasetTraverser
 
 
 @with_tempfile(mkdir=True)
-def test_relative_and_unresolved_top_level_dir(temp_dir: str):
+def test_relative_and_unresolved_top_level_dir(temp_dir: Optional[str] = None):
     relative_path_str = "./some/path/dataset_0"
     unresolved_path = "./some/path/../path/dataset_0"
 

@@ -65,7 +65,7 @@ def _create_dataset_at_path(ds_path):
     ds.config.add(
         'datalad.metadata.exclude-path',
         '.metadata',
-        where='dataset')
+        scope='branch')
     ds.save(**common_kwargs)
     assert_repo_status(ds.path)
     return ds
@@ -597,7 +597,7 @@ def test_get_required_content_called(ds_path=None):
 
 @with_tempfile(mkdir=True)
 @assert_cwd_unchanged()# ok_to_chdir=True)
-def test_path_assembly(temp_dir):
+def test_path_assembly(temp_dir=None):
 
     def check_with_file_path(dfe_mock: type(unittest.mock.MagicMock),
                              file_path: Path,
@@ -628,7 +628,7 @@ def test_path_assembly(temp_dir):
 
 
 @with_tempfile(mkdir=True)
-def test_not_tracked_error_catching(temp_dir):
+def test_not_tracked_error_catching(temp_dir=None):
     # expect a value error, if the provided file is not tracked.
     ds_path = Path(temp_dir) / "dataset"
     ds = Dataset(ds_path).create()
