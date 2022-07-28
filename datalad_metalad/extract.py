@@ -262,18 +262,27 @@ class Extract(Interface):
             )
             return
 
+        # Create a relative Path-instance, if path to a file is given. We have
+        # to be careful not to resolve the path, because that could resolve the
+        # git-annex link.
         path_object = None
         if path is not None:
             path_object = Path(path)
             if path_object.is_absolute():
-                dataset_path = (
-                    Path(dataset)
-                    if isinstance(dataset, str)
-                    else dataset.pathobj
-                )
-                path_object = path_object.relative_to(
-                    dataset_path.resolve().absolute()
-                )
+                relative_path = None
+                for dataset_path in (source_dataset.pathobj,
+                                     source_dataset.pathobj.resolve()):
+                    try:
+                        relative_path = path_object.relative_to(dataset_path)
+                        break
+                    except ValueError:
+                        pass
+                if relative_path is None:
+                    raise ValueError(
+                        f"The provided path {path} is not contained in the "
+                        f"dataset given by {source_dataset.pathobj}"
+                    )
+                path_object = relative_path
 
         _, file_tree_path = get_path_info(source_dataset, path_object, None)
 
@@ -742,6 +751,10 @@ def legacy_get_file_info(dataset: Dataset,
 
     status = None
     if isinstance(dataset.repo, AnnexRepo):
+        if dataset.pathobj != dataset.repo.pathobj:
+            # The dataset path might include a symlink, this requires us to
+            # convert the path to be based on dataset.repo.pathobj
+            path = dataset.repo.pathobj.resolve() / path.relative_to(dataset.pathobj)
         status = annex_status(dataset.repo, [path])
         if status and status[path].get("status") == "error":
             raise ValueError(
