@@ -3,6 +3,8 @@
  This server aims at consolidating identical command line calls, by
  executing them once and caching the result.
 """
+from __future__ import annotations
+
 import concurrent.futures
 import json
 import logging
@@ -14,12 +16,12 @@ from http.server import (
     BaseHTTPRequestHandler,
     ThreadingHTTPServer,
 )
-from typing import Tuple
 
 import requests
+from progress.bar import IncrementalBar
 
-from .meter import Meter
 from ..metadatatypes import JSONType
+from .meter import Meter
 
 
 port = None
@@ -68,13 +70,13 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
     def setup(self) -> None:
         with CommandRequestHandler.lock:
             CommandRequestHandler.active_connections += 1
-            meter.set_value(CommandRequestHandler.active_connections)
+            meter.goto(CommandRequestHandler.active_connections)
         BaseHTTPRequestHandler.setup(self)
 
     def finish(self) -> None:
         with CommandRequestHandler.lock:
             CommandRequestHandler.active_connections -= 1
-            meter.set_value(CommandRequestHandler.active_connections)
+            meter.goto(CommandRequestHandler.active_connections)
         BaseHTTPRequestHandler.finish(self)
 
     @authorize_request
@@ -107,7 +109,7 @@ class CommandRequestHandler(BaseHTTPRequestHandler):
     def handle_clear_cache(self):
         CommandRequestHandler.cache = dict()
 
-    def handle_command(self, json_string: str) -> Tuple[int, str, bytes]:
+    def handle_command(self, json_string: str) -> tuple[int, str, bytes]:
         with self.lock:
             if json_string in self.cache:
                 command_spec, result = self.cache[json_string]
@@ -171,13 +173,22 @@ if __name__ == "__main__":
         CommandRequestHandler
     )
 
-    meter = Meter()
+    if True:
+        meter = Meter(label="Current clients: ")
+    else:
+        meter = IncrementalBar(
+            "Current clients_ ",
+            suffix='%(index)d',
+            max=10,
+            file=sys.stdout
+        )
+
     port = http_server.server_port
     print(port)
 
     try:
         logging.basicConfig(level=logging.DEBUG)
-        meter.set_value(0)
+        meter.goto(0)
         http_server.serve_forever()
     finally:
         port = None

@@ -2,32 +2,62 @@ import sys
 import threading
 import time
 
+from typing import IO
+
+
+hide_cursor = '\x1b[?25l'
+show_cursor = '\x1b[?25h'
+
 
 class Meter:
 
-    spinner_characters = (" >.. ", " .>. ", " ..> ",
-                          " ..< ", " .<. ", " <.. ",)  #("|", "/", "-", "\\", "|", "/", "-", "\\")
+    spinner_characters = (
+        " | ", " / ", " - ", " \\ ",
+        " | ", " / ", " - ", " \\ "
+    )
 
-    def __init__(self, initial_value: int = 0):
+    def __init__(self,
+                 initial_value: int = 0,
+                 label: str = "",
+                 file: IO = sys.stdout):
         self.value = initial_value
-        self.active = sys.stdout.isatty()
+        self.label = label + " " if label else ""
+        self.file = file
+        self.active = self.file.isatty()
         self.last_display_time = 0.0
         self.last_displayed_value = None
+        self.last_spinner_time = 0.0
         self.spinner_state = 0
         self.lock = threading.Lock()
+        if self.active:
+            print(hide_cursor, end="", file=self.file, flush=True)
 
-    def _update_spinner(self, standalone: bool = False):
-        self.spinner_state += 1
-        self.spinner_state %= len(Meter.spinner_characters)
+    def __del__(self):
+        if self.active:
+            print(show_cursor, end="", file=self.file, flush=True)
+
+    def _update_spinner(self,
+                        current_time: float,
+                        standalone: bool = False
+                        ):
+
+        # Update spinner only, if enough time has passed
+        if current_time - self.last_spinner_time > 0.07:
+            self.last_spinner_time = current_time
+            self.spinner_state += 1
+            self.spinner_state %= len(Meter.spinner_characters)
         print(
-            Meter.spinner_characters[self.spinner_state],
+            self.label + Meter.spinner_characters[self.spinner_state],
             end="\r" if standalone is True else "",
-            flush=standalone
+            flush=standalone,
+            file=self.file
         )
 
-    def _display_immediately(self, current_time: float):
+    def _display_immediately(self,
+                             current_time: float
+                             ):
         if self.value == self.last_displayed_value:
-            self._update_spinner(standalone=True)
+            self._update_spinner(current_time=current_time, standalone=True)
             self.last_display_time = current_time
             return
 
@@ -39,8 +69,8 @@ class Meter:
             if self.last_displayed_value > self.value:
                 display_string += " " * (self.last_displayed_value - self.value)
 
-        self._update_spinner()
-        print(display_string + "\r", end='', flush=True)
+        self._update_spinner(current_time=current_time)
+        print(display_string + "\r", end='', flush=True, file=self.file)
         self.last_displayed_value = self.value
         self.last_display_time = current_time
 
@@ -61,3 +91,6 @@ class Meter:
         with self.lock:
             self.value = value
             self._locked_display(force=force)
+
+    def goto(self, value: int):
+        self.set_value(value)

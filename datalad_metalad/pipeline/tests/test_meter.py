@@ -24,9 +24,10 @@ meter.display(True)
 
 print()
 
-meter = Meter()
+meter = Meter(label="Connections")
 for _ in range(50):
     meter.set_value(3)
     time.sleep(.1)
+meter.set_value(0)
 
 print()
