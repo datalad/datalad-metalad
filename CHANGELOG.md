@@ -1,3 +1,14 @@
+# 0.4.2 (Thu Jul 28 2022)
+
+### Bug Fix
+
+- Fix handling of dataset or file paths with symlinks  ([@christian-monch](https://github.com/christian-monch))
+
+### Authors: 1
+
+- Christian Mönch ([@christian-monch](https://github.com/christian-monch))
+
+
 # 0.4.1 (Tue Jul 26 2022)
 
 ### Bug Fix
