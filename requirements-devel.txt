@@ -1,12 +1,20 @@
-coverage
 datalad>=0.18
 datalad-metadata-model>=0.3.6
+pyyaml
+six
+
+# Documentation building
 sphinx>=1.7.8
 sphinx-rtd-theme
-pyyaml
+
+# Testing and package building
+build
+coverage
+mypy
 pytest
 pytest-cov
-six
+twine
+
 
 # required for extractor tests
 ExifRead
