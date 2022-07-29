@@ -1,5 +1,6 @@
+dataclasses_json
 datalad>=0.18
-datalad-metadata-model>=0.3.6
+datalad-metadata-model>=0.3.7
 pyyaml
 six
 
@@ -14,7 +15,6 @@ mypy
 pytest
 pytest-cov
 twine
-
 
 # required for extractor tests
 ExifRead
