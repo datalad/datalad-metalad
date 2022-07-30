@@ -40,18 +40,17 @@ class FileInfo:
 
     def to_legacy_dict(self) -> dict:
         return {
-            self.path: {
-                "type": self.type,
-                "gitshasum": self.git_sha_sum,
-                "prev_gitshasum": self.prev_git_sha_sum,
-                'bytesize': self.byte_size,
-                "state": self.state
-            }
+            "path": self.path,
+            "type": self.type,
+            "gitshasum": self.git_sha_sum,
+            "prev_gitshasum": self.prev_git_sha_sum,
+            'bytesize': self.byte_size,
+            "state": self.state
         }
 
     def from_legacy_dict(self, legacy_dict: dict):
         assert len(legacy_dict) == 1, "legacy info dict has more than one key"
-        self.path, content = tuple(legacy_dict.items())[0]
+        self.path = legacy_dict["path"]
         self.type = legacy_dict["type"]
         self.git_sha_sum = legacy_dict["gitshasum"]
         self.prev_git_sha_sum = legacy_dict["prev_gitshasum"]
@@ -73,17 +72,15 @@ class AnnexedFileInfo(FileInfo):
 
     def to_legacy_dict(self) -> dict:
         return {
-            self.path: {
-                **FileInfo.legacy_dict(self)[self.path],
-                'humansize': self.human_size,
-                'key': self.key,
-                'backend': self.backend,
-                'hashdirlower': self.hash_dir_lower,
-                'mtime': self.mtime,
-                'hashdirmixed': self.hash_dir_mixed,
-                'keyname': self.key_name,
-                'has_content': self.has_content
-            }
+            **FileInfo.to_legacy_dict(self),
+            'humansize': self.human_size,
+            'key': self.key,
+            'backend': self.backend,
+            'hashdirlower': self.hash_dir_lower,
+            'mtime': self.mtime,
+            'hashdirmixed': self.hash_dir_mixed,
+            'keyname': self.key_name,
+            'has_content': self.has_content
         }
 
     def from_legacy_dict(self, legacy_dict: dict):
