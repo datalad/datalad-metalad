@@ -27,72 +27,36 @@ from uuid import UUID
 from datalad.distribution.dataset import Dataset
 
 
+# TODO: cleanup the class definitions
 @dataclass_json
 @dataclass
-class FileInfo:
+class DatasetInfo:
+    type: str
+    gitshasum: str
+    prev_gitshasum: str
+    state: str
     path: str
+    dataset_path: str
+
+
+@dataclass_json
+@dataclass
+class FileInfo(DatasetInfo):
     intra_dataset_path: str
-    type: str           # TODO: state constants
-    git_sha_sum: str
-    prev_git_sha_sum: str
-    byte_size: int
-    state: str          # TODO: state constants
-
-    def to_legacy_dict(self) -> dict:
-        return {
-            "path": self.path,
-            "type": self.type,
-            "gitshasum": self.git_sha_sum,
-            "prev_gitshasum": self.prev_git_sha_sum,
-            'bytesize': self.byte_size,
-            "state": self.state
-        }
-
-    def from_legacy_dict(self, legacy_dict: dict):
-        assert len(legacy_dict) == 1, "legacy info dict has more than one key"
-        self.path = legacy_dict["path"]
-        self.type = legacy_dict["type"]
-        self.git_sha_sum = legacy_dict["gitshasum"]
-        self.prev_git_sha_sum = legacy_dict["prev_gitshasum"]
-        self.byte_size = legacy_dict["bytesize"]
-        self.state = legacy_dict["state"]
+    bytesize: int
 
 
 @dataclass_json
 @dataclass
 class AnnexedFileInfo(FileInfo):
-    human_size: str
+    humansize: str
     key: str
     backend: str
-    hash_dir_lower: str
-    hash_dir_mixed: str
     mtime: str
-    key_name: str
+    keyname: str
     has_content: bool
-
-    def to_legacy_dict(self) -> dict:
-        return {
-            **FileInfo.to_legacy_dict(self),
-            'humansize': self.human_size,
-            'key': self.key,
-            'backend': self.backend,
-            'hashdirlower': self.hash_dir_lower,
-            'mtime': self.mtime,
-            'hashdirmixed': self.hash_dir_mixed,
-            'keyname': self.key_name,
-            'has_content': self.has_content
-        }
-
-    def from_legacy_dict(self, legacy_dict: dict):
-        FileInfo.from_legacy_dict(self, legacy_dict)
-        self.human_size = legacy_dict["humansize"]
-        self.key = legacy_dict["key"]
-        self.key_name = legacy_dict["keyname"]
-        self.backend = legacy_dict["backend"]
-        self.hash_dir_lower = legacy_dict["hashdirlower"]
-        self.hash_dir_mixed = legacy_dict["hashdirmixed"]
-        self.mtime = legacy_dict["mtime"]
-        self.has_content = legacy_dict["has_content"]
+    hashdirlower: str = ""
+    hashdirmixed: str = ""
 
 
 @dataclass

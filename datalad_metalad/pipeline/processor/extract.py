@@ -90,18 +90,16 @@ class MetadataExtractor(Processor):
                 f"{dataset_traverse_record.type}")
             return pipeline_data
 
-        dataset_path = (
-                dataset_traverse_record.fs_base_path
-                / dataset_traverse_record.dataset_path
-        )
+        dataset_path = dataset_traverse_record.element_info.dataset_path
+        intra_dataset_path = dataset_traverse_record.element_info.intra_dataset_path
         object_type = dataset_traverse_record.type
 
         if object_type == "file":
-            object_path = Path(dataset_traverse_record.path)
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
-                path=dataset_path / object_path.relative_to(dataset_path),
+                path=intra_dataset_path,
+                file_info=dataset_traverse_record.element_info.to_json(),
                 result_renderer="disabled")
         elif object_type == "dataset":
             kwargs = dict(
@@ -115,7 +113,7 @@ class MetadataExtractor(Processor):
         results = []
         for extract_result in meta_extract(**kwargs):
 
-            path = str(dataset_path / extract_result.get("path", ""))
+            path = str(Path(dataset_path) / extract_result.get("path", ""))
 
             if extract_result["status"] == "ok":
                 md_extractor_result = MetadataExtractorResult(ResultState.SUCCESS, path)

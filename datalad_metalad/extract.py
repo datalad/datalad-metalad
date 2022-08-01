@@ -834,7 +834,7 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
         status = (
             legacy_get_file_info(ea.source_dataset, file_path)
             if ea.file_info is None
-            else ea.file_info.to_legacy_dict()
+            else ea.file_info.to_dict()
         )
         ensure_legacy_content_availability(ea, extractor, "content", [status])
 
