@@ -67,11 +67,6 @@ def check_dataset(dataset_or_path: Union[Dataset, str],
             "No valid datalad dataset found at: "
             f"{dataset.path}")
 
-    if dataset.id is None:
-        raise NoDatasetFound(
-            "No valid datalad-id found in dataset at: "
-            f"{dataset.path}")
-
     return dataset
 
 

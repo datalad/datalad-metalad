@@ -53,7 +53,6 @@ from .extractors.base import (
     BaseMetadataExtractor,
     DataOutputCategory,
     DatasetMetadataExtractor,
-    FileInfo,
     FileMetadataExtractor,
     MetadataExtractor,
     MetadataExtractorBase,
@@ -67,7 +66,11 @@ from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
-from .exceptions import ExtractorNotFoundError
+from .exceptions import (
+    ExtractorNotFoundError,
+    NoDatasetIdFound,
+)
+
 from .utils import (
     args_to_dict,
     check_dataset,
@@ -328,7 +331,9 @@ class Extract(Interface):
 
         extraction_arguments = ExtractionArguments(
             source_dataset=source_dataset,
-            source_dataset_id=UUID(source_dataset.id),
+            source_dataset_id=UUID(source_dataset.id)
+                              if source_dataset.id is not None
+                              else UUID(int=0),
             source_dataset_version=source_dataset_version,
             local_source_object_path=(
                     source_dataset.pathobj / file_tree_path).absolute(),
