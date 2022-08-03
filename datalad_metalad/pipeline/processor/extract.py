@@ -1,6 +1,8 @@
 """
 Extract metadata and add it to a conduct-element.
 """
+from __future__ import annotations
+
 import enum
 import logging
 from dataclasses import dataclass, field
@@ -38,12 +40,12 @@ class ExtractorType(enum.Enum):
 @dataclass
 class MetadataExtractorResult(PipelineResult):
     path: str
-    context: Optional[Dict] = None
-    metadata_record: Optional[Dict] = field(init=False)
+    context: dict | None = None
+    metadata_record: dict | None = field(init=False)
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "path": str(self.path),
             "metadata_record": self.metadata_record
         }

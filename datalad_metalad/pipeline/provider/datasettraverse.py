@@ -5,9 +5,9 @@ Relates to datalad_metalad issue #68
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -16,12 +16,12 @@ from typing import (
     Optional,
 )
 
+from dataclasses_json import dataclass_json
 from datalad.distribution.dataset import (
     Dataset,
     require_dataset,
     resolve_path,
 )
-from datalad.support.annexrepo import AnnexRepo
 from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
@@ -35,7 +35,6 @@ from ..documentedinterface import (
     ParameterEntry,
 )
 from ..pipelinedata import (
-    PipelineDataState,
     PipelineData,
     PipelineResult,
     ResultState,
@@ -77,6 +76,30 @@ class DatasetTraverseResult(PipelineResult):
     root_dataset_version: Optional[str] = None
     message: Optional[str] = ""
     element_info: Optional[AnnexedFileInfo | DatasetInfo | FileInfo] = None
+
+    def to_dict(self) -> dict:
+
+        def optional_dict(name, attribute):
+            return {name: str(attribute)} if attribute else {}
+
+        return dict(
+            fs_base_path=str(self.fs_base_path),
+            type=self.type,
+            dataset_path=str(self.dataset_path),
+            dataset_id=str(self.dataset_id),
+            dataset_version=str(self.dataset_version),
+            **optional_dict("path", self.path),
+            **optional_dict("root_dataset_id", self.root_dataset_id),
+            **optional_dict("root_dataset_version", self.root_dataset_version),
+            **optional_dict("message", self.message),
+            **({"element_info": self.element_info.to_dict()}
+               if self.element_info is not None
+               else {}
+               )
+        )
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
 
 class DatasetTraverser(Provider):

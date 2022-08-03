@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -9,10 +12,16 @@ class ResultState(Enum):
     FAILURE = "error"
     STOP = "stop"
 
+    def to_json(self):
+        return f'"{self.name}"'
+
 
 class PipelineDataState(Enum):
     CONTINUE = "continue"
     STOP = "stop"
+
+    def to_json(self):
+        return f'"{self.name}"'
 
 
 @dataclass
@@ -24,13 +33,16 @@ class PipelineResult:
         self.message = ""
         self.base_error = None
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> dict:
         result = dict(state=self.state.name)
         if self.base_error is not None:
             result["error"] = self.base_error
         if self.message:
             result["message"] = self.message
         return result
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
 
 
 class PipelineData:
@@ -86,7 +98,7 @@ class PipelineData:
             "state": self.state.name,
             "result": {
                 key: [
-                    result.to_json()
+                    result.to_dict()
                     for result in value
                 ]
                 for key, value in self._result.items()

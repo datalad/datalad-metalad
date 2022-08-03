@@ -283,7 +283,6 @@ class Extract(Interface):
                 else FileInfo.from_dict(file_info)
             )
 
-
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
@@ -800,8 +799,7 @@ def annex_status(annex_repo, paths=None):
 
 def legacy_get_file_info(dataset: Dataset,
                          path: Path
-                         ) -> Dict:
-
+                         ) -> dict:
     status = None
     if isinstance(dataset.repo, AnnexRepo):
         if dataset.pathobj != dataset.repo.pathobj:
