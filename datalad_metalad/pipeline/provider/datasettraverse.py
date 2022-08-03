@@ -16,7 +16,6 @@ from typing import (
     Optional,
 )
 
-from dataclasses_json import dataclass_json
 from datalad.distribution.dataset import (
     Dataset,
     require_dataset,
@@ -26,6 +25,7 @@ from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
 )
+from datalad.support.annexrepo import AnnexRepo
 from datalad.support.exceptions import NoDatasetFound
 from datalad.tests.utils import get_annexstatus
 
@@ -365,7 +365,11 @@ class DatasetTraverser(Provider):
             return
 
         dataset_path = str(dataset.pathobj.relative_to(root))
-        for path_str, element_info in get_annexstatus(dataset.repo).items():
+        if isinstance(dataset.repo, AnnexRepo):
+            status = get_annexstatus
+        else:
+            status = dataset.repo.status
+        for path_str, element_info in status(dataset.repo).items():
             if element_info["type"] in self.item_set:
                 element_path = Path(path_str)
                 if self.is_excluded(element_path):
