@@ -21,12 +21,13 @@ from datalad.distribution.dataset import (
     require_dataset,
     resolve_path,
 )
+from datalad.support.annexrepo import AnnexRepo
 from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
 )
-from datalad.support.annexrepo import AnnexRepo
 from datalad.support.exceptions import NoDatasetFound
+from datalad.support.gitrepo import GitRepo
 from datalad.tests.utils import get_annexstatus
 
 from .base import Provider
@@ -364,11 +365,10 @@ class DatasetTraverser(Provider):
             lgr.debug(f"ignoring un-installed dataset at {dataset.path}")
             return
 
-        dataset_path = str(dataset.pathobj.relative_to(root))
         if isinstance(dataset.repo, AnnexRepo):
             status = get_annexstatus
         else:
-            status = dataset.repo.status
+            status = GitRepo.status
         for path_str, element_info in status(dataset.repo).items():
             if element_info["type"] in self.item_set:
                 element_path = Path(path_str)
@@ -377,7 +377,7 @@ class DatasetTraverser(Provider):
                     continue
                 traverse_result = self._generate_result(
                     dataset=dataset,
-                    dataset_path=dataset_path,
+                    dataset_path=str(dataset.pathobj),
                     element_path=element_path,
                     element_info=element_info
                 )
