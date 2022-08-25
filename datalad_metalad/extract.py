@@ -657,7 +657,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
 
     if issubclass(ea.extractor_class, MetadataExtractor):
 
-        status = ea.source_dataset.subdatasets()
+        status = ea.source_dataset.subdatasets(result_renderer="disabled")
         extractor = ea.extractor_class()
         ensure_legacy_content_availability(ea, extractor, "dataset", status)
 
