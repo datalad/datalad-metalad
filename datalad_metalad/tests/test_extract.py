@@ -8,6 +8,7 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata extraction"""
+import json
 import subprocess
 import unittest.mock
 from pathlib import Path
@@ -668,3 +669,30 @@ def test_symlink_handling(tmp_dir_path_str=None):
             **common_kwargs,
         )
     )
+
+
+@with_tempfile(mkdir=True)
+def test_submodule_status_suppression(tmp_dir_path_str=None):
+    tmp_dir = Path(tmp_dir_path_str)
+
+    super_ds = create(tmp_dir / "super")
+    super_ds.save(**common_kwargs)
+    create(
+        dataset=str(tmp_dir / "super"),
+        path=str(tmp_dir / "super" / "sub"),
+    )
+    super_ds.save(recursive=True, **common_kwargs)
+
+    output = subprocess.run(
+        [
+            "datalad",
+            "meta-extract",
+            "-d",
+            str(tmp_dir / "super"),
+            "metalad_core"
+        ],
+        stdout=subprocess.PIPE
+    ).stdout.decode().strip()
+
+    # Ensure that only JSON is written out
+    json_object = json.loads(output)
