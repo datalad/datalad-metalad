@@ -160,7 +160,7 @@ class Aggregate(Interface):
             doc=r"""
             PATH to a sub-dataset whose metadata shall be aggregated into
             the topmost dataset (ROOT_DATASET)""",
-            nargs="*",
+            nargs="+",
             constraints=EnsureStr() | EnsureNone()))
 
     @staticmethod

@@ -52,6 +52,12 @@ shallow_clone: false
 # Do not build a branch, if a PR with the branch exists
 skip_branch_with_pr: true
 
+# Outside of PRs, build only these branches:
+branches:
+  only:
+    - master
+    - maint_0.4
+
 
 environment:
   # Do not use `image` as a matrix dimension, to have fine-grained control over
