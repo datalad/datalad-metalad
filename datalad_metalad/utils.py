@@ -2,6 +2,7 @@ import json
 import pkg_resources
 import sys
 from itertools import islice
+from pathlib import Path
 from typing import Dict, List, Union
 
 from datalad.distribution.dataset import (
@@ -57,7 +58,7 @@ def check_dataset(dataset_or_path: Union[Dataset, str],
             if ve.args and ve.args[0].startswith("No installed dataset found "):
                 raise NoDatasetFound(
                     "No valid datalad dataset found at: "
-                    f"{dataset_or_path}")
+                    f"{Path(dataset_or_path).absolute()}")
             else:
                 raise
 
