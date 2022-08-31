@@ -47,7 +47,7 @@ test_tree = {
 test_provider = {
     "name": "testprovider",
     "module": "datalad_metalad.tests.test_conduct",
-    "class": "TestTraverser",
+    "class": "ConductTestTraverser",
     "arguments": {}
 }
 
@@ -77,7 +77,7 @@ extract_pipeline = {
 
 
 @dataclass
-class TestResult(PipelineResult):
+class ConductTestResult(PipelineResult):
     path: Path
 
 
@@ -92,7 +92,7 @@ class StringResult(PipelineResult):
         }
 
 
-class TestTraverser(Provider):
+class ConductTestTraverser(Provider):
     def __init__(self, path_spec: str):
         super().__init__()
         self.paths = [
@@ -105,7 +105,7 @@ class TestTraverser(Provider):
                 ("path", path),
                 (
                     "test-traversal-record",
-                    [TestResult(ResultState.SUCCESS, path)]
+                    [ConductTestResult(ResultState.SUCCESS, path)]
                 )
             ),)
 
