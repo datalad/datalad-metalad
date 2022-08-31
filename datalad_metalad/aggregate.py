@@ -156,10 +156,13 @@ class Aggregate(Interface):
             constraints=EnsureDataset() | EnsureNone()),
         path=Parameter(
             args=("path",),
-            metavar="PATH",
+            metavar="SUB_DATASET_PATH",
             doc=r"""
-            PATH to a sub-dataset whose metadata shall be aggregated into
-            the topmost dataset (ROOT_DATASET)""",
+            SUB_DATASET_PATH is a path to a sub-dataset whose metadata shall be
+            aggregated into the topmost dataset (ROOT_DATASET). The sub-dataset
+            must be located within the directory of the topmost dataset. Note:
+            if SUB_DATASET_PATH is relative, it is resolved against the current
+            working directory, not against the path of the topmost dataset""",
             nargs="+",
             constraints=EnsureStr() | EnsureNone()))
 
@@ -249,7 +252,11 @@ def process_path_spec(root_dataset: Dataset,
 
     result = []
     for path in paths:
-        sub_dataset = check_dataset(path, "meta_aggregate")
+        path_object = Path(path).absolute()
+        if path_object == root_dataset.pathobj:
+            raise ValueError(
+                f"Cannot aggregate {path_object} into itself")
+        sub_dataset = check_dataset(str(path_object), "meta_aggregate")
         result.append((
             MetadataPath(sub_dataset.pathobj.relative_to(root_dataset.pathobj)),
             sub_dataset.pathobj))
