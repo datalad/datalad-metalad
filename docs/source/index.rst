@@ -54,6 +54,14 @@ Concepts and technologies
    design/index
 
 
+User guide
+----------
+
+.. toctree::
+   :maxdepth: 2
+
+   user_guide/index
+
 
 Acknowledgments
 ===============
