@@ -8,7 +8,7 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test BIDS metadata extractor """
 
-from simplejson import dumps
+import json
 
 from datalad.distribution.dataset import Dataset
 from datalad.tests.utils_pytest import (
@@ -16,7 +16,7 @@ from datalad.tests.utils_pytest import (
     with_tree,
 )
 
-from ..datalad_rfc822 import MetadataExtractor
+from ..datalad_rfc822 import DataladRFC822MetadataExtractor
 
 
 @with_tree(tree={'.datalad': {'meta.rfc822': """\
@@ -44,12 +44,11 @@ DOI: 10.5281/zenodo.48421
 
 """}})
 def test_get_metadata(path=None):
-
     ds = Dataset(path).create(force=True)
     ds.save()
-    meta = MetadataExtractor(ds, [])._get_dataset_metadata()
+    meta = DataladRFC822MetadataExtractor(ds, [])._get_dataset_metadata()
     assert_equal(
-        dumps(meta, sort_keys=True, indent=2),
+        json.dumps(meta, sort_keys=True, indent=2),
         """\
 {
   "citation": "Cool (2016)",

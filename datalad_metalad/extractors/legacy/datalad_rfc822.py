@@ -49,7 +49,7 @@ def _beautify_multiline_field(content):
     return title, content
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class DataladRFC822MetadataExtractor(BaseMetadataExtractor):
     _metadata_compliance = "http://docs.datalad.org/metadata.html#v0-1"
     _core_metadata_filename = opj('.datalad', 'meta.rfc822')
 

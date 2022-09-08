@@ -23,8 +23,7 @@ try:
 except ImportError:
     raise SkipTest
 
-from os.path import dirname
-from os.path import join as opj
+from pathlib import Path
 from shutil import copy
 
 from datalad.api import Dataset
@@ -80,19 +79,15 @@ target = {
 @with_tempfile(mkdir=True)
 def test_exif(path=None):
     ds = Dataset(path).create()
-    ds.config.add('datalad.metadata.nativetype', 'exif', scope='branch')
-    copy(
-        opj(dirname(dirname(dirname(__file__))), 'tests', 'data', 'exif.jpg'),
-        path)
+    copy(Path(__file__).parent / 'data' / 'exif.jpg', path)
     ds.save()
     assert_repo_status(ds.path)
-    res = ds.aggregate_metadata()
+
+    res = ds.meta_extract('exif', str(Path(path) / 'exif.jpg'))
     assert_status('ok', res)
-    res = ds.metadata('exif.jpg')
     assert_result_count(res, 1)
+
     # from this extractor
-    meta = res[0]['metadata']['exif']
+    meta = res[0]['metadata_record']['extracted_metadata']
     for k, v in target.items():
         eq_(meta[k], v)
-
-    assert_in('@context', meta)

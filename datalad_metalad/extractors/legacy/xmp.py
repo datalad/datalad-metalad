@@ -27,7 +27,7 @@ from ..base import BaseMetadataExtractor
 xmp_field_re = re.compile(r'^([^\[\]]+)(\[\d+\]|)(/?.*|)')
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class XmpMetadataExtractor(BaseMetadataExtractor):
     def get_metadata(self, dataset, content):
         if not content:
             return {}, []

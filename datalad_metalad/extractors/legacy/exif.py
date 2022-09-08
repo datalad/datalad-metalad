@@ -32,7 +32,7 @@ def _return_as_appropriate_dtype(val):
             return val
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class ExifMetadataExtractor(BaseMetadataExtractor):
     def get_metadata(self, dataset, content):
         if not content:
             return {}, []

@@ -8,6 +8,8 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test image extractor"""
 
+from pathlib import Path
+
 from datalad.tests.utils_pytest import (
     SkipTest,
     assert_in,
@@ -24,17 +26,15 @@ except ImportError as exc:
     raise SkipTest(
        "No PIL module available or it cannot be imported") from exc
 
-from os.path import dirname
-from os.path import join as opj
 from shutil import copy
 
 from datalad.api import Dataset
 
 target = {
-    "dcterms:SizeOrDuration": [4, 3],
+    "dcterms:SizeOrDuration": (4, 3),
     "color_mode": "3x8-bit pixels, true color",
     "type": "dctype:Image",
-    "spatial_resolution(dpi)": [72, 72],
+    "spatial_resolution(dpi)": (72, 72),
     "format": "JPEG (ISO 10918)"
 }
 
@@ -42,20 +42,15 @@ target = {
 @with_tempfile(mkdir=True)
 def test_image(path=None):
     ds = Dataset(path).create()
-    ds.config.add('datalad.metadata.nativetype', 'image', scope='branch')
-    copy(
-        opj(dirname(dirname(dirname(__file__))), 'tests', 'data', 'exif.jpg'),
-        path)
+    copy(Path(__file__).parent / 'data' / 'exif.jpg', path)
     ds.save()
     assert_repo_status(ds.path)
-    res = ds.aggregate_metadata()
+
+    res = ds.meta_extract('image', 'exif.jpg')
     assert_status('ok', res)
-    res = ds.metadata('exif.jpg')
     assert_result_count(res, 1)
 
     # from this extractor
-    meta = res[0]['metadata']['image']
+    meta = res[0]['metadata_record']['extracted_metadata']
     for k, v in target.items():
         eq_(meta[k], v)
-
-    assert_in('@context', meta)

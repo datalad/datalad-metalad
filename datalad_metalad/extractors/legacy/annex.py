@@ -21,7 +21,7 @@ from datalad.support.annexrepo import AnnexRepo
 from .definitions import version as vocabulary_version
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class AnnexMetadataExtractor(BaseMetadataExtractor):
 
     NEEDS_CONTENT = False
 

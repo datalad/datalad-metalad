@@ -8,6 +8,8 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test audio extractor"""
 
+from pathlib import Path
+
 from datalad.tests.utils_pytest import (
     SkipTest,
     assert_in,
@@ -24,8 +26,6 @@ try:
 except ImportError:
     raise SkipTest
 
-from os.path import dirname
-from os.path import join as opj
 from shutil import copy
 
 from datalad.api import Dataset
@@ -47,32 +47,14 @@ target = {
 @with_tempfile(mkdir=True)
 def test_audio(path=None):
     ds = Dataset(path).create()
-    ds.config.add('datalad.metadata.nativetype', 'audio', scope='branch')
-    copy(
-        opj(dirname(dirname(dirname(__file__))), 'tests', 'data', 'audio.mp3'),
-        path)
+    copy(Path(__file__).parent / 'data' / 'audio.mp3', path)
     ds.save()
     assert_repo_status(ds.path)
-    res = ds.aggregate_metadata()
-    assert_status('ok', res)
-    res = ds.metadata('audio.mp3')
+
+    res = ds.meta_extract('audio', str(Path(path) / 'audio.mp3'))
     assert_result_count(res, 1)
 
     # from this extractor
-    meta = res[0]['metadata']['audio']
+    meta = res[0]['metadata_record']['extracted_metadata']
     for k, v in target.items():
         eq_(meta[k], v)
-
-    assert_in('@context', meta)
-
-    uniques = ds.metadata(
-        reporton='datasets', return_type='item-or-list')['metadata']['datalad_unique_content_properties']
-    # test file has it, but uniques have it blanked out, because the extractor considers it worthless
-    # for discovering whole datasets
-    assert_in('bitrate', meta)
-    eq_(uniques['audio']['bitrate'], None)
-
-    # 'date' field carries not value, hence gets exclude from the unique report
-    assert_in('date', meta)
-    assert(not meta['date'])
-    assert_not_in('date', uniques['audio'])

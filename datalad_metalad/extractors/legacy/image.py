@@ -46,7 +46,7 @@ mode_map = {
 }
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class ImageMetadataExtractor(BaseMetadataExtractor):
 
     _extractors = {
         'format': lambda x: x.format_description,

@@ -44,7 +44,7 @@ def _compact_license(obj):
         return obj
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class FRDPMetadataExtractor(BaseMetadataExtractor):
     metadatasrc_fname = 'datapackage.json'
 
     _key2stdkey = {

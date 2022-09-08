@@ -8,6 +8,8 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test XMP extractor"""
 
+from pathlib import Path
+
 import pytest
 
 from datalad.tests.utils_pytest import (
@@ -49,20 +51,15 @@ target = {
 @with_tempfile(mkdir=True)
 def test_xmp(path=None):
     ds = Dataset(path).create()
-    ds.config.add('datalad.metadata.nativetype', 'xmp', scope='branch')
-    copy(
-        opj(dirname(dirname(dirname(__file__))), 'tests', 'data', 'xmp.pdf'),
-        path)
+    copy(Path(__file__).parent / 'data' / 'xmp.pdf', path)
     ds.save()
     assert_repo_status(ds.path)
-    res = ds.aggregate_metadata()
+
+    res = ds.meta_extract('xmp', 'xmp.pdf')
     assert_status('ok', res)
-    res = ds.metadata('xmp.pdf')
     assert_result_count(res, 1)
 
     # from this extractor
-    meta = res[0]['metadata']['xmp']
+    meta = res[0]['metadata_record']['extracted_metadata']
     for k, v in target.items():
         eq_(meta[k], v)
-
-    assert_in('@context', meta)

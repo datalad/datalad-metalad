@@ -34,7 +34,7 @@ vocab_map = {
 }
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class AudioMetadataExtractor(BaseMetadataExtractor):
 
     _unique_exclude = {'bitrate'}
 

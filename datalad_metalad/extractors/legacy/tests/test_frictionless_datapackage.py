@@ -8,15 +8,17 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test frictionless datapackage metadata extractor """
 
-from simplejson import dumps
+import json
 
 from datalad.api import Dataset
 from datalad.tests.utils_pytest import (
     assert_equal,
+    assert_result_count,
+    assert_status,
     with_tree,
 )
 
-from ..frictionless_datapackage import MetadataExtractor
+from ..frictionless_datapackage import FRDPMetadataExtractor
 
 
 # bits from examples and the specs
@@ -43,12 +45,15 @@ from ..frictionless_datapackage import MetadataExtractor
 }
 """})
 def test_get_metadata(path=None):
-
     ds = Dataset(path).create(force=True)
-    p = MetadataExtractor(ds, [])
-    meta = p._get_dataset_metadata()
+
+    res = ds.meta_extract('frictionless_datapackage')
+    assert_status('ok', res)
+    assert_result_count(res, 1)
+
+    meta = res[0]['metadata_record']['extracted_metadata']
     assert_equal(
-        dumps(meta, sort_keys=True, indent=2),
+        json.dumps(meta, sort_keys=True, indent=2),
         """\
 {
   "author": "Jane Doe <noemail@example.com>",

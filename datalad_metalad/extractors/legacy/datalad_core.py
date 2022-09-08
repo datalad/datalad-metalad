@@ -17,21 +17,23 @@ from datalad.log import log_progress
 from os.path import join as opj
 from os.path import exists
 
-from datalad.consts import (
-    DATASET_METADATA_FILE,
-    DATALAD_DOTDIR,
-    WEB_SPECIAL_REMOTE_UUID,
-)
+from datalad.consts import WEB_SPECIAL_REMOTE_UUID
 from datalad.support.json_py import load as jsonload
 from datalad.support.annexrepo import AnnexRepo
 from datalad.coreapi import subdatasets
+
+from . import (
+    DATASET_METADATA_FILE,
+    DATALAD_DOTDIR,
+)
+
 # use main version as core version
 
 # this must stay, despite being a seemingly unused import, each extractor defines a version
 from .definitions import version as vocabulary_version
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class DataladCoreMetadataExtractor(BaseMetadataExtractor):
 
     NEEDS_CONTENT = False
 

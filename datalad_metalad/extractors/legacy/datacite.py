@@ -71,7 +71,7 @@ def _process_tree(tree, nstag):
     return rec
 
 
-class MetadataExtractor(BaseMetadataExtractor):
+class DataciteMetadataExtractor(BaseMetadataExtractor):
     def _get_dataset_metadata(self):
         canonical = op.join(self.ds.path, '.datalad', 'meta.datacite.xml')
 
