@@ -39,11 +39,11 @@ from datalad.distribution.dataset import (
 from datalad.interface.base import Interface
 from datalad.interface.base import build_doc
 from datalad.interface.utils import eval_results
-from datalad.metadata.extractors.base import BaseMetadataExtractor
 from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
 from .extractors.base import (
+    BaseMetadataExtractor,
     DataOutputCategory,
     DatasetMetadataExtractor,
     FileInfo,
