@@ -8,7 +8,7 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test datacite metadata extractor """
 
-from simplejson import dumps
+import json
 
 from datalad.api import create
 from datalad.tests.utils_pytest import (
@@ -73,7 +73,7 @@ def test_get_metadata(path=None):
     ds.save()
     meta = DataciteMetadataExtractor(ds, 'elsewhere')._get_dataset_metadata()
     assert_equal(
-        dumps(meta, sort_keys=True, indent=2),
+        json.dumps(meta, sort_keys=True, indent=2),
         """\
 {
   "author": [
