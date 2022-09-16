@@ -1,5 +1,8 @@
 six
-datalad>=0.15.6
+# replace the following line with the datalad version without
+# metadata code, when that is released, e.g.
+# datalad>=0.17.4
+git+https://github.com/mih/datalad.git@mnt-metadata-mv#egg=datalad
 sphinx>=1.7.8
 sphinx-rtd-theme
 pyyaml
