@@ -6,7 +6,7 @@ from typing import (
     Union,
 )
 
-from datalad.metadata.indexers.base import MetadataIndexer
+from .base import MetadataIndexer
 
 from .jsonld import (
     IndexerSchemaOrgProperties,

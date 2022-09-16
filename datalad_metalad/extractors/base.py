@@ -336,7 +336,7 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
 
 # XXX this is the legacy-legacy interface, keep around for a bit more and then
 # remove
-class BaseMetadataExtractor(metaclass=abc.ABCMeta):
+class BaseMetadataExtractor:
 
     NEEDS_CONTENT = True   # majority of the extractors need data content
 
@@ -366,7 +366,6 @@ class BaseMetadataExtractor(metaclass=abc.ABCMeta):
             self._get_dataset_metadata() if dataset else None, \
             ((k, v) for k, v in self._get_content_metadata()) if content else None
 
-    @abc.abstractmethod
     def _get_dataset_metadata(self):
         """
         Returns
@@ -376,7 +375,6 @@ class BaseMetadataExtractor(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def _get_content_metadata(self):
         """Get ALL metadata for all dataset content.
 

@@ -8,6 +8,7 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test custom metadata extractor"""
 
+import json
 from six import text_type
 
 from datalad.distribution.dataset import Dataset
@@ -19,7 +20,6 @@ from datalad.tests.utils_pytest import (
     known_failure_windows,
     with_tree,
 )
-from simplejson import dumps as jsondumps
 
 
 # some metadata to play with, taken from the examples of the google dataset
@@ -85,9 +85,9 @@ testmeta = {
 @with_tree(
     tree={
         '.metadata': {
-            'dataset.json': jsondumps(sample_jsonld)},
+            'dataset.json': json.dumps(sample_jsonld)},
         'down': {
-            'customloc': jsondumps(testmeta)}})
+            'customloc': json.dumps(testmeta)}})
 def test_custom_dsmeta(path=None):
     ds = Dataset(path).create(force=True)
     sample_jsonld_ = dict(sample_jsonld)

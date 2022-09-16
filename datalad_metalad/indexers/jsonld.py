@@ -7,7 +7,7 @@ from typing import (
     cast
 )
 
-from datalad.metadata.indexers.base import MetadataIndexer
+from .base import MetadataIndexer
 
 
 class IndexerJsonLdTags:
