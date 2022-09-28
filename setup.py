@@ -40,7 +40,8 @@ setup(
         'datalad_metalad.pipeline': 'datalad_metalad/pipeline'
     },
     package_data={
-        'datalad_metalad.pipeline': ['pipelines/*.json']
+        'datalad_metalad.pipeline': ['pipelines/*.json'],
+        'datalad_metalad.extractors.legacy.tests': ['data/*']
     },
     entry_points={
         'datalad.extensions': [
