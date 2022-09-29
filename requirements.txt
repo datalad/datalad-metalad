@@ -6,4 +6,4 @@ git+https://github.com/mih/datalad.git@mnt-metadata-mv#egg=datalad
 sphinx>=1.7.8
 sphinx-rtd-theme
 pyyaml
-datalad-metadata-model>=0.3.5,<0.4.0
+datalad-metadata-model>=0.3.6
