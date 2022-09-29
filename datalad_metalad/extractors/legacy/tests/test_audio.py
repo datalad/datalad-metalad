@@ -12,11 +12,8 @@ from pathlib import Path
 
 from datalad.tests.utils_pytest import (
     SkipTest,
-    assert_in,
-    assert_not_in,
     assert_repo_status,
     assert_result_count,
-    assert_status,
     eq_,
     with_tempfile,
 )
@@ -29,6 +26,7 @@ except ImportError:
 from shutil import copy
 
 from datalad.api import Dataset
+
 
 target = {
     "format": "mime:audio/mp3",
