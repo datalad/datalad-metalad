@@ -488,8 +488,29 @@ def get_extractor_class(extractor_name: str) -> Union[
     """ Get an extractor from its name """
     from pkg_resources import iter_entry_points
 
-    entry_points = list(
-        iter_entry_points("datalad.metadata.extractors", extractor_name))
+    # The extractor class names of the old datalad-contained extractors have
+    # been changed, when the extractors were moved to datalad_metalad.
+    # Therefore, we have to use to extractors in
+    # `datalad_metalad.extractors.legacy` instead of any old extractor code
+    # from datalad core.
+    entry_points = [
+        entry_point
+        for entry_point in iter_entry_points(
+            "datalad.metadata.extractors",
+            extractor_name
+        )
+        if entry_point.dist.project_name != "datalad"
+    ]
+
+    if not entry_points:
+        entry_points = [
+            entry_point
+            for entry_point in iter_entry_points(
+                "datalad.metadata.extractors",
+                extractor_name
+            )
+            if entry_point.dist.project_name == "datalad"
+        ]
 
     if not entry_points:
         raise ExtractorNotFoundError(

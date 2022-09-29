@@ -2,8 +2,6 @@
 import os
 import hashlib
 
-from datalad.support.digests import Digester
-
 
 __docformat__ = 'restructuredtext'
 
@@ -82,6 +80,8 @@ def get_file_id(rec):
     DataLad-recognized ID. This prefix is defined in the main JSON-LD
     context defintion.
     """
+    from datalad.support.digests import Digester
+
     id_ = rec['key'] if 'key' in rec else 'SHA1-s{}--{}'.format(
         rec['bytesize'] if 'bytesize' in rec
         else 0 if rec['type'] == 'symlink'
