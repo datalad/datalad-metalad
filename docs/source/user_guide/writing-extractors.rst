@@ -9,14 +9,17 @@ Writing custom extractors
 An extractor, in MetaLad sense, is a class derived from one of the base extractor classes defined in ``datalad_metalad.extractors.base`` (``DatasetMetadataExtractor`` or ``FileMetadataExtractor``).
 It needs to implement several required methods, most notably ``extract()``.
 
-Example extractors can be found in MetaLad source code.
+Example extractors can be found in MetaLad source code:
 
-.. TODO:: Add links to the example extractors
+- `Dataset-level extractor example <https://github.com/datalad/datalad-metalad/blob/master/datalad_metalad/extractors/metalad_example_dataset.py>`_
+
+- `File-level extractor example <https://github.com/datalad/datalad-metalad/blob/master/datalad_metalad/extractors/metalad_example_file.py>`_
+
 
 Base class
 ==========
 
-There are two primary types of extractors, dataset-level and file-level.
+There are two primary types of extractors, dataset-level extractors and file-level extractors.
 
 Dataset-level extractors, by inheritance from the ``DatasetMetadataExtractor`` class, can access the dataset on which they operate as ``self.dataset``. Extractor functions may use it to call any dataset methods.
 
@@ -36,12 +39,12 @@ A UUID can be generated in several ways, e.g. with Python (``import uuid; print(
 
 While version 4 (random) UUIDs are probably sufficient, version 5 UUIDs (generated based on a given namespace and name) can also be used.
 For example, extractors in packages developed under the datalad organisation could use ``<extractor_name>.datalad.org``.
-Example generation with Python: ``uuid.uuid5(uuid.NAMESPACE_DNS, "bids_dataset.datalad.org")``.
+Example generation with Python: ``uuid.uuid5(uuid.NAMESPACE_DNS, "bids_dataset.extractors.datalad.org")``.
 
 Example::
 
   def get_id(self) -> UUID:
-      return UUID("d1e3f728-7868-4f33-a4a5-0f9f57dce342")
+      return UUID("0c26f218-537e-5db8-86e5-bc12b95a679e")
 
 ``get_version()``
 -----------------
@@ -61,9 +64,13 @@ Example::
 ``get_data_output_category()``
 ------------------------------
 
-This function should return a ``DataOutputCategory`` object, which tells MetaLad what kind of (meta)data it is dealing with.
+This function should return a ``DataOutputCategory`` object, which tells MetaLad what kind of (meta)data it is dealing with. The following output categories are available in the enumeration `datalad_metalad.extractors.base.DataOutputCategory`::
 
-.. TODO:: What categories are available, what are the consequences of declaring one?
+ IMMEDIATE
+ FILE
+ DIRECTORY
+
+Output categories declare how the extractor delivers its results. If the output category is ``IMMEDIATE``, the result is returned by the ``extract()``-call. In case of ``FILE``, the extractor deposits the result in a file. This ie especially useful for extractors that are external programs. The category ``DIRECTORY`` is not yet supported. If you write an extractor in Python, you would usually use the output category ``IMMEDIATE`` and return extractor results from the ``extract()``-call.
 
 Example::
   
@@ -73,9 +80,9 @@ Example::
 ``get_required_content()``
 --------------------------
 
-This function is used in dataset-extractors only.
+This function is used in dataset-level extractors only.
 It will be called by MetaLad prior to metadata extraction.
-Its purpose is to make sure that content required for metadata extraction is present
+Its purpose is to allow the extractor to ensure that content that is required for metadata extraction is present
 (relevant, for example, if some of files to be inspected may be annexed).
 The function should return ``True`` if it has obtained the required content, or confirmed its presence.
 If it returns ``False``, metadata extraction will not proceed.
@@ -102,12 +109,12 @@ If it returns ``False``, the get operation will not be performed.
 ``extract()``
 -------------
 
-This function is used for actual metadata extraction, and should return an ``ExtractorResult`` object.
+This function is used for actual metadata extraction, and should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
 The ``ExtractorResult`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ object, containing the following fields: ``extractor_version``, ``extraction_parameter``, ``extraction_success``, ``datalad_result_dict``, and ``immediate_data`` (optional).
 
 .. TODO:: Explain these fields, especially ``datalad_result_dict``
 
-The ``immediate_data`` field should be a dictionary with freely-chosen keys.
+If the output category of the extractor is ``IMMEDIATE``, then the ``immediate_data`` field should contain the result of the extraction process as a dictionary with freely-chosen keys.
 Contents of this dictionary should be JSON-serializable, because ``datalad meta-extract`` will print the JSON-serialized extractor result to standard output.
 
 Example::
@@ -141,7 +148,7 @@ Making extractors discoverable
 To be discovered by ``meta_extract``, an extractor should be part of a DataLad extension.
 In addition, to make it discoverable, you need to declare an entry point in the extension's ``setup.cfg`` file.
 You can define the entrypoint name, and specify which extractor class it should point to.
-It is recommended to give the extractor names a prefix, to reduce the risk of name collisions.
+It is recommended to give the extractor name a prefix, to reduce the risk of name collisions.
 
 Example::
   
