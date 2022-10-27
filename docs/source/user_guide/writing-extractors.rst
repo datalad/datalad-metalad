@@ -64,7 +64,7 @@ Example::
 ``get_data_output_category()``
 ------------------------------
 
-This function should return a ``DataOutputCategory`` object, which tells MetaLad what kind of (meta)data it is dealing with. The following output categories are available in the enumeration `datalad_metalad.extractors.base.DataOutputCategory`::
+This function should return a ``DataOutputCategory`` object, which tells MetaLad what kind of (meta)data it is dealing with. The following output categories are available in the enumeration ``datalad_metalad.extractors.base.DataOutputCategory``::
 
  IMMEDIATE
  FILE
@@ -100,8 +100,8 @@ Example::
 -------------------------
 
 This function is used in file-extractors only.
-It is a file-extractor counterpart to ``get_required_content``.
-Its purpose is to tell MetaLad if the file content is required or not
+It is a file-extractor counterpart to ``get_required_content()``.
+Its purpose is to tell MetaLad whether the file content is required or not
 (relevant for annexed files - extraction may depend on file content, or require only annex key).
 If the function returns ``True``, MetaLad will get the file content.
 If it returns ``False``, the get operation will not be performed.
