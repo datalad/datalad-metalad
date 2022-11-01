@@ -65,4 +65,3 @@ _JSONType_3 = Union[str, int, float, bool, None, Dict[str, _JSONType_2], List[_J
 
 JSONType = Union[str, int, float, bool, None, Dict[str, _JSONType_3], List[_JSONType_3]]
 
-

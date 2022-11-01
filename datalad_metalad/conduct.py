@@ -101,7 +101,7 @@ class Conduct(Interface):
     - A list of processors. A processor reads data,
       either from the previous processor or the provider and performs
       computations on the data and return a result that is processed by
-      the next processor. The computation may have side-effect,
+      the next processor. The computation may have side effects,
       e.g. store metadata.
 
     The provider is usually executed in the current processes' main
@@ -109,7 +109,7 @@ class Conduct(Interface):
     i.e. workers. The maximum number of workers is given by the
     parameter `max_workers`.
 
-    Which provider and which processors are used is defined in an
+    Which provider and which processors are used is defined in a
     "configuration", which is given as JSON-serialized dictionary.
     """
 

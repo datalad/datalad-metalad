@@ -93,7 +93,7 @@ class MetadataURLParser(object):
 
     def parse(self) -> MetadataURL:
         """
-        Parse a metadata path spec. It can either be a uuid spec or a tree
+        Parse a metadata path spec. It can either be an uuid spec or a tree
         spec. If no scheme is provided, a tree-spec is assumed. Note, if a
         dataset_path is empty, the root dataset is assumed and the primary
         data version of the youngest metadata record will be chosen.

@@ -355,8 +355,8 @@ class DatasetTraverser(Provider):
         results for each `file` or installed `dataset`, depending on the
         selected item types.
 
-        :param Path root: the root of all traversals.
-        :param Dataset dataset: the dataset to traverse in this method.
+        :param Path root: the root of all traversals
+        :param Dataset dataset: the dataset to traverse in this method
         :return: a generator, yielding `DatasetTraversalResult`-records
         :rtype: Generator[DatasetTraverseResult, None, None]
         """

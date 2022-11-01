@@ -7,11 +7,7 @@ import enum
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import (
-    cast,
-    Dict,
-    Optional,
-)
+from typing import cast
 
 from datalad.api import meta_extract
 from datalad.support.constraints import EnsureChoice
