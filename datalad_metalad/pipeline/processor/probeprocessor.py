@@ -5,13 +5,14 @@ performance measurements.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
-from typing import Dict
 
 
 from datalad.support.constraints import (
     EnsureFloat,
+    EnsureInt,
     EnsureNone,
 )
 
@@ -33,14 +34,20 @@ logger = logging.getLogger("datalad.metadata.processor.probeprocessor")
 
 @dataclass
 class ProbeProcessorResult(PipelineResult):
+    processor_pid: int
+    processor_id: id
     sequence_number: int
     content: JSONType | None
+    sub_sequence_number: int
 
     def to_dict(self) -> dict:
         return {
             **super().to_dict(),
+            "processor_pid": self.processor_pid,
+            "processor_id": self.processor_id,
             "sequence_number": self.sequence_number,
-            "content": self.content
+            "content": self.content,
+            "sub_sequence_number": self.sub_sequence_number
         }
 
 
@@ -57,18 +64,27 @@ class ProbeProcessor(Processor):
                         will be yielded immediately.""",
                 optional=True,
                 default=None,
-                constraints=EnsureFloat() | EnsureNone())
+                constraints=EnsureFloat() | EnsureNone()
+            ),
+            ParameterEntry(
+                keyword="count",
+                help="Number of results in the result set.",
+                optional=True,
+                default=1,
+                constraints=EnsureInt()
+            )
         ]
     )
 
     def __init__(self,
                  *,
-                 delay: float | None = None
+                 delay: float | None = None,
+                 count: int = 1
                  ):
 
         super().__init__()
         self.delay = delay
-        self.last_result_time = 0
+        self.count = count
 
     def process(self, pipeline_data: PipelineData) -> PipelineData:
 
@@ -79,24 +95,21 @@ class ProbeProcessor(Processor):
                 f"{pipeline_data}")
             return pipeline_data
 
-        self._ensure_delay()
+        if self.delay is not None:
+            time.sleep(self.delay)
+
         pipeline_data.add_result_list(
             "probe-processor-record",
             [
                 ProbeProcessorResult(
                     state=ResultState.SUCCESS,
+                    processor_pid=os.getpid(),
+                    processor_id=id(self),
                     sequence_number=probe_record_list[0].sequence_number,
-                    content=probe_record_list[0].content
+                    content=probe_record_list[0].content,
+                    sub_sequence_number=sub_sequence_number
                 )
+                for sub_sequence_number in range(self.count)
             ]
         )
         return pipeline_data
-
-    def _ensure_delay(self):
-        current_time = time.time()
-        time_diff = current_time - self.last_result_time
-        if time_diff >= self.delay:
-            self.last_result_time = current_time
-            return
-        time.sleep(self.delay - time_diff)
-        self.last_result_time = time.time()

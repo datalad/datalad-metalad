@@ -33,9 +33,9 @@ logger = logging.getLogger("datalad.meta-conduct.consumer.add")
 class MetadataBatchAddResult(PipelineResult):
     path: str
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> Dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "path": str(self.path)
         }
 

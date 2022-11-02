@@ -5,6 +5,7 @@ used for performance measurements.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from dataclasses import dataclass
 from typing import (
@@ -38,12 +39,16 @@ default_mapper_family = "git"
 
 @dataclass
 class ProbeProviderResult(PipelineResult):
+    provider_pid: int
+    provider_id: id
     sequence_number: int
     content: JSONType | None
 
     def to_dict(self) -> dict:
         return {
             **super().to_dict(),
+            "provider_pid": self.provider_pid,
+            "provider_id": self.provider_id,
             "sequence_number": self.sequence_number,
             "content": self.content
         }
@@ -103,6 +108,8 @@ class ProbeProvider(Provider):
                 [
                     ProbeProviderResult(
                         state=ResultState.SUCCESS,
+                        provider_pid=os.getpid(),
+                        provider_id=id(self),
                         sequence_number=count,
                         content=self.content
                     )
