@@ -36,6 +36,7 @@ logger = logging.getLogger("datalad.metadata.processor.probeprocessor")
 class ProbeProcessorResult(PipelineResult):
     processor_pid: int
     processor_id: id
+    invocation_count: int
     sequence_number: int
     content: JSONType | None
     sub_sequence_number: int
@@ -45,6 +46,7 @@ class ProbeProcessorResult(PipelineResult):
             **super().to_dict(),
             "processor_pid": self.processor_pid,
             "processor_id": self.processor_id,
+            "invocation_count": self.invocation_count,
             "sequence_number": self.sequence_number,
             "content": self.content,
             "sub_sequence_number": self.sub_sequence_number
@@ -85,8 +87,11 @@ class ProbeProcessor(Processor):
         super().__init__()
         self.delay = delay
         self.count = count
+        self.invocation_count = 0
 
     def process(self, pipeline_data: PipelineData) -> PipelineData:
+
+        self.invocation_count += 1
 
         probe_record_list = pipeline_data.get_result("probe-provider-record")
         if not probe_record_list:
@@ -105,6 +110,7 @@ class ProbeProcessor(Processor):
                     state=ResultState.SUCCESS,
                     processor_pid=os.getpid(),
                     processor_id=id(self),
+                    invocation_count=self.invocation_count,
                     sequence_number=probe_record_list[0].sequence_number,
                     content=probe_record_list[0].content,
                     sub_sequence_number=sub_sequence_number
