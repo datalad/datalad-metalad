@@ -47,11 +47,12 @@ class PipelineResult:
 
 class PipelineData:
     def __init__(self,
-                 initial_result: Optional[Iterable[Tuple[str, List[PipelineResult]]]] = None):
+                 initial_result: Optional[Iterable[Tuple[str, List[PipelineResult]]]] = None,
+                 state: PipelineDataState = PipelineDataState.CONTINUE):
 
         self._result: Dict[str, List[PipelineResult]] = dict(initial_result or ())
         self._dynamic = dict()
-        self.state = PipelineDataState.CONTINUE
+        self.state = state
 
     def __eq__(self, other):
         return self._result == other._result \

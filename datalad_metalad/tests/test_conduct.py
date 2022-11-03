@@ -76,6 +76,30 @@ extract_pipeline = {
 }
 
 
+extract_consume_pipeline = {
+    "provider": {
+        "name": "provider",
+        "module": "datalad_metalad.pipeline.provider.datasettraverse",
+        "class": "DatasetTraverser",
+        "arguments": {}
+    },
+    "processors": [
+        {
+            "name": "testproc1",
+            "module": "datalad_metalad.pipeline.processor.extract",
+            "class": "MetadataExtractor",
+            "arguments": {}
+        }
+    ],
+    "consumer": {
+        "module": "datalad_metalad.pipeline.consumer.add",
+        "class": "BatchAdder",
+        "name": "adder",
+        "arguments": {}
+    }
+}
+
+
 @dataclass
 class ConductTestResult(PipelineResult):
     path: Path

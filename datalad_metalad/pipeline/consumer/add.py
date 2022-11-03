@@ -18,6 +18,7 @@ from ..documentedinterface import (
 )
 from ..pipelinedata import (
     PipelineData,
+    PipelineDataState,
     PipelineResult,
     ResultState,
 )
@@ -73,10 +74,16 @@ class BatchAdder(Consumer):
             ["datalad", "meta-add", "-d", dataset, "--batch-mode", "-"])
 
     def __del__(self):
-        self.batched_add("")
-        self.batched_add.close()
+        if self.batched_add is not None:
+            self.batched_add("")
+            self.batched_add.close()
 
     def consume(self, pipeline_data: PipelineData) -> PipelineData:
+
+        if pipeline_data.state == PipelineDataState.STOP:
+            self.batched_add("")
+            self.batched_add.close()
+            self.batched_add = None
 
         metadata_result_list = pipeline_data.get_result("metadata")
         if not metadata_result_list:

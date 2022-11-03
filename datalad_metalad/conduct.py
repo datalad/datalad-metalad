@@ -418,6 +418,10 @@ def process_parallel(executor,
                     status="error",
                     logger=lgr,
                     message=traceback.format_exc())
+
+    if consumer_instance:
+        consumer_instance.consume(PipelineData(state=PipelineDataState.STOP))
+
     return
 
 
@@ -434,6 +438,9 @@ def process_sequential(provider_instance: Provider,
             processor_specs=processor_specs,
             evaluated_constructor_args=evaluated_constructor_args,
             consumer_instance=consumer_instance)
+
+    if consumer_instance:
+        consumer_instance.consume(PipelineData(state=PipelineDataState.STOP))
 
 
 def process_downstream(pipeline_data: PipelineData,
