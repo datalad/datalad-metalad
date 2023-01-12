@@ -88,9 +88,12 @@ class MetadataExtractor(Processor):
                 f"{dataset_traverse_record.type}")
             return pipeline_data
 
-        dataset_path = dataset_traverse_record.element_info.dataset_path
-        intra_dataset_path = dataset_traverse_record.element_info.intra_dataset_path
         object_type = dataset_traverse_record.type
+        dataset_path = dataset_traverse_record.element_info.dataset_path
+        intra_dataset_path = (
+            ""
+            if object_type == "dataset"
+            else dataset_traverse_record.element_info.path.intra_dataset_path)
 
         if object_type == "file":
             kwargs = dict(
