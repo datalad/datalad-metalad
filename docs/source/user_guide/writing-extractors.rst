@@ -110,12 +110,13 @@ If it returns ``False``, the get operation will not be performed.
 -------------
 
 This function is used for actual metadata extraction, and should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
-The ``ExtractorResult`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ object, containing the following fields: ``extractor_version``, ``extraction_parameter``, ``extraction_success``, ``datalad_result_dict``, and ``immediate_data`` (optional).
+The ``ExtractorResult`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ object, containing the following fields:
 
-.. TODO:: Explain these fields, especially ``datalad_result_dict``
-
-If the output category of the extractor is ``IMMEDIATE``, then the ``immediate_data`` field should contain the result of the extraction process as a dictionary with freely-chosen keys.
-Contents of this dictionary should be JSON-serializable, because ``datalad meta-extract`` will print the JSON-serialized extractor result to standard output.
+- ``extractor_version``: a version string representing the extractor's version.
+-  ``extraction_parameter``: a dictionary containing parameters passed to the extractor by the calling command; can be obtained with: ``self.parameter or {}``.
+-  ``extraction_success``: either ``True`` or ``False``.
+-  ``datalad_result_dict``: a dictionary with entries added to the DataLad `result record <https://docs.datalad.org/en/stable/design/result_records.html>`_ produced by a MetaLad calling command. Result records are used by DataLad to inform generic error handling and decisions on how to proceed with subsequent operations. MetaLad commands always set the mandatory result record fields ``action`` and ``path``; the minimally useful set of fields which should by the extractor is ``"status"`` (one of: ``"ok"``, ``"notneeded"``, ``"impossible"``, ``"error"``) and ``"type"`` (``"dataset"`` or ``"file"``).
+- ``immediate_data`` (a dictionary, optional): if the output category of the extractor is ``IMMEDIATE``, then the ``immediate_data`` field should contain the result of the extraction process as a dictionary with freely-chosen keys. Contents of this dictionary should be JSON-serializable, because ``datalad meta-extract`` will print the JSON-serialized extractor result to standard output.
 
 Example::
 
