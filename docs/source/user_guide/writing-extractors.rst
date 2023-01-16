@@ -158,6 +158,17 @@ Example::
   datalad.metadata.extractors =
     hello_cff = datalad_helloworld.extractors.basic_dataset:CffExtractor
 
+Tips
+====
+
+Using git methods to discover contents efficiently
+--------------------------------------------------
+
+Dataset-level extractors may need to check specific files to obtain information about specific files.
+If the files need to be listed, it may be more efficient to call `git-ls-files <https://git-scm.com/docs/git-ls-files>`_ or `git-ls-tree <https://git-scm.com/docs/git-ls-tree>`_ instead of using pathlib methods (this limits the listing to files tracked by the dataset and helps avoid costly indexing if the `.git` directory).
+For example, a list of files with a given extension (including those in subfolders) can be created with::
+
+  files = list(self.dataset.repo.call_git_items_(["ls-files", "*.xyz"]))
+
 .. TODO::
    - How to pass options to extractors?
-   - A tip on using ls-tree to discover contents
