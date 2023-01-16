@@ -171,4 +171,5 @@ For example, a list of files with a given extension (including those in subfolde
   files = list(self.dataset.repo.call_git_items_(["ls-files", "*.xyz"]))
 
 .. TODO::
-   - How to pass options to extractors?
+   - Explain how extractors can use extraction parameters passed to a calling command
+   - Include a short description of how ``metalad_external_[dataset|file]`` extractors can be an alternative to writing custom extractors if an external process for generating metadata already exists
