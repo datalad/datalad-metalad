@@ -21,9 +21,10 @@ Base class
 
 There are two primary types of extractors, dataset-level extractors and file-level extractors.
 
-Dataset-level extractors, by inheritance from the ``DatasetMetadataExtractor`` class, can access the dataset on which they operate as ``self.dataset``. Extractor functions may use it to call any dataset methods.
+Dataset-level extractors, by inheritance from the ``DatasetMetadataExtractor`` class, can access the dataset on which they operate as ``self.dataset``.
+Extractor functions may use this object to call any DataLad dataset methods.
 
-File-level extractors, by inheritance from the ``FileMetadataExtractor``, can refer to the file on which it operates through ``self.file_info``.
+File-level extractors, by inheritance from the ``FileMetadataExtractor``, can refer to the file on which it operates through ``self.file_info``, a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ with ``type``, ``git_sha_sum``, ``byte_size``, ``state``, ``path``, and ``intra_dataset_path`` fields.
 
 Required methods
 ================
