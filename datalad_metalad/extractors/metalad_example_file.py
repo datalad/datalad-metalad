@@ -47,6 +47,6 @@ class MetaladExampleFileExtractor(FileMetadataExtractor):
                     type=self.file_info.type)),
                 "type": self.file_info.type,
                 "path": self.file_info.intra_dataset_path,
-                "content_byte_size": self.file_info.byte_size,
+                "content_byte_size": self.file_info.bytesize,
                 "comment": f"example file extractor executed at {time.time()}"
             })
