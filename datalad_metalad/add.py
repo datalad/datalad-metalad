@@ -96,6 +96,7 @@ class AddParameter:
 
     unversioned_path: Optional[MetadataPath]
 
+    extractor_id: UUID
     extractor_name: str
     extractor_version: str
     extraction_time: float
@@ -458,6 +459,7 @@ def add_finite_set(metadata_objects: List[JSONType],
                     if un_versioned_path is True
                     else MetadataPath("")),
 
+                extractor_id=metadata["extractor_id"],
                 extractor_name=metadata["extractor_name"],
                 extractor_version=metadata["extractor_version"],
                 extraction_time=metadata["extraction_time"],

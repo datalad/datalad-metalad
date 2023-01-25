@@ -90,11 +90,13 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
+    @classmethod
     @abc.abstractmethod
-    def get_id(self) -> UUID:
+    def get_id(cls) -> UUID:
         """ Report the universally unique ID of the extractor """
         raise NotImplementedError
 
+    @classmethod
     @abc.abstractmethod
     def get_version(self) -> str:       # TODO shall we remove this and regard it as part of the state?
         """ Report the version of the extractor """

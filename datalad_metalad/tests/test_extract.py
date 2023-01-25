@@ -507,6 +507,7 @@ def test_external_extractor(ds_path=None):
             dataset=ds,
             path=path,
             extractorargs=[
+                "extractor-id", str(UUID(int=32)),
                 "data-output-category", "IMMEDIATE",
                 "command", ["python", "-c", "print('True')"],
                 "arguments", ["-c", "print('True')"]

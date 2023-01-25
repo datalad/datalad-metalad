@@ -1,4 +1,7 @@
-from uuid import uuid4
+from uuid import (
+    UUID,
+    uuid4,
+)
 
 from dataladmetadatamodel.metadata import ExtractorConfiguration
 from dataladmetadatamodel.metadatapath import MetadataPath
@@ -12,6 +15,7 @@ random_uuid = uuid4()
 
 test_json_1 = dict(
     type="file",
+    extractor_id=UUID(int=3),
     extractor_name="ext-a",
     extractor_version="1.0",
     extraction_parameter=ExtractorConfiguration(
@@ -31,6 +35,7 @@ test_json_1 = dict(
 def test_basic():
     md = MetadataRecord(
         type="file",
+        extractor_id=UUID(int=4),
         extractor_name="ext-a",
         extractor_version="1.0",
         extraction_parameter={"p1": "v1", "p2": "v2"},
@@ -50,6 +55,7 @@ def test_basic():
 def test_uuid_conversion():
     md = MetadataRecord(
         type="file",
+        extractor_id=UUID(int=5),
         extractor_name="ext-a",
         extractor_version="1.0",
         extraction_parameter={"p1": "v1", "p2": "v2"},

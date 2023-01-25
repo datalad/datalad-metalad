@@ -120,7 +120,8 @@ class DemoFilter(MetadataFilterBase):
                 **dict((str(index), value) for index, value in enumerate(args)),
                 **kwargs
             },
-            extractor_name=f"{self.get_id()}-{self.format_name}",
+            extractor_id=self.get_id(),
+            extractor_name=self.format_name,
             extraction_time=time.time(),
             agent_name="Metalad Demo Filter",
             agent_email="metalad-demo-filter@example.com",

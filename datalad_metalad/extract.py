@@ -339,7 +339,8 @@ class Extract(Interface):
                 **metadata_record,
                 **path,
                 **dataset_path,
-                "dataset_id": str(metadata_record["dataset_id"])
+                "dataset_id": str(metadata_record["dataset_id"]),
+                "extractor_id": str(metadata_record["extractor_id"])
             }))
 
         context = res.get("context")
@@ -704,6 +705,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
                             type="dataset",
                             dataset_id=ea.source_dataset_id,
                             dataset_version=ea.source_dataset_version,
+                            extractor_id=UUID(int=0),
                             extractor_name=ea.extractor_name,
                             extractor_version=str(
                                 extractor.get_state(ea.source_dataset).get(
@@ -736,6 +738,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
                 type="dataset",
                 dataset_id=ea.source_dataset_id,
                 dataset_version=ea.source_dataset_version,
+                extractor_id=UUID(int=0),
                 extractor_name=ea.extractor_name,
                 extractor_version="un-versioned",
                 extraction_parameter=ea.extraction_parameter,
@@ -819,6 +822,7 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
                         dataset_id=ea.source_dataset_id,
                         dataset_version=ea.source_dataset_version,
                         path=ea.file_tree_path,
+                        extractor_id=UUID(int=0),
                         extractor_name=ea.extractor_name,
                         extractor_version=str(
                             extractor.get_state(ea.source_dataset).get(
@@ -857,6 +861,7 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
                     dataset_id=ea.source_dataset_id,
                     dataset_version=ea.source_dataset_version,
                     path=MetadataPath(extracted_path),
+                    extractor_id=UUID(int=0),
                     extractor_name=ea.extractor_name,
                     extractor_version="un-versioned",
                     extraction_parameter=ea.extraction_parameter,

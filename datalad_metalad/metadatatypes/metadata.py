@@ -51,6 +51,7 @@ class AggregationInfo:
 @dataclass(eq=True, frozen=True)
 class MetadataRecord:
     type: str
+    extractor_id: UUID
     extractor_name: str
     extractor_version: str
     extraction_parameter: Dict[str, JSONType]
@@ -104,6 +105,7 @@ class MetadataRecord:
 
         return cls(
             type=json_obj["type"],
+            extractor_id=UUID(json_obj["extractor_id"]),
             extractor_name=json_obj["extractor_name"],
             extractor_version=json_obj["extractor_version"],
             extraction_parameter=json_obj[EXTRACTION_PARAMETER],
