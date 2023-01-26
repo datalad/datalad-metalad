@@ -358,29 +358,55 @@ class DatasetTraverser(Provider):
         """
 
         if not self.is_installed(dataset):
-            lgr.debug(f"ignoring un-installed dataset at {dataset.path}")
+            lgr.warning(f"ignoring un-installed dataset at {dataset.path}")
             return
 
-        if isinstance(dataset.repo, AnnexRepo):
-            status = get_annexstatus
-        else:
-            status = GitRepo.status
-        for path_str, element_info in status(dataset.repo).items():
-            if element_info["type"] in self.item_set:
-                element_path = Path(path_str)
-                if self.is_excluded(element_path):
-                    lgr.debug(f"Ignoring excluded path {element_path}")
-                    continue
-                traverse_result = self._generate_result(
-                    dataset=dataset,
-                    dataset_path=str(dataset.pathobj),
-                    element_path=element_path,
-                    element_info=element_info
-                )
-                yield PipelineData((
-                    ("path", element_path),
-                    ("dataset-traversal-record", [traverse_result])
-                ))
+        if "dataset" in self.item_set:
+            if self._already_visited(dataset, Path("")):
+                return
+            element_path = resolve_path("", dataset)
+            traverse_result = self._generate_result(
+                dataset=dataset,
+                dataset_path=str(dataset.pathobj),
+                element_path=element_path,
+                element_info={
+                    "type": "dataset",
+                    "state": "",
+                    "gitshasum": "",
+                    "prev_gitshasum": ""
+                }
+            )
+            yield PipelineData((
+                ("path", element_path),
+                ("dataset-traversal-record", [traverse_result])
+            ))
+
+        if "file" in self.item_set:
+            if isinstance(dataset.repo, AnnexRepo):
+                status = get_annexstatus
+            else:
+                status = GitRepo.status
+
+            for path_str, element_info in status(dataset.repo).items():
+                if element_info["type"] == "file":
+                    element_path = Path(path_str)
+                    if self.is_excluded(element_path):
+                        lgr.debug(f"Ignoring excluded path {element_path}")
+                        continue
+                    traverse_result = self._generate_result(
+                        dataset=dataset,
+                        dataset_path=str(dataset.pathobj),
+                        element_path=element_path,
+                        element_info=element_info
+                    )
+                    yield PipelineData((
+                        ("path", element_path),
+                        ("dataset-traversal-record", [traverse_result])
+                    ))
+
+        if self.traverse_sub_datasets:
+            self._traverse_subdatasets(dataset)
+
 
     def _traverse_subdatasets(self,
                               root_dataset: Dataset
