@@ -46,6 +46,7 @@ from datalad.interface.base import (
 )
 from datalad.interface.utils import generic_result_renderer
 from datalad.support.annexrepo import AnnexRepo
+from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
@@ -66,10 +67,7 @@ from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
 
-from .exceptions import (
-    ExtractorNotFoundError,
-    NoDatasetIdFound,
-)
+from .exceptions import ExtractorNotFoundError
 
 from .utils import (
     args_to_dict,
@@ -256,7 +254,7 @@ class Extract(Interface):
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = (
-            [path] + extractorargs
+            [path] + (extractorargs or [])
             if force_dataset_level
             else extractorargs
         )
@@ -287,9 +285,16 @@ class Extract(Interface):
             )
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
+
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()
+            if source_dataset_version is None:
+                # If the version is still None, there is probably no repository
+                # or the repository has no commits.
+                raise NoDatasetFound(
+                    "No valid commits found in dataset at: "
+                    f"{source_dataset.repo.pathobj.absolute()}")
 
         if get_context is True:
             yield dict(

@@ -11,6 +11,7 @@ from datalad.distribution.dataset import (
 )
 from datalad.support.exceptions import NoDatasetFound
 
+from .exceptions import NoDatasetIdFound
 from .metadatatypes import JSONType
 
 
@@ -65,6 +66,11 @@ def check_dataset(dataset_or_path: Union[Dataset, str],
     if not dataset.repo:
         raise NoDatasetFound(
             "No valid datalad dataset found at: "
+            f"{dataset.path}")
+
+    if not dataset.config.get("datalad.dataset.id"):
+        raise NoDatasetIdFound(
+            "No dataset id found in dataset at: "
             f"{dataset.path}")
 
     return dataset

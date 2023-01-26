@@ -1,6 +1,7 @@
 dataclasses_json
 datalad>=0.18
 datalad-metadata-model>=0.3.7
+nose
 pyyaml
 six
 
