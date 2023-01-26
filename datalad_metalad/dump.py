@@ -146,6 +146,9 @@ def show_dataset_metadata(mapper: str,
                           metadata_root_record: MetadataRootRecord
                           ) -> Generator[dict, None, None]:
 
+    if metadata_root_record is None:
+        return
+
     with ensure_mapped(metadata_root_record):
         dataset_level_metadata = metadata_root_record.dataset_level_metadata.read_in()
 
@@ -193,6 +196,9 @@ def show_file_tree_metadata(mapper: str,
                             search_pattern: MetadataPath,
                             recursive: bool
                             ) -> Generator[dict, None, None]:
+
+    if metadata_root_record is None:
+        return
 
     with ensure_mapped(metadata_root_record):
 
