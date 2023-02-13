@@ -5,7 +5,7 @@
 
 Writing custom extractors
 *************************
-Metalad supports the automated extraction of metadata through a common single interface that allows the execution of metadata extractors.
+Metalad supports automated extraction of metadata through a common single interface which allows execution of metadata extractors.
 An extractor, in MetaLad sense, is a class derived from one of the base extractor classes defined in ``datalad_metalad.extractors.base`` (``DatasetMetadataExtractor`` or ``FileMetadataExtractor``).
 It needs to implement several required methods, most notably ``extract()``.
 
@@ -111,9 +111,9 @@ If it returns ``False``, the get operation will not be performed.
 ``extract()``
 -------------
 
-This function is used for actual metadata extraction. It has one parameter called ``output_location``. If the output category of the extractor is ``DataOutputCategory.IMMEDIATE``, this parameter will be ``None``. If the output category is ``DataOutputCategory.FILE``. this parameter will contain either a file name or a ``file``-object into which the extractor can write its output.
+This function is used for actual metadata extraction. It has one parameter called ``output_location``. If the output category of the extractor is ``DataOutputCategory.IMMEDIATE``, this parameter will be ``None``. If the output category is ``DataOutputCategory.FILE``, this parameter will contain either a file name or a ``file``-object into which the extractor can write its output.
 
- The function should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
+The function should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
 The ``ExtractorResult`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ object, containing the following fields:
 
 - ``extractor_version``: a version string representing the extractor's version.
