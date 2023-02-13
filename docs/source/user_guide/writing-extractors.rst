@@ -5,7 +5,7 @@
 
 Writing custom extractors
 *************************
-
+Metalad supports the automated extraction of metadata through a common single interface that allows the execution of metadata extractors.
 An extractor, in MetaLad sense, is a class derived from one of the base extractor classes defined in ``datalad_metalad.extractors.base`` (``DatasetMetadataExtractor`` or ``FileMetadataExtractor``).
 It needs to implement several required methods, most notably ``extract()``.
 
@@ -22,18 +22,19 @@ Base class
 There are two primary types of extractors, dataset-level extractors and file-level extractors.
 
 Dataset-level extractors, by inheritance from the ``DatasetMetadataExtractor`` class, can access the dataset on which they operate as ``self.dataset``.
-Extractor functions may use this object to call any DataLad dataset methods.
+Extractor functions may use this object to call any DataLad dataset methods. They can perform whatever operations they deem necessary to extract metadata from the dataset, for example, they could count the files in the dataset or look for a file named ``CITATION.cff`` in the root directory of the dataset and return its content.
 
-File-level extractors, by inheritance from the ``FileMetadataExtractor``, can refer to the file on which it operates through ``self.file_info``, a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ with ``type``, ``git_sha_sum``, ``byte_size``, ``state``, ``path``, and ``intra_dataset_path`` fields.
+File-level extractors, by inheritance from the ``FileMetadataExtractor``, contain a ``Dataset``-object in the property ``self.dataset`` and a `FileInfo`-object in the propery ``self.file_info``. ``FileInfo`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ with the properties ``type``, ``git_sha_sum``, ``byte_size``, ``state``, ``path``, and ``intra_dataset_path`` fields. File-level extractors should return metadata that describes the file that is referenced by ``FileInfo``.
 
 Required methods
 ================
+Any extractor is expected to implement a number of abstract methods that define the interface through which MetaLad communicates with extractors.
 
 ``get_id()``
 ------------
 
 This function should return a ``UUID`` object containing a UUID which is not used by another metalad-extractor or metalad-filter.
-Since it is meant to uniquely identify the extractor, its return value should be hardcoded, or generated in a deterministic way.
+Since it is meant to uniquely identify the extractor and the type of data it returns, its return value should be hardcoded, or generated in a deterministic way.
 
 A UUID can be generated in several ways, e.g. with Python (``import uuid; print(uuid.uuid4())``), or online generators
 (e.g. https://www.uuidgenerator.net/ or by searching 'UUID' in `DuckDuckGo <https://duckduckgo.com/>`_).
@@ -110,7 +111,9 @@ If it returns ``False``, the get operation will not be performed.
 ``extract()``
 -------------
 
-This function is used for actual metadata extraction, and should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
+This function is used for actual metadata extraction. It has one parameter called ``output_location``. If the output category of the extractor is ``DataOutputCategory.IMMEDIATE``, this parameter will be ``None``. If the output category is ``DataOutputCategory.FILE``. this parameter will contain either a file name or a ``file``-object into which the extractor can write its output.
+
+ The function should return an ``datalad_metalad.extractors.base.ExtractorResult`` object.
 The ``ExtractorResult`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ object, containing the following fields:
 
 - ``extractor_version``: a version string representing the extractor's version.
