@@ -305,17 +305,10 @@ def dump_from_dataset_tree(mapper: str,
 
             # Create a tree search object to search for the specified datasets
             tree_search = MTreeSearch(dataset_tree.mtree)
-
-            if prefix_path == MetadataPath(""):
-                search_results = tree_search.search_pattern(
-                    pattern=metadata_url.dataset_path,
-                    recursive=recursive,
-                    item_indicator=datalad_root_record_name)
-            else:
-                search_results = tree_search.search_pattern(
-                    pattern=metadata_url.dataset_path,
-                    recursive=recursive,
-                    item_indicator=datalad_root_record_name)
+            search_results = tree_search.search_pattern(
+                pattern=metadata_url.dataset_path,
+                recursive=recursive,
+                item_indicator=datalad_root_record_name)
 
             result_count = 0
             for path, node, _ in search_results:
@@ -324,6 +317,11 @@ def dump_from_dataset_tree(mapper: str,
                 mrr = cast(
                     MetadataRootRecord,
                     node.get_child(datalad_root_record_name))
+
+                if mrr is None:
+                    # The metadata root record might be None, if no dataset
+                    # was registered in the dataset tree at this level.
+                    continue
 
                 yield from show_dataset_metadata(
                     mapper,
