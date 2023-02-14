@@ -24,7 +24,7 @@ There are two primary types of extractors, dataset-level extractors and file-lev
 Dataset-level extractors, by inheritance from the ``DatasetMetadataExtractor`` class, can access the dataset on which they operate as ``self.dataset``.
 Extractor functions may use this object to call any DataLad dataset methods. They can perform whatever operations they deem necessary to extract metadata from the dataset, for example, they could count the files in the dataset or look for a file named ``CITATION.cff`` in the root directory of the dataset and return its content.
 
-File-level extractors, by inheritance from the ``FileMetadataExtractor``, contain a ``Dataset``-object in the property ``self.dataset`` and a `FileInfo`-object in the propery ``self.file_info``. ``FileInfo`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ with the properties ``type``, ``git_sha_sum``, ``byte_size``, ``state``, ``path``, and ``intra_dataset_path`` fields. File-level extractors should return metadata that describes the file that is referenced by ``FileInfo``.
+File-level extractors, by inheritance from the ``FileMetadataExtractor``, contain a ``Dataset``-object in the property ``self.dataset`` and a ``FileInfo``-object in the property ``self.file_info``. ``FileInfo`` is a `dataclass <https://docs.python.org/3/library/dataclasses.html>`_ with the properties ``type``, ``git_sha_sum``, ``byte_size``, ``state``, ``path``, and ``intra_dataset_path`` fields. File-level extractors should return metadata that describes the file that is referenced by ``FileInfo``.
 
 Required methods
 ================
@@ -146,6 +146,38 @@ Example::
 	  },
 	  immediate_data=yamlContent,
       )
+
+Passing runtime parameter to extractors
+=======================================
+When an extractor is executed via ``meta-extract``, you can pass runtime
+parameter to it. The runtime parameters are given as key-value pairs after
+the ``EXTRACTOR_NAME``-parameter in dataset level extraction commands, or
+after the ``FILE``-parameter in file-level extraction commands. Each key-value
+pair consists of two arguments, first the key, followed by the value.
+
+The parameters are provided to dataset-level or file-level extractors in the
+extractor property ``self.parameter``. The property contains a dictionary that
+holds the given key-value pairs.
+
+For example, the following call::
+
+ datalad meta-extract -d . metalad_example_file README.md key1 value1 key2 value2
+
+Will place the following dictionary in the ``parameter`` property of the
+extractor instance::
+
+ {'key1': 'value1', 'key2': 'value2'}
+
+
+
+Please not, if dataset level extraction should be performed and you want to provide extractor
+parameter, you have to provide thw ``--force_dataset_level`` parameter to ensure
+dataset-level extraction. i.e. to prevent ``meta-extract`` from interpreting the
+key of the first extractor argument as file name for a file-level extraction.
+
+Please note also that only extractors that are derive from the classes ``FileMetadataExtractor`` or ``DatasetMetadataExtractor`` have a ``parameter``-property
+and are able to read the parameters that are provided in the command line.
+
 
 Making extractors discoverable
 ==============================
