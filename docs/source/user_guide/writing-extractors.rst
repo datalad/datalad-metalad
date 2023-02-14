@@ -171,12 +171,46 @@ extractor instance::
 
 
 Please not, if dataset level extraction should be performed and you want to provide extractor
-parameter, you have to provide thw ``--force_dataset_level`` parameter to ensure
+parameter, you have to provide thw ``--force-dataset-level`` parameter to ensure
 dataset-level extraction. i.e. to prevent ``meta-extract`` from interpreting the
 key of the first extractor argument as file name for a file-level extraction.
 
 Please note also that only extractors that are derive from the classes ``FileMetadataExtractor`` or ``DatasetMetadataExtractor`` have a ``parameter``-property
 and are able to read the parameters that are provided in the command line.
+
+
+Use external programs for metadata extraction
+=============================================
+
+Consider the situation where you have an external program, that is able to
+extract metadata from a dataset or a file. There might be many reasons, why you
+cannot create an equivalent extractor in Python. For example, the algorithm is
+unknown and you only have a binary version, a Python version might be too slow,
+you cannot afford the effort.
+
+Metalad provides specific extractors that invoke external programs to perform
+extraction, i.e. ``metalad_external_file`` and ``metalad_external_dataset``.
+Those extractors interact with external programs via standard input and
+standard output in order to query them, for example, for their
+UUID and their output category. The external programs are expected to support
+execution with one of the following parameters::
+
+ --get-uuid
+ --get-version
+ --get-data-output-category
+
+In addition external file-level extractor programs must support::
+
+ --is-content-required
+ --extract <dataset-path> <dataset-ref-commit> <file-path> <dataset-relative-file-path>
+
+and the external dataset-level extractor programs must support::
+
+ --get-required
+ --extract <dataset-path> <dataset-ref-commit>
+
+Usually the external extractor has to be wrapped into a thin layer
+that provides the interface that is outlined above.
 
 
 Making extractors discoverable
@@ -188,11 +222,12 @@ You can define the entrypoint name, and specify which extractor class it should 
 It is recommended to give the extractor name a prefix, to reduce the risk of name collisions.
 
 Example::
-  
+
   [options.entry_points]
   # (...)
   datalad.metadata.extractors =
     hello_cff = datalad_helloworld.extractors.basic_dataset:CffExtractor
+
 
 Tips
 ====
@@ -206,6 +241,3 @@ For example, a list of files with a given extension (including those in subfolde
 
   files = list(self.dataset.repo.call_git_items_(["ls-files", "*.xyz"]))
 
-.. TODO::
-   - Explain how extractors can use extraction parameters passed to a calling command
-   - Include a short description of how ``metalad_external_[dataset|file]`` extractors can be an alternative to writing custom extractors if an external process for generating metadata already exists
