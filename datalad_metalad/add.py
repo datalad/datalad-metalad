@@ -870,8 +870,6 @@ def add_metadata_content(metadata: Metadata, ap: AddParameter):
 def _stdin_reader() -> Generator:
     for line in sys.stdin:
         if line == "\n":
-            sys.stdout.write("\n")
-            sys.stdout.flush()
             return
         try:
             yield json.loads(line)
