@@ -12,6 +12,8 @@ that ship with the DataLad core package.
 .. autosummary::
    :toctree: generated
 
+   meta_add
    meta_extract
    meta_aggregate
    meta_dump
+   meta_conduct
