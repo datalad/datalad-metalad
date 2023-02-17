@@ -16,3 +16,4 @@ To use any of the contained extractors their names needs to be prefixed with
    annex
    custom
    runprov
+   studyminimeta
