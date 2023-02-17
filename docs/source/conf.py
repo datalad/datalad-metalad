@@ -14,6 +14,7 @@
 
 import sys
 import os
+import datetime
 from os.path import join as opj, exists
 from os.path import dirname
 from os import pardir
@@ -83,8 +84,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Datalad Revolution'
-copyright = u'2018-, DataLad team'
+project = u'Datalad MetaLad'
+copyright = u'2018-{}, DataLad team'.format(datetime.datetime.now().year)
 author = u'DataLad team'
 
 # The version info for the project you're documenting, acts as replacement for
