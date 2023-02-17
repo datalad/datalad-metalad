@@ -83,7 +83,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Datalad Revolution'
+project = u'Datalad MetaLad'
 copyright = u'2018-, DataLad team'
 author = u'DataLad team'
 
