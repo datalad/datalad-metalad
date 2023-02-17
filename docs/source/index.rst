@@ -18,6 +18,13 @@ Commands and API
    api
    extractors
 
+User guide
+----------
+
+.. toctree::
+   :maxdepth: 2
+
+   user_guide/index
 
 Concepts and technologies
 -------------------------
@@ -29,13 +36,6 @@ Concepts and technologies
    acknowledgements
 
 
-User guide
-----------
-
-.. toctree::
-   :maxdepth: 2
-
-   user_guide/index
 
 
 Indices and tables
