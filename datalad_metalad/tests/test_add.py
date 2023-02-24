@@ -9,10 +9,8 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test metadata adding"""
 import json
-import os
 import tempfile
 import time
-from pathlib import Path
 from typing import (
     List,
     Union,
@@ -74,13 +72,6 @@ metadata_template = {
 
 additional_keys_template = {
     "root_dataset_id": str(default_id),
-    "root_dataset_version": "aaaaaaa0000000000000000222222222",
-    "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
-}
-
-
-additional_keys_unknown_template = {
-    "root_dataset_id": "<unknown>",
     "root_dataset_version": "aaaaaaa0000000000000000222222222",
     "dataset_path": "sub_0/sub_0.0/dataset_0.0.0"
 }
@@ -403,7 +394,9 @@ def test_override_key_allowed(file_name=None):
 def _get_top_nodes(git_repo,
                    dataset_id,
                    dataset_version,
-                   dataset_tree_path=""):
+                   dataset_tree_path="",
+                   sub_dataset_id=None,
+                   sub_dataset_version=None):
 
     # Ensure that metadata was created
     tree_version_list, uuid_set, mrr = \
@@ -414,8 +407,8 @@ def _get_top_nodes(git_repo,
             primary_data_version=dataset_version,
             prefix_path=MetadataPath(""),
             dataset_tree_path=MetadataPath(dataset_tree_path),
-            sub_dataset_id=None,
-            sub_dataset_version=None)
+            sub_dataset_id=sub_dataset_id,
+            sub_dataset_version=sub_dataset_version)
 
     assert_is_not_none(tree_version_list)
     assert_is_not_none(uuid_set)
@@ -534,6 +527,8 @@ def test_subdataset_add_dataset_end_to_end(file_name=None):
         assert_result_count(res, 0, type='file')
 
         # Verify dataset level metadata was added
+        dataset_id = UUID(metadata_template["dataset_id"])
+        dataset_version = metadata_template["dataset_version"]
         root_dataset_id = UUID(additional_keys_template["root_dataset_id"])
         root_dataset_version = additional_keys_template["root_dataset_version"]
         dataset_tree_path = MetadataPath(
@@ -543,7 +538,9 @@ def test_subdataset_add_dataset_end_to_end(file_name=None):
             git_repo,
             root_dataset_id,
             root_dataset_version,
-            additional_keys_template["dataset_path"])
+            additional_keys_template["dataset_path"],
+            dataset_id,
+            dataset_version)
 
         _, _, dataset_tree = tree_version_list.get_dataset_tree(
             root_dataset_version,
@@ -585,6 +582,8 @@ def test_subdataset_add_file_end_to_end(file_name=None):
         assert_result_count(res, 0, type='dataset')
 
         # Verify dataset level metadata was added
+        dataset_id = UUID(metadata_template["dataset_id"])
+        dataset_version = metadata_template["dataset_version"]
         root_dataset_id = UUID(additional_keys_template["root_dataset_id"])
         root_dataset_version = additional_keys_template["root_dataset_version"]
         dataset_tree_path = MetadataPath(
@@ -594,7 +593,9 @@ def test_subdataset_add_file_end_to_end(file_name=None):
             git_repo,
             root_dataset_id,
             root_dataset_version,
-            additional_keys_template["dataset_path"])
+            additional_keys_template["dataset_path"],
+            dataset_id,
+            dataset_version)
 
         _, _, dataset_tree = tree_version_list.get_dataset_tree(
             root_dataset_version,
@@ -644,7 +645,7 @@ def test_current_dir_add_end_to_end(file_name=None):
 
         expected = {
             **metadata_template,
-            **additional_keys_unknown_template,
+            **additional_keys_template,
             "type": "dataset",
             "dataset_id": str(another_id),
         }
@@ -703,7 +704,7 @@ def test_add_file_dump_end_to_end(file_name=None):
 
         expected = {
             **metadata_template,
-            **additional_keys_unknown_template,
+            **additional_keys_template,
             "type": "file",
             "path": test_path,
             "dataset_id": str(another_id)
