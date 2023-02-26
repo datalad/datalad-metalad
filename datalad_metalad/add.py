@@ -472,16 +472,17 @@ def add_finite_set(metadata_objects: List[JSONType],
                 tvl_us_cache=tvl_us_cache,
                 mrr_cache=mrr_cache)
 
-            error_result = check_dataset_ids(
-                metadata_store,
-                UUID(dataset_id),
-                add_parameter)
+            if not un_versioned_path:
+                error_result = check_dataset_ids(
+                    metadata_store,
+                    UUID(dataset_id),
+                    add_parameter)
 
-            if error_result:
-                if not allow_id_mismatch:
-                    yield error_result
-                    continue
-                lgr.warning(error_result["message"])
+                if error_result:
+                    if not allow_id_mismatch:
+                        yield error_result
+                        continue
+                    lgr.warning(error_result["message"])
 
             # If the key "path" is present in the metadata
             # dictionary, we assume that the metadata-dictionary describes
@@ -673,6 +674,8 @@ def _get_top_nodes(realm: Path,
         # path element in the version list (which confusingly is also called
         # "path".
         assert ap.dataset_path in (top_level_dataset_tree_path, None)
+
+        # We leave the creation of the respective nodes to auto_create
         return get_top_nodes_and_metadata_root_record(
             mapper_family=default_mapper_family,
             realm=str(realm),
@@ -684,10 +687,10 @@ def _get_top_nodes(realm: Path,
             sub_dataset_version=None,
             auto_create=True)
 
-    # This is an aggregated add. The inter-dataset path (aka. dataset-tree-path)
+    # This is an aggregated add. The inter-dataset path (aka: dataset-tree-path)
     # must not be "", and the un-versioned path must be "".
-    assert ap.dataset_path != MetadataPath("")
-    assert ap.unversioned_path == MetadataPath("")
+    assert ap.dataset_path != top_level_dataset_tree_path
+    assert ap.unversioned_path == top_level_dataset_tree_path
 
     # We get the dataset tree for the root version. From this we have to load
     # or create a metadata root record for the sub-dataset id and sub-dataset
