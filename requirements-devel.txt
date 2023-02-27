@@ -1,7 +1,6 @@
 dataclasses_json
 datalad>=0.18
 datalad-metadata-model>=0.3.10
-pytest
 pyyaml
 six
 
@@ -13,6 +12,7 @@ sphinx-rtd-theme
 build
 coverage
 mypy
+pytest
 pytest-cov
 twine
 

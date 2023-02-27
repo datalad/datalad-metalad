@@ -28,7 +28,6 @@ from datalad.support.constraints import (
 )
 from datalad.support.exceptions import NoDatasetFound
 from datalad.support.gitrepo import GitRepo
-from datalad.tests.utils import get_annexstatus
 
 from .base import Provider
 from ..documentedinterface import (
@@ -103,6 +102,34 @@ class DatasetTraverseResult(PipelineResult):
                else {}
                )
         )
+
+
+# The following code is copied from datalad.tests.utils because importing
+# it from there pulls in `pytest` and `nose`
+def get_annexstatus(ds, paths=None):
+    """Report a status for annexed contents.
+
+    Assemble states for git content info, amended with annex info on 'HEAD'
+    (to get the last committed stage and with it possibly vanished content),
+    and lastly annex info wrt to the present worktree, to also get info on
+    added/staged content this fuses the info reported from
+    - git ls-files
+    - git annex findref HEAD
+    - git annex find --include '*'"""
+    info = ds.get_content_annexinfo(
+        paths=paths,
+        eval_availability=False,
+        init=ds.get_content_annexinfo(
+            paths=paths,
+            ref='HEAD',
+            eval_availability=False,
+            init=ds.status(
+                paths=paths,
+                eval_submodule_state='full')
+        )
+    )
+    ds._mark_content_availability(info)
+    return info
 
 
 class DatasetTraverser(Provider):
