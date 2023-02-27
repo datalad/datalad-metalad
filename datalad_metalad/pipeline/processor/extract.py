@@ -100,7 +100,7 @@ class MetadataExtractor(Processor):
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
                 path=intra_dataset_path,
-                file_info=dataset_traverse_record.element_info.to_json(),
+                file_info=dataset_traverse_record.element_info.to_dict(),
                 result_renderer="disabled")
         elif object_type == "dataset":
             kwargs = dict(

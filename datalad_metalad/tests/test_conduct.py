@@ -109,11 +109,14 @@ class ConductTestResult(PipelineResult):
 class StringResult(PipelineResult):
     content: str
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> Dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "content": self.content
         }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
 
 class ConductTestTraverser(Provider):
@@ -247,7 +250,8 @@ def test_multiple_adder():
                     ]
                 ))
             ],
-            configuration=adder_pipeline))
+            configuration=adder_pipeline,
+            processing_mode="sequential"))
 
     eq_(len(pipeline_results), 1)
     result = pipeline_results[0]

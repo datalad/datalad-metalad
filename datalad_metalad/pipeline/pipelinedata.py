@@ -20,8 +20,11 @@ class PipelineDataState(Enum):
     CONTINUE = "continue"
     STOP = "stop"
 
+    def to_dict(self) -> str:
+        return self.name
+
     def to_json(self):
-        return f'"{self.name}"'
+        return json.dumps(self.to_dict())
 
 
 @dataclass
@@ -94,8 +97,8 @@ class PipelineData:
             "result": self._result
         })
 
-    def to_json(self) -> Dict:
-        json_obj = {
+    def to_dict(self) -> Dict:
+        obj = {
             "state": self.state.name,
             "result": {
                 key: [
@@ -106,5 +109,8 @@ class PipelineData:
                 if key not in ("path",)
             }
         }
-        json_obj["result"]["path"] = str(self._result["path"])
-        return json_obj
+        obj["result"]["path"] = str(self._result["path"])
+        return obj
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())

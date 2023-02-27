@@ -36,7 +36,7 @@ class MetadataAddResult(PipelineResult):
 
     def to_json(self) -> Dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "path": str(self.path)
         }
 
