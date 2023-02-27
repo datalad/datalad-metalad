@@ -93,7 +93,7 @@ class MetadataExtractor(Processor):
         intra_dataset_path = (
             ""
             if object_type == "dataset"
-            else dataset_traverse_record.element_info.path.intra_dataset_path)
+            else dataset_traverse_record.element_info.intra_dataset_path)
 
         if object_type == "file":
             kwargs = dict(
