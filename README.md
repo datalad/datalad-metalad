@@ -52,9 +52,6 @@ with the release.
 - `meta-ingest-previous` -- ingest metadata from `metalady<=0.2.1`.
 
 
-*A word of caution: documentation is still lacking and will be addressed with release 0.3.1.*
-
-
 #### Additional metadata extractor implementations
 
 - Compatible with the previous families of extractors provided by datalad
