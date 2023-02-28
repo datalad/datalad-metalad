@@ -397,7 +397,7 @@ def copy_to_existing(destination_metadata_store: str,
     #  object, we have to read in the object after copying it
     #  only, to write it out again. This is wasteful. We should
     #  instead specify that the top-level object, here: the
-    #  DatasetTree, is not writen out.
+    #  DatasetTree, is not written out.
     copied_dataset_tree.read_in()
 
     root_dataset_tree.add_subtree(
@@ -498,7 +498,7 @@ def copy_tree_version_list(destination_metadata_store: str,
                 #  object, we have to read in the object after copying it
                 #  only, to write it out again. This is wasteful. We should
                 #  instead specify that the top-level object, here: the
-                #  DatasetTree, is not writen out.
+                #  DatasetTree, is not written out.
                 copied_dataset_tree.read_in()
 
                 destination_tree_version_list.set_dataset_tree(

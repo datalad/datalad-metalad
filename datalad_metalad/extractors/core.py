@@ -355,7 +355,7 @@ def _get_commit_info(ds, refcommit, status):
         )
     ]
     # version, always anchored on the first commit (tags could move and
-    # make the integer commit count ambigous, and subtantially complicate
+    # make the integer commit count ambiguous, and subtantially complicate
     # version comparisons
     version = '0-{}-g{}'.format(
         len(commits),

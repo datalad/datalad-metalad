@@ -78,7 +78,7 @@ def get_file_id(rec):
 
     Any ID string is prefixed with 'datalad:' to identify it as a
     DataLad-recognized ID. This prefix is defined in the main JSON-LD
-    context defintion.
+    context definition.
     """
     from datalad.support.digests import Digester
 
