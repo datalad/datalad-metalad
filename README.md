@@ -10,7 +10,7 @@ with an alternative command suite for metadata handling (extraction, aggregation
 filtering, and reporting).
 
 
-Command(s) currently provided by this extension
+#### Command(s) currently provided by this extension
 
 - `meta-extract` -- run an extractor on a file or dataset and emit the 
 resulting metadata (stdout).
@@ -35,7 +35,7 @@ such as metadata-extraction and metadata-adding.Processors
 are usually executed in parallel. A few pipeline definitions are provided
 with the release.
 
-Commands currently under development:
+#### Commands currently under development:
 
 - `meta-export` -- write a flat representation of metadata to a file-system. For now you
   can export your metadata to a JSON-lines file named `metadata-dump.jsonl`:
@@ -55,7 +55,7 @@ Commands currently under development:
 *A word of caution: documentation is still lacking and will be addressed with release 0.3.1.*
 
 
-Additional metadata extractor implementations
+#### Additional metadata extractor implementations
 
 - Compatible with the previous families of extractors provided by datalad
 and by metalad, i.e. `metalad_core`, `metalad_annex`, `metalad_custom`, `metalad_runprov`
@@ -74,7 +74,7 @@ data in the input file
 
 
 
-Indexers
+#### Indexers
 
 - Provides indexers for the new datalad indexer-plugin interface. These indexers
 convert metadata in proprietary formats into a set of key-value pairs that can
