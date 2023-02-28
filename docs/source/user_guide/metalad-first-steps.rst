@@ -68,10 +68,10 @@ Metalad allows you to *associate* metadata with datalad datasets or
 files in datalad-datasets. More specifically, metadata can be associated
 with: datasets, sub-datasets, and files in a dataset or sub-dataset.
 
-Metalad can add associate an aribtrary amount of individual metadata
+Metalad can associate an arbitrary amount of individual metadata
 *instances* with a single element (dataset or file). Each metadata
 instance is identified by a *type-name* that specifies the type of the
-data contained in the metadata instance. For exameple: ``metalad_core``,
+data contained in the metadata instance. For example: ``metalad_core``,
 ``bids``, etc.
 
 .. note:: Implementation side note:
@@ -120,7 +120,7 @@ or file) and return arbitrary metadata in JSON-format. Meta-extract will
 associate the metadata with the metadata element.
 
 Metalad comes with a number of extractors. Some extractors are provided
-by metalad, some are inherited from datalad. The provided extrators
+by metalad, some are inherited from datalad. The provided extractors
 generate provenance records for datasets and data, or they extract
 metadata from specific files or data-structures, e.g. BIDS. In principle
 any processing is possible. There is also a generic extractor, which
@@ -205,7 +205,7 @@ argument, besides the extractor-name, to ``datalad meta-extract``. The
 second argument identifies the file for which metadata should be
 extracted.
 
-NB: you must specifiy an extractor that supports file-level extraction
+NB: you must specify an extractor that supports file-level extraction
 if a file-name is passed to ``datalad meta-extract``, and an extractor
 that supports dataset-level extraction if no file-name is passed to
 ``datalad meta-extract``. The extractor ``metalad_core`` supports both
