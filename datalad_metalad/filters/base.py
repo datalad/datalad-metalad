@@ -38,7 +38,7 @@ class MetadataFilterBase(metaclass=abc.ABCMeta):
 
         This method is called by the 'meta-filter' driver. It should iterate
         through the metadata instances that are provided by the metadata
-        coordinates, perform the filter operation one yield the resulting
+        coordinates, perform the filter operation and yield the resulting
         metadata objects as instances of "datalad_metalad.metadatatypes.Metadata".
 
         Returned metadata is emitted as datalad invocation result, e.g. as
