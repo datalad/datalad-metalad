@@ -1,4 +1,4 @@
 [codespell]
-skip = .git,*.pdf,*.svg,venvs,versioneer.py,_version.py
+skip = .git,*.pdf,*.svg,venvs,versioneer.py,_version.py,.tox
 # mke -- is a variable name which makes sense, let's ignore for now until inline skips are supported
 ignore-words-list = mke
