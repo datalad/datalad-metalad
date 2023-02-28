@@ -1,7 +1,7 @@
 Meet Metalad, an extension to datalad that supports metadata handling
 *********************************************************************
 
-This Gist will show you how to install ``metalad``, create a datalad
+This chapter will show you how to install ``metalad``, create a datalad
 dataset and how to work with metadata. Working with metadata means,
 adding metadata, viewing metadata, and aggregating metadata.
 
@@ -9,20 +9,17 @@ Below you will find examples and instructions on how to install metalad,
 how to create an example dataset and how to work with metadata. You will
 learn how to add metadata, how to display metadata that is stored
 locally or remotely, and how to combine (aka aggregate) metadata from
-multiple datasets
-
-Upcoming: how to delete metadata, how to filter metadata, and how to
-export metadata.
+multiple datasets.
 
 Preparations
 =============
 
 Install metalad and create a datalad dataset
 
-Install metalad (on Linux)
---------------------------
+Install metalad
+---------------
 
-Create a virtual python environment and activate it.
+Create a virtual python environment and activate it (Linux example shown).
 
 .. code:: shell
 
@@ -93,10 +90,6 @@ essential elementary metadata operations:
 
 -  ``meta-dump`` show metadata stored in a local or remote dataset
 
--  [``meta-delete`` remove metadata]
-
--  [``meta-export`` store metadata on the file-system in a space
-   optimized flat hierarchy]
 
 The porcelain
 -------------
@@ -114,6 +107,9 @@ level functions and tools that implement typical use cases.
 
 -  ``meta-aggregate`` combine metadata from number of sub-datasets into
    the root-dataset.
+
+- ``meta-filter`` walk through metadata from multiple stores, apply a
+  filter, and output new metadata
 
 Metadata extractors
 -------------------
@@ -269,7 +265,7 @@ To view the metadata that has been stored in a dataset, you can use the
 ``datalad`` command ``meta-dump``. The following command will show all
 metadata that is stored in the dataset. Metadata is displayed in JSON
 Lines-format (aka newline-delimited JSON), which is a number of lines
-where each lines contains a serialized JSON object.
+where each line contains a serialized JSON object.
 
 .. code:: shell
 
@@ -292,7 +288,7 @@ configured to execute a number of ``meta-extract`` and ``meta-add``
 commands automatically in parallel. The operations that ``meta-conduct``
 should perform are defined in pipeline definitions. A few pipeline
 definitions are provided with metalad, and we will use the
-``meta_extract`` pipeline.
+``extract_metadata`` pipeline.
 
 Adding dataset-level metadata
 -----------------------------
@@ -311,20 +307,20 @@ You will get an output which is similar to:
 
 What happened?
 
-You just ran the ``meta_extract`` pipeline and specified that you want
-to traverse the current directory (:literal:`traverser:`pwd\``), and
-that you want to operate on all datasets that are encountered
-(``traverser:Dataset``). You also specified that, for each element found
-during traversal, you would like to execute a dataset-level extractor
-(``extractor:dataset``) with the name ``metalad_core``
+You just ran the ``extract_metadata`` pipeline and specified that you
+want to traverse the current directory (:literal:`traverser:`pwd\``),
+and that you want to operate on all datasets that are encountered
+(``traverser:Dataset``). You also specified that, for each element
+found during traversal, you would like to execute a dataset-level
+extractor (``extractor:dataset``) with the name ``metalad_core``
 (``extractor:metalad_core``).
 
-The pipeline found one dataset in the current directory and added it the
-metadata. Since you have done that already before using ``meta-extract``
-and ``meta-add``, you have the same number of metadata entries in the
-metadata store. That means ``datalad meta-dump -r`` will give you three
-results. But you might notice, that the ``extraction-time`` of the
-dataset-level entry has changed.
+The pipeline found one dataset in the current directory and added the
+metadata to it. Since you have done that already before using
+``meta-extract`` and ``meta-add``, you have the same number of
+metadata entries in the metadata store. That means ``datalad meta-dump
+-r`` will give you three results. But you might notice that the
+``extraction-time`` of the dataset-level entry has changed.
 
 Metalad comes with different pre-built pipelines. Some allow to
 automatically fetch an annexed file and automatically drop said file,
@@ -477,3 +473,8 @@ this:
    {"type": "file", "path": "file.bin", "dataset_id": "ceeb844a-c6e8-4b2f-bb7c-62b7ae449a9f", "dataset_version": "bcf9cfde4a599d26094a58efbe4369e0878cb9c8", "extraction_time": 1638357864.5327883, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@id": "datalad:MD5E-s512000--816df6f64deba63b029ca19d880ee10a.bin", "contentbytesize": 512000}}
    {"type": "dataset", "root_dataset_id": "<unknown>", "root_dataset_version": "7228f027171f7b8949a47812a651600412f2577e", "dataset_path": "subds1", "dataset_id": "4e3422f4-b606-4cf9-818a-a3bb840e3396", "dataset_version": "ddf2a2758fd6773a1171a6fbae4afe48cc982773", "extraction_time": 1638357869.7052076, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@context": {"@vocab": "http://schema.org/", "datalad": "http://dx.datalad.org/"}, "@graph": [{"@id": "59286713dacabfbce1cecf4c865fff5a", "@type": "agent", "name": "Your Name", "email": "you@example.com"}, {"@id": "ddf2a2758fd6773a1171a6fbae4afe48cc982773", "identifier": "4e3422f4-b606-4cf9-818a-a3bb840e3396", "@type": "Dataset", "version": "0-3-gddf2a27", "dateCreated": "2021-12-01T12:24:25+01:00", "dateModified": "2021-12-01T12:24:27+01:00", "hasContributor": {"@id": "59286713dacabfbce1cecf4c865fff5a"}}]}}
    {"type": "file", "path": "file_subds1.1.txt", "root_dataset_id": "<unknown>", "root_dataset_version": "7228f027171f7b8949a47812a651600412f2577e", "dataset_path": "subds1", "dataset_id": "4e3422f4-b606-4cf9-818a-a3bb840e3396", "dataset_version": "ddf2a2758fd6773a1171a6fbae4afe48cc982773", "extraction_time": 1638357868.706351, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@id": "datalad:SHA1-s36--9ce18068eb4126c23235d965c179b2a53546d104", "contentbytesize": 36}}
+
+
+.. todo::
+
+   Upcoming: how to delete metadata, how to filter metadata, and how to export metadata.
