@@ -171,7 +171,7 @@ extractor instance::
 
 
 Please not, if dataset level extraction should be performed and you want to provide extractor
-parameter, you have to provide thw ``--force-dataset-level`` parameter to ensure
+parameter, you have to provide the ``--force-dataset-level`` parameter to ensure
 dataset-level extraction. i.e. to prevent ``meta-extract`` from interpreting the
 key of the first extractor argument as file name for a file-level extraction.
 
