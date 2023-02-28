@@ -1,6 +1,4 @@
 six
-# replace the following line with the datalad version without
-# metadata code, when that is released, e.g.
 datalad>=0.18
 sphinx>=1.7.8
 sphinx-rtd-theme
