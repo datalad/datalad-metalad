@@ -72,6 +72,6 @@ Certain versions of MetaLad metadata are temporarily incompatible.
 
 .. note:: Incompability of 0.3.0 and 0.2.x
 
-   Please note that the metadata storage format introduced in release ``0.3.0`` is incompatible with the metadata storage formate in previous versions, i.e. `0.2.x`, and those in ``datalad-deprecated``.
+   Please note that the metadata storage format introduced in release ``0.3.0`` is incompatible with the metadata storage format in previous versions, i.e. `0.2.x`, and those in ``datalad-deprecated``.
    Both storage formats can coexist in storage, but version ``0.3.0`` of MetaLad will not	be able to read metadata that was stored by the previous version and vice versa.
    Eventually there will be an importer that will pull old-version metadata into the new metadata storage.
