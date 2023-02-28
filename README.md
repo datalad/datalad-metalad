@@ -49,7 +49,7 @@ with the release.
      datalad meta-add -d <dataset-path> --json-lines -i metadata-dump.jsonl
     ```
 
-- `meta-ingest-previous` -- ingest metadata from `metalady<=0.2.1`.
+- `meta-ingest-previous` -- ingest metadata from `metalad<=0.2.1`.
 
 
 #### Additional metadata extractor implementations
