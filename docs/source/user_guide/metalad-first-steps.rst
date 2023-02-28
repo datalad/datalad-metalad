@@ -1,5 +1,5 @@
 Meet Metalad, an extension to datalad that supports metadata handling
-=====================================================================
+*********************************************************************
 
 This Gist will show you how to install ``metalad``, create a datalad
 dataset and how to work with metadata. Working with metadata means,
@@ -14,13 +14,13 @@ multiple datasets
 Upcoming: how to delete metadata, how to filter metadata, and how to
 export metadata.
 
-1. Preparations
----------------
+Preparations
+=============
 
 Install metalad and create a datalad dataset
 
-1.1. Install metalad (on Linux)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Install metalad (on Linux)
+--------------------------
 
 Create a virtual python environment and activate it.
 
@@ -35,8 +35,8 @@ Install the latest version of metalad
 
    > pip install --upgrade datalad-metalad
 
-1.2. Create a datalad dataset
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a datalad dataset
+------------------------
 
 The following command creates a datalad dataset that stores text-files
 in git and non-text files in git-annex.
@@ -60,8 +60,8 @@ Add a binary file to the dataset
    > dd if=/dev/zero of=file.bin count=1000
    > datalad save
 
-3. Working with metadata
-------------------------
+Working with metadata
+=====================
 
 This chapter provides an overview of commands in metalad. If you want to
 continue with the hands-on examples, skip to next chapter (and probably
@@ -77,12 +77,13 @@ instance is identified by a *type-name* that specifies the type of the
 data contained in the metadata instance. For exameple: ``metalad_core``,
 ``bids``, etc.
 
-   Implementation side note: The metadata associations can in principle
-   be stored in any git-repository, but are by default stored in the
-   git-repository of a root dataset.
+.. note:: Implementation side note:
+   The metadata associations can in principle be stored in any
+   git-repository, but are by default stored in the git-repository of
+   a root dataset.
 
-3.1. The plumbing
-~~~~~~~~~~~~~~~~~
+The plumbing
+------------
 
 Metalad has a few basic commands, aka plumbing commands, that perform
 essential elementary metadata operations:
@@ -97,8 +98,8 @@ essential elementary metadata operations:
 -  [``meta-export`` store metadata on the file-system in a space
    optimized flat hierarchy]
 
-3.2. The porcelain
-~~~~~~~~~~~~~~~~~~
+The porcelain
+-------------
 
 To simplify working with metadata, metalad provides a number of higher
 level functions and tools that implement typical use cases.
@@ -114,8 +115,8 @@ level functions and tools that implement typical use cases.
 -  ``meta-aggregate`` combine metadata from number of sub-datasets into
    the root-dataset.
 
-3.3. Metadata extractors
-~~~~~~~~~~~~~~~~~~~~~~~~
+Metadata extractors
+-------------------
 
 Datalad supports pluggable metadata extractors. Metadata extractors can
 perform arbitrary operations on the given element (dataset, sub-dataset,
@@ -129,11 +130,11 @@ metadata from specific files or data-structures, e.g. BIDS. In principle
 any processing is possible. There is also a generic extractor, which
 allows to invoke external commands to generate metadata.
 
-4. Metadata extraction examples
-===============================
+Metadata extraction examples
+============================
 
-4.1. Extract dataset-level metadata
------------------------------------
+Extract dataset-level metadata
+------------------------------
 
 Extract dataset-level metadata with the ``datalad`` command
 ``meta-extract``. It takes a number of optional arguments and one
@@ -147,7 +148,7 @@ used. We use ``metalad_core`` for now.
 The extracted metadata will be written to stdout and will look similar
 to this (times, names, and UUIDs will be different for you):
 
-.. code:: shell
+.. code:: json
 
    {"type": "dataset", "dataset_id": "853d9356-fc2e-459e-96bc-02414a1fef93", "dataset_version": "8d6d0e50a27b7540717360e21332b1ad0c924415", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extraction_time": 1637921555.282522, "agent_name": "Your Name", "agent_email": "you@example.com", "extracted_metadata": {"@context": {"@vocab": "http://schema.org/", "datalad": "http://dx.datalad.org/"}, "@graph": [{"@id": "59286713dacabfbce1cecf4c865fff5a", "@type": "agent", "name": "Your Name", "email": "you@example.com"}, {"@id": "8d6d0e50a27b7540717360e21332b1ad0c924415", "identifier": "853d9331-fc2e-459e-96bc-02414a1fef93", "@type": "Dataset", "version": "0-3-g8d6d0e5", "dateCreated": "2021-11-26T11:03:25+01:00", "dateModified": "2021-11-26T11:09:27+01:00", "hasContributor": {"@id": "59286713dacabfbce1cecf4c865fff5a"}}]}}
 
@@ -159,9 +160,9 @@ the JSON-object. For example the command:
 
    > datalad meta-extract metalad_core|jq .
 
-would result in an output similar to::
+would result in an output similar to:
 
-.. code:: shell
+.. code:: json
 
    {
      "type": "dataset",
@@ -199,8 +200,8 @@ would result in an output similar to::
        ]
      }
 
-4.2. Extract file-level metadata
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Extract file-level metadata
+---------------------------
 
 The ``datalad`` command ``meta-extract`` also support the extraction of
 file-level metadata. File-level metadata extraction requires a second
@@ -223,12 +224,12 @@ command:
 
 which will lead to an output similar to:
 
-::
+.. code:: json
 
    {"type": "file", "dataset_id": "853d9331-fc2e-459e-96bc-02414a1fef93", "dataset_version": "ee512961b878a674c8068e54656e161d40566d9b", "path": "file1.txt", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extraction_time": 1637927097.2165475, "agent_name": "Your Name", "agent_email": "you@example.com", "extracted_metadata": {"@id": "datalad:SHA1-s13--2ef267e25bd6c6a300bb473e604b092b6a48523b", "contentbytesize": 13}}
 
-5. Add metadata
-===============
+Add metadata
+============
 
 You can add extracted metadata to the dataset (metadata will be stored
 in a special area of the git-repository and not interfere with your data
@@ -246,7 +247,7 @@ specifying ``-`` as metadata file-name like this:
    > datalad meta-extract metalad_core |datalad meta-add -
 
 ``meta-add`` supports files that contain lists of JSON-records in “JSON
-Lines”-format (see ``jsonlines.org``).
+Lines”-format (see `jsonlines.org <https://jsonlines.org/>`_).
 
 Let’s add the file-level metadata for ``file1.txt`` and ``file.bin`` to
 the metadata of the dataset by executing the two commands:
@@ -261,8 +262,8 @@ and
 
    > datalad meta-extract metalad_core file.bin |datalad meta-add -
 
-6. Display (retrieve) metadata
-==============================
+Display (retrieve) metadata
+===========================
 
 To view the metadata that has been stored in a dataset, you can use the
 ``datalad`` command ``meta-dump``. The following command will show all
@@ -276,14 +277,14 @@ where each lines contains a serialized JSON object.
 
 Its execution will generate a result similar to:
 
-.. code:: shell
+.. code:: json
 
    {"type": "dataset", "dataset_id": "853d9356-fc2e-459e-96bc-02414a1fef93", "dataset_version": "ee512961b878a674c8068e54656e161d40566d9b", "extraction_time": 1637924361.8114567, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@context": {"@vocab": "http://schema.org/", "datalad": "http://dx.datalad.org/"}, "@graph": [{"@id": "59286713dacabfbce1cecf4c865fff5a", "@type": "agent", "name": "Your Name", "email": "you@example.com"}, {"@id": "ee512961b878a674c8068e54656e161d40566d9b", "identifier": "853d9356-fc2e-459e-96bc-02414a1fef93", "@type": "Dataset", "version": "0-4-gee51296", "dateCreated": "2021-11-26T11:03:25+01:00", "dateModified": "2021-11-26T11:13:58+01:00", "hasContributor": {"@id": "59286713dacabfbce1cecf4c865fff5a"}}]}}
    {"type": "file", "path": "file1.txt", "dataset_id": "853d9356-fc2e-459e-96bc-02414a1fef93", "dataset_version": "ee512961b878a674c8068e54656e161d40566d9b", "extraction_time": 1637927239.2590044, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@id": "datalad:SHA1-s13--2ef267e25bd6c6a300bb473e604b092b6a48523b", "contentbytesize": 13}}
    {"type": "file", "path": "file.bin", "dataset_id": "853d9356-fc2e-459e-96bc-02414a1fef93", "dataset_version": "ee512961b878a674c8068e54656e161d40566d9b", "extraction_time": 1637927246.2115273, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@id": "datalad:MD5E-s512000--816df6f64deba63b029ca19d880ee10a.bin", "contentbytesize": 512000}}
 
-7. Adding a lot of metadata with ``meta-conduct``
-=================================================
+Adding a lot of metadata with ``meta-conduct``
+==============================================
 
 To extract and add metadata from a large number of files or from all
 files of a dataset you can use ``meta-conduct``. Meta-conduct can be
@@ -293,8 +294,8 @@ should perform are defined in pipeline definitions. A few pipeline
 definitions are provided with metalad, and we will use the
 ``meta_extract`` pipeline.
 
-7.1. Adding dataset-level metadata
-----------------------------------
+Adding dataset-level metadata
+-----------------------------
 
 Execute the following command:
 
@@ -329,8 +330,8 @@ Metalad comes with different pre-built pipelines. Some allow to
 automatically fetch an annexed file and automatically drop said file,
 after is has been processed.
 
-7.2. Adding file-level metadata
--------------------------------
+Adding file-level metadata
+--------------------------
 
 You can also add file-metadata using ``meta-conduct``. Execute the
 following command:
@@ -358,15 +359,15 @@ storage.
 Again, you can verify this with the value of ``extraction_time`` in the
 output of ``datalad meta-dump -r``.
 
-8. Joining metadata from multiple datasets with ``meta-aggregate``
-==================================================================
+Joining metadata from multiple datasets with ``meta-aggregate``
+===============================================================
 
 Let’s have a look at ``meta-aggregate``. The command ``meta-aggregate``
 copies metadata from sub-datasets into the metadata store of the root
 dataset.
 
-8.1. Subdataset creation
-------------------------
+Subdataset creation
+-------------------
 
 To see ``meta-aggregate`` in action we first create a sub-datasets:
 
@@ -421,15 +422,15 @@ Since we modified the subdataset, we should also save the root dataset:
    > cd ..
    > datalad save
 
-8.2. Aggregating
-----------------
+Aggregating
+-----------
 
 After all the above commands are executed, we have metadata stored in
 two datasets (more precisely, in the metadata stores of the datasets
 which are the git repositories). In the metadata store of ``example-ds``
 we have the following information:
 
-::
+.. code:: none
 
    version: <version of dataset at metadata extraction>
      dataset-level:
@@ -443,7 +444,7 @@ we have the following information:
 
 And in the metadata store of ``subds1`` we have:
 
-::
+.. code:: none
 
    version: <version of dataset at metadata extraction>
      dataset-level:
@@ -469,7 +470,7 @@ The output will contain five JSON records (in 5 lines), three from the
 top-level datasets and two from the subdataset. It will look similar to
 this:
 
-.. code:: shell
+.. code:: json
 
    {"type": "dataset", "dataset_id": "ceeb844a-c6e8-4b2f-bb7c-62b7ae449a9f", "dataset_version": "bcf9cfde4a599d26094a58efbe4369e0878cb9c8", "extraction_time": 1638357863.4242253, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@context": {"@vocab": "http://schema.org/", "datalad": "http://dx.datalad.org/"}, "@graph": [{"@id": "59286713dacabfbce1cecf4c865fff5a", "@type": "agent", "name": "Your Name", "email": "you@example.com"}, {"@id": "bcf9cfde4a599d26094a58efbe4369e0878cb9c8", "identifier": "ceeb844a-c6e8-4b2f-bb7c-62b7ae449a9f", "@type": "Dataset", "version": "0-4-gbcf9cfd", "dateCreated": "2021-12-01T12:24:17+01:00", "dateModified": "2021-12-01T12:24:19+01:00", "hasContributor": {"@id": "59286713dacabfbce1cecf4c865fff5a"}}]}}
    {"type": "file", "path": "file1.txt", "dataset_id": "ceeb844a-c6e8-4b2f-bb7c-62b7ae449a9f", "dataset_version": "bcf9cfde4a599d26094a58efbe4369e0878cb9c8", "extraction_time": 1638357864.5259314, "agent_name": "Your Name", "agent_email": "you@example.com", "extractor_name": "metalad_core", "extractor_version": "1", "extraction_parameter": {}, "extracted_metadata": {"@id": "datalad:SHA1-s13--2ef267e25bd6c6a300bb473e604b092b6a48523b", "contentbytesize": 13}}
