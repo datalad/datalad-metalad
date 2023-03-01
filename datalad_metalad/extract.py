@@ -285,6 +285,10 @@ class Extract(Interface):
                         f"dataset given by {source_dataset.pathobj}"
                     )
                 path_object = relative_path
+            if not (source_dataset.pathobj / path_object).exists():
+                raise ValueError(
+                    "To-be-extracted file %s does not exist" % str(path_object)
+                )
 
         _, file_tree_path = get_path_info(source_dataset, path_object, None)
 
