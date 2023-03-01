@@ -41,6 +41,7 @@ from datalad.interface.base import (
     build_doc,
     eval_results,
 )
+from datalad.interface.utils import generic_result_renderer
 from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
@@ -320,7 +321,7 @@ class Extract(Interface):
     @staticmethod
     def custom_result_renderer(res, **kwargs):
         if res["status"] != "ok" or res.get("action", "") != 'meta_extract':
-            # logging complained about this already
+            generic_result_renderer(res)
             return
 
         metadata_record = res.get("metadata_record", None)
