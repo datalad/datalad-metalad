@@ -12,4 +12,5 @@ This chapter contains user guides describing various aspects of MetaLad.
 .. toctree::
    :maxdepth: 2
 
+   metalad-first-steps
    writing-extractors
