@@ -629,7 +629,7 @@ def test_path_assembly(temp_dir=None):
 
 
 @with_tempfile(mkdir=True)
-def test_not_tracked_error_catching(temp_dir=None):
+def test_not_existent_error_catching(temp_dir=None):
     # expect a value error, if the provided file is not tracked.
     ds_path = Path(temp_dir) / "dataset"
     ds = Dataset(ds_path).create()
