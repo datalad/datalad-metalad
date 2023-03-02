@@ -86,17 +86,54 @@ This function is used in dataset-level extractors only.
 It will be called by MetaLad prior to metadata extraction.
 Its purpose is to allow the extractor to ensure that content that is required for metadata extraction is present
 (relevant, for example, if some of files to be inspected may be annexed).
-The function should return ``True`` if it has obtained the required content, or confirmed its presence.
-If it returns ``False``, metadata extraction will not proceed.
+
+The function should either return a boolean value (``True | False``) or yield a ``Generator`` with 
+`DataLad result records`_. In the case of a boolean value, the function should return ``True`` if
+it has obtained the required content, or confirmed its presence. If it returns ``False``,
+metadata extraction will not proceed. Alternatively, yielding result records provides extractors with
+the capability to signal more expressive messages or errors. If a result record is yielded with a failure
+status (i.e. with ``status`` equal to ``impossible`` or ``error``) metadata extraction will not proceed.
 
 This function can be a place to call ``dataset.get()``.
-It is advisable to disable result rendering (``result_renderer="disabled"``), because during metadata extraction, users will typically want to redirect standard output to a file or another command.
+It is advisable to disable result rendering (``result_renderer="disabled"``), because during metadata
+extraction, users will typically want to redirect standard output to a file or another command.
 
-Example::
+Example 1::
 
   def get_required_content(self) -> bool:
       result = self.dataset.get("CITATION.cff", result_renderer="disabled")
       return result[0]["status"] in ("ok", "notneeded")
+
+Example 2::
+  
+  from typing import Generator
+  def get_required_content(self) -> Generator:
+      yield self.dataset.get("CITATION.cff", result_renderer="disabled")
+
+Example 3::
+
+  from typing import Generator
+  def get_required_content(self) -> Generator:
+      result = self.dataset.get("CITATION.cff", result_renderer="disabled")
+      failure_count = 0
+      result_dict = dict(
+          path=self.dataset.path,
+          type='dataset',
+      )
+      for r in res:
+          if r['status'] in ['error', 'impossible']:
+              failure_count+=1
+      if failure_count > 0:
+          result_dict.update({
+              'status': 'error'
+              'message': 'could not retrieve required content'
+          })
+      else:
+          result_dict.update({
+              'status': 'ok'
+              'message': 'required content retrieved'
+          })
+      yield result_dict
 
 ``is_content_required()``
 -------------------------
@@ -241,3 +278,5 @@ For example, a list of files with a given extension (including those in subfolde
 
   files = list(self.dataset.repo.call_git_items_(["ls-files", "*.xyz"]))
 
+
+.. _DataLad result records: https://docs.datalad.org/en/stable/design/result_records.html

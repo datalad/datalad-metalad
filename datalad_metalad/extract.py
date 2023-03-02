@@ -458,11 +458,23 @@ def perform_dataset_metadata_extraction(ep: ExtractionArguments,
     }
 
     # Let the extractor get the files it requires
-    if extractor.get_required_content() is False:
-        yield {
-            "status": "impossible",
-            **result_template
-        }
+    # Handle both possibilities of bool return and Generator yield
+    res = extractor.get_required_content()
+    if isinstance(res, bool):
+        if res is False:
+            yield {
+                "status": "impossible",
+                **result_template
+            }
+            return
+    else:
+        failure_count = 0
+        for r in res:
+            if r['status'] in ["error", "impossible"]:
+                failure_count+=1
+                yield r
+        if failure_count > 0:
+            return
 
     # Process results
     result = extractor.extract(None)
