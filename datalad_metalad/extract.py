@@ -472,7 +472,7 @@ def perform_dataset_metadata_extraction(ep: ExtractionArguments,
         failure_count = 0
         for r in res:
             if r["status"] in ("error", "impossible"):
-                failure_count+=1
+                failure_count += 1
                 yield r
         if failure_count > 0:
             return
