@@ -122,7 +122,7 @@ Example 3::
       )
       for r in res:
           if r['status'] in ['error', 'impossible']:
-              failure_count+=1
+              failure_count += 1
       if failure_count > 0:
           result_dict.update({
               'status': 'error'
