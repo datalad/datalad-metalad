@@ -114,7 +114,7 @@ Example 3::
 
   from typing import Generator
   def get_required_content(self) -> Generator:
-      result = self.dataset.get("CITATION.cff", result_renderer="disabled")
+      result = self.dataset.get('CITATION.cff', result_renderer='disabled')
       failure_count = 0
       result_dict = dict(
           path=self.dataset.path,
