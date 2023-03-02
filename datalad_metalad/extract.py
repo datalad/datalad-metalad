@@ -460,7 +460,8 @@ def perform_dataset_metadata_extraction(ep: ExtractionArguments,
     # Let the extractor get the files it requires
     # Handle both possibilities of bool return and Generator yield
     res = extractor.get_required_content()
-    if isinstance(res, bool):
+
+    if isinstance(res, bool) or res is None:
         if res is False:
             yield {
                 "status": "impossible",
