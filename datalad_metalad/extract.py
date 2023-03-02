@@ -30,14 +30,22 @@ from typing import (
 from uuid import UUID
 
 from dataclasses import dataclass
-
-from datalad.distribution.dataset import Dataset
-from datalad.distribution.dataset import (
-    datasetmethod,
-    EnsureDataset,
+from datalad_next.commands import (
+    EnsureCommandParameterization,
+    ValidatedInterface,
 )
+from datalad.distribution.dataset import Dataset
+from datalad.distribution.dataset import datasetmethod
+from datalad_next.constraints import (
+    EnsurePath,
+    EnsureStr,
+    EnsureMapping,
+    EnsureNone,
+    EnsureListOf,
+    NoConstraint,
+)
+from datalad_next.constraints.dataset import EnsureDataset
 from datalad.interface.base import (
-    Interface,
     build_doc,
     eval_results,
 )
@@ -54,10 +62,6 @@ from .extractors.base import (
     MetadataExtractorBase,
 )
 
-from datalad.support.constraints import (
-    EnsureNone,
-    EnsureStr,
-)
 from datalad.support.param import Parameter
 
 from dataladmetadatamodel.metadatapath import MetadataPath
@@ -91,7 +95,7 @@ class ExtractionArguments:
 
 
 @build_doc
-class Extract(Interface):
+class Extract(ValidatedInterface):
     """Run a metadata extractor on a dataset or file.
 
     This command distinguishes between dataset-level extraction and
@@ -130,6 +134,23 @@ class Extract(Interface):
     will execute them in either "content" or "dataset" mode, depending
     on the whether file-level- or dataset-level extraction is requested.
     """
+
+    # Define parameter constraints
+    extractorargs_constraints = EnsureMapping(key=EnsureStr(),
+                                    value=EnsureStr(),
+                                    delimiter='') | \
+                                EnsureListOf(item_constraint=NoConstraint(),
+                                    min_len=0)
+    _validator_ = EnsureCommandParameterization(
+        param_constraints=dict(
+            path=EnsurePath(lexists=True),
+            dataset=EnsureDataset(installed=True, purpose='meta-extract'),
+            extractor=EnsureStr(),
+            extractorargs=extractorargs_constraints,
+        ),
+        validate_defaults=("dataset",),
+        tailor_for_dataset=dict(path="dataset")
+    )
 
     result_renderer = "tailored"
 
@@ -180,20 +201,20 @@ class Extract(Interface):
             specified.
             You might provide an absolute file path, but it has to contain
             the dataset path as prefix.""",
-            constraints=EnsureStr() | EnsureNone()),
+            ),
         dataset=Parameter(
             args=("-d", "--dataset"),
             doc="""Dataset to extract metadata from. If no dataset
             is given, the dataset is determined by the current work
             directory.""",
-            constraints=EnsureDataset() | EnsureNone()),
+            ),
         context=Parameter(
             args=("-c", "--context"),
             doc="""Context, a JSON-serialized dictionary that provides
             constant data which has been gathered before, so meta-extract
             will not have re-gather this data. Keys and values are strings.
             meta-extract will look for the following key: 'dataset_version'.""",
-            constraints=EnsureDataset() | EnsureNone()),
+            ),
         get_context=Parameter(
             args=("--get-context",),
             action="store_true",
@@ -219,7 +240,8 @@ class Extract(Interface):
             prevent interpretation of the key of the first extractor argument
             as path for a file-level extraction.""",
             nargs="*",
-            constraints=EnsureStr() | EnsureNone()))
+            )
+    )
 
     @staticmethod
     @datasetmethod(name="meta_extract")
@@ -247,7 +269,8 @@ class Extract(Interface):
                 if isinstance(context, str)
                 else context))
 
-        source_dataset = check_dataset(dataset or curdir, "extract metadata")
+        # dataset is a DatasetParameter from the parameter validation
+        source_dataset = dataset.ds
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()
