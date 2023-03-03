@@ -555,6 +555,7 @@ def test_get_required_content_called(ds_path=None):
 
         def get_required_content(self):
             self.required_content_called = True
+            return True
 
         def get_id(self) -> UUID:
             return UUID(int=10)

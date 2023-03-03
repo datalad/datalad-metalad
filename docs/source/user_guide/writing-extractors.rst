@@ -87,7 +87,7 @@ It will be called by MetaLad prior to metadata extraction.
 Its purpose is to allow the extractor to ensure that content that is required for metadata extraction is present
 (relevant, for example, if some of files to be inspected may be annexed).
 
-The function should either return a boolean value (``True | False``) or yield a ``Generator`` with 
+The function should either return a boolean value (``True | False``) or return a ``Generator`` with 
 `DataLad result records`_. In the case of a boolean value, the function should return ``True`` if
 it has obtained the required content, or confirmed its presence. If it returns ``False``,
 metadata extraction will not proceed. Alternatively, yielding result records provides extractors with
