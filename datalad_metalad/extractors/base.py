@@ -159,7 +159,7 @@ class DatasetMetadataExtractor(MetadataExtractorBase, metaclass=abc.ABCMeta):
         self.ref_commit = ref_commit
         self.parameter = parameter or {}
 
-    def get_required_content(self) -> bool | Generator:
+    def get_required_content(self) -> Union[bool, Generator]:
         """Let the extractor get the content that it needs locally.
         
         The default implementation is to do nothing and return True

@@ -1,5 +1,3 @@
-# replace the following line with the datalad version without
-# metadata code, when that is released, e.g.
 coverage
 datalad>=0.18
 datalad-metadata-model>=0.3.6

@@ -87,7 +87,7 @@ It will be called by MetaLad prior to metadata extraction.
 Its purpose is to allow the extractor to ensure that content that is required for metadata extraction is present
 (relevant, for example, if some of files to be inspected may be annexed).
 
-The function should either return a boolean value (``True | False``) or yield a ``Generator`` with 
+The function should either return a boolean value (``True | False``) or return a ``Generator`` with 
 `DataLad result records`_. In the case of a boolean value, the function should return ``True`` if
 it has obtained the required content, or confirmed its presence. If it returns ``False``,
 metadata extraction will not proceed. Alternatively, yielding result records provides extractors with
@@ -114,7 +114,11 @@ Example 3::
 
   from typing import Generator
   def get_required_content(self) -> Generator:
+<<<<<<< HEAD
       result = self.dataset.get("CITATION.cff", result_renderer="disabled")
+=======
+      result = self.dataset.get('CITATION.cff', result_renderer='disabled')
+>>>>>>> issue-356
       failure_count = 0
       result_dict = dict(
           path=self.dataset.path,
@@ -122,7 +126,11 @@ Example 3::
       )
       for r in res:
           if r['status'] in ['error', 'impossible']:
+<<<<<<< HEAD
               failure_count+=1
+=======
+              failure_count += 1
+>>>>>>> issue-356
       if failure_count > 0:
           result_dict.update({
               'status': 'error'
@@ -208,7 +216,7 @@ extractor instance::
 
 
 Please not, if dataset level extraction should be performed and you want to provide extractor
-parameter, you have to provide thw ``--force-dataset-level`` parameter to ensure
+parameter, you have to provide the ``--force-dataset-level`` parameter to ensure
 dataset-level extraction. i.e. to prevent ``meta-extract`` from interpreting the
 key of the first extractor argument as file name for a file-level extraction.
 

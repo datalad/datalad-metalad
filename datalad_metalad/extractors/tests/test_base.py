@@ -103,7 +103,7 @@ def test_api(path=None, *, annex):
         "Should have managed to find at least the core extractor extractor"
     if skipped_extractors:
         pytest.skip(
-            "Not fully tested/succeded since some extractors failed"
+            "Not fully tested/succeeded since some extractors failed"
             " to load:\n%s" % ("\n".join(skipped_extractors)))
 
 
