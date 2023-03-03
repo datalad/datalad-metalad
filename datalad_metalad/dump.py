@@ -460,11 +460,11 @@ class Dump(Interface):
                  "queried dataset and output pretty-printed JSON",
             code_cmd="datalad -f json_pp meta-dump -r"),
         dict(
-            text="Show metadata for all files ending in `.json´ in the root "
+            text="Show metadata for all files ending in `.json` in the root "
                  "directories of all datasets",
             code_cmd="datalad meta-dump *:*.json -r"),
         dict(
-            text="Show metadata for all files ending in `.json´ in all "
+            text="Show metadata for all files ending in `.json` in all "
                  "datasets by not specifying a dataset at all. This will "
                  "start dumping at the top-level dataset.",
             code_cmd="datalad meta-dump :*.json -r")

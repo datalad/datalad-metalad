@@ -14,3 +14,4 @@ The chapter describes the design of particular subsystems in DataLad.
 
    conduct
    datatypes
+   history

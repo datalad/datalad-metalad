@@ -14,8 +14,13 @@
 
 import sys
 import os
+import datetime
+import subprocess
 from os.path import join as opj, exists
-from os.path import dirname
+from os.path import (
+    abspath,
+    dirname,
+)
 from os import pardir
 
 
@@ -31,17 +36,26 @@ def setup(sphinx):
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-## generate missing pieces
-#for setup_py_path in (opj(pardir, 'setup.py'),  # travis
-#                      opj(pardir, pardir, 'setup.py')):  # RTD
-#    if exists(setup_py_path):
-#        sys.path.insert(0, os.path.abspath(dirname(setup_py_path)))
-#        try:
-#            for cmd in 'manpage',: #'examples':
-#                os.system('{} build_{}'.format(setup_py_path, cmd))
-#        except:
-#            # shut up and do your best
-#            pass
+# generate missing pieces
+for setup_py_path in (opj(pardir, 'setup.py'),  # travis
+                      opj(pardir, pardir, 'setup.py')):  # RTD
+    if exists(setup_py_path):
+        sys.path.insert(0, os.path.abspath(dirname(setup_py_path)))
+        try:
+            subprocess.run(
+                args=[setup_py_path, 'build_manpage',
+                      '--cmdsuite', 'datalad_metalad:command_suite',
+                      '--manpath', abspath(opj(
+                        dirname(setup_py_path), 'build', 'man')),
+                      '--rstpath', opj(dirname(__file__), 'generated', 'man'),
+                      ],
+                check=True,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            for cmd in 'manpage',: #'examples':
+                os.system('{} build_{}'.format(setup_py_path, cmd))
+            # shut up and do your best
+            pass
 
 # -- General configuration ------------------------------------------------
 
@@ -83,8 +97,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Datalad Revolution'
-copyright = u'2018-, DataLad team'
+project = u'Datalad MetaLad'
+copyright = u'2018-{}, DataLad team'.format(datetime.datetime.now().year)
 author = u'DataLad team'
 
 # The version info for the project you're documenting, acts as replacement for
