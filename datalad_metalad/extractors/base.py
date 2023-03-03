@@ -62,7 +62,7 @@ class DataOutputCategory(enum.Enum):
 
 class MetadataExtractorBase(metaclass=abc.ABCMeta):
 
-    __generation__ = 'gen4'
+    __generation__ = 4
 
     @abc.abstractmethod
     def extract(self,
@@ -247,7 +247,7 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
 
     # associated with times when metadata records collections (ds- vs cn-) were aggregated
     # within  `.datalad/metadata/aggregate_v1.json` .
-    __generation__ = 'legacy'
+    __generation__ = 3
 
     @abc.abstractmethod
     def __call__(self,
@@ -344,7 +344,7 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
 # remove
 class BaseMetadataExtractor:
 
-    __generation__ = 'legacy-legacy'
+    __generation__ = 2
 
     NEEDS_CONTENT = True   # majority of the extractors need data content
 
