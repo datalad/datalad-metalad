@@ -17,7 +17,7 @@ from datalad.tests.utils_pytest import (
     assert_repo_status,
     assert_result_count,
     assert_status,
-    eq_,
+    assert_equal,
     known_failure_windows,
     with_tree,
 )
@@ -92,52 +92,50 @@ testmeta = {
 def test_custom_dsmeta(path=None):
     ds = Dataset(path).create(force=True)
     sample_jsonld_ = dict(sample_jsonld)
-    # enable custom extractor
-    # use default location
+    
+    # 1. Test default source location (no configured source)
+    # -> extraction yields ok result
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
     res = ds.meta_extract(extractorname='metalad_custom_dataset')
     assert_status('ok', res)
     assert_result_count(res, 1)
     dsmeta = res[0]
-    eq_(sample_jsonld_, dsmeta['metadata_record']['extracted_metadata'])
+    assert_equal(sample_jsonld_, dsmeta['metadata_record']['extracted_metadata'])
 
-    # # overwrite default source location within something non-exiting
-    # # extraction does not blow up, but no metadata is reported
-    # ds.config.add(
-    #     'datalad.metadata.custom-dataset-source',
-    #     'nothere',
-    #     scope='branch')
-    # ds.save(result_renderer="disabled")
-    # assert_raises(
-    #     FileNotFoundError,
-    #     ds.meta_extract(
-    #         extractorname='metalad_custom_dataset',
-    #         on_failure='ignore',
-    #         result_renderer="disabled")
-    # )
-    # # res = ds.meta_extract(
-    # #         extractorname='metalad_custom_dataset',
-    # #         result_renderer="disabled")
-    # assert_in_results(
-    #     res,
-    #     action="meta_extract",
-    #     status="impossible",
-    #     message=(
-    #         'configured custom metadata source is not available in %s: %s',
-    #         ds, 'nothere'),
-    #     path=ds.path,
-    # )
-    # assert_result_count(
-    #     res, 1, action='meta_extract', type='dataset', status='impossible',
-    #     path=ds.path,
-    #     message=(
-    #         'configured custom metadata source is not available in %s: %s',
-    #         ds, 'nothere'),
-    # )
-    # eq_(res[0].get('metalad_record', {}), {})
+    # 2. Test configured source location, but non-existing file
+    # -> extraction yields a failure result
+    ds.config.add(
+        'datalad.metadata.custom-dataset-source',
+        'nothere',
+        scope='branch')
+    ds.save(result_renderer="disabled")
+    res = ds.meta_extract(
+            extractorname='metalad_custom_dataset',
+            result_renderer='disabled',
+            on_failure='ignore'
+            )
+    assert_in_results(
+        res,
+        action="meta_extract",
+        status="impossible",
+        message=(
+            'custom metadata source is not available in %s: %s',
+            ds.path, 'nothere'),
+        path=ds.path,
+    )
+    assert_result_count(
+        res, 1, action='meta_extract', type='dataset', status='impossible',
+        path=ds.path,
+        message=(
+            'custom metadata source is not available in %s: %s',
+            ds.path, 'nothere'),
+    )
+    assert_equal(res[0].get('metadata_record', {}), {})
 
-    # overwrite default source location within something existing
+
+    # 3. Test configured source location, file exists
+    # -> extraction yields ok result
     ds.config.set(
         'datalad.metadata.custom-dataset-source',
         # always POSIX!
@@ -145,13 +143,14 @@ def test_custom_dsmeta(path=None):
         scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-        extractorname='metalad_custom',
+        extractorname='metalad_custom_dataset',
         on_failure='ignore',
         result_renderer="disabled")
     assert_result_count(res, 1)
-    eq_(testmeta, res[0]['metadata_record']['extracted_metadata'])
+    assert_status('ok', res)
+    assert_equal(testmeta, res[0]['metadata_record']['extracted_metadata'])
 
-    # multiple source locations
+    # 3. Test multiple configured source location, file exists
     ds.config.add(
         'datalad.metadata.custom-dataset-source',
         # put back default
@@ -159,11 +158,11 @@ def test_custom_dsmeta(path=None):
         scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-        extractorname='metalad_custom',
+        extractorname='metalad_custom_dataset',
         on_failure='ignore',
         result_renderer="disabled")
     assert_result_count(res, 1)
-    eq_(
+    assert_equal(
         # merge order: testmeta <- sample_jsonld
         dict(testmeta, **sample_jsonld),
         res[0]['metadata_record']['extracted_metadata']
@@ -197,7 +196,7 @@ def test_custom_dsmeta(path=None):
 #         status='ok',
 #         action='meta_extract')
 
-#     eq_(res[0]["metadata_record"]["extracted_metadata"], {
+#     assert_equal(res[0]["metadata_record"]["extracted_metadata"], {
 #             'some': 'thing',
 #             "@id": "datalad:MD5E-s1--c4ca4238a0b923820dcc509a6f75849b",
 #     })
