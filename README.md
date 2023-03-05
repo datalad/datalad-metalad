@@ -97,7 +97,7 @@ a dedicated [virtualenv](https://virtualenv.pypa.io):
     virtualenv --system-site-packages --python=python3 ~/env/datalad
     . ~/env/datalad/bin/activate
 
-    # install from github
+    # install from PyPi
     pip install datalad-metalad
 
 
