@@ -59,6 +59,7 @@ setup(
             'metalad_annex=datalad_metalad.extractors.annex:AnnexMetadataExtractor',
             'metalad_custom=datalad_metalad.extractors.custom:CustomMetadataExtractor',
             'metalad_custom_dataset=datalad_metalad.extractors.custom_dataset:CustomDatasetExtractor',
+            'metalad_custom_file=datalad_metalad.extractors.custom_file:CustomFileExtractor',
             'metalad_runprov=datalad_metalad.extractors.runprov:RunProvenanceExtractor',
             'metalad_studyminimeta=datalad_metalad.extractors.studyminimeta.main:StudyMiniMetaExtractor',
             'external_dataset=datalad_metalad.extractors.external_dataset:ExternalDatasetExtractor',

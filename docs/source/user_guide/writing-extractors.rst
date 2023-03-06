@@ -114,11 +114,7 @@ Example 3::
 
   from typing import Generator
   def get_required_content(self) -> Generator:
-<<<<<<< HEAD
-      result = self.dataset.get("CITATION.cff", result_renderer="disabled")
-=======
       result = self.dataset.get('CITATION.cff', result_renderer='disabled')
->>>>>>> issue-356
       failure_count = 0
       result_dict = dict(
           path=self.dataset.path,
@@ -126,11 +122,7 @@ Example 3::
       )
       for r in res:
           if r['status'] in ['error', 'impossible']:
-<<<<<<< HEAD
-              failure_count+=1
-=======
               failure_count += 1
->>>>>>> issue-356
       if failure_count > 0:
           result_dict.update({
               'status': 'error'
