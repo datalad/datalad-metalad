@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""MetadataRecord extractor for custom (JSON-LD) metadata contained in a dataset
+"""Metadata extractor for custom (JSON-LD) metadata contained in a dataset
 
 One or more source files with metadata can be specified via the
 'datalad.metadata.custom-dataset-source' configuration variable.
@@ -26,7 +26,8 @@ from datalad_metalad.extractors.base import (
 from pathlib import Path
 from uuid import UUID
 import logging
-lgr = logging.getLogger('datalad.metadata.extractors.custom_dataset')
+
+lgr = logging.getLogger("datalad.metadata.extractors.custom_dataset")
 from datalad.log import log_progress
 from datalad.support.json_py import load as jsonload
 from datalad.utils import (
@@ -49,7 +50,7 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
 
     def get_data_output_category(self) -> DataOutputCategory:
         return DataOutputCategory.IMMEDIATE
-    
+
     def get_required_content(self) -> Generator:
         # Get source files for metadata
         srcfiles, cfg_srcfiles = _get_dsmeta_srcfiles(self.dataset)
@@ -57,12 +58,12 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
         if not srcfiles:
             yield dict(
                 path=self.dataset.path,
-                type='dataset',
-                status='impossible',
+                type="dataset",
+                status="impossible",
                 message=(
-                    'no configured or default metadata sources '
-                    'available in %s',
-                    self.dataset.path),
+                    "no configured or default metadata sources " "available in %s",
+                    self.dataset.path,
+                ),
             )
         # Get file content for returned sources
         # If file exists or is a symlink, get file, and yield failure
@@ -71,48 +72,48 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
         for f in srcfiles:
             f_abs = self.dataset.pathobj / f
             if f_abs.exists() or f_abs.is_symlink():
-                result = self.dataset.get(f_abs, result_renderer='disabled')
+                result = self.dataset.get(f_abs, result_renderer="disabled")
                 failure_count = 0
                 for res in result:
-                    if res['status'] in ('error', 'impossible'):
+                    if res["status"] in ("error", "impossible"):
                         failure_count += 1
                 if failure_count > 0:
                     yield dict(
                         path=self.dataset.path,
-                        action='meta_extract',
-                        type='dataset',
-                        status='error',
-                        message=('required file content not retrievable: %s',
-                                    f),
+                        action="meta_extract",
+                        type="dataset",
+                        status="error",
+                        message=("required file content not retrievable: %s", f),
                     )
                 else:
                     yield dict(
                         path=self.dataset.path,
-                        action='meta_extract',
-                        type='dataset',
-                        status='ok',
-                        message=('all required files retrieved'),
+                        action="meta_extract",
+                        type="dataset",
+                        status="ok",
+                        message=("all required files retrieved"),
                     )
             else:
                 yield dict(
                     path=self.dataset.path,
-                    action='meta_extract',
-                    type='dataset',
-                    status='impossible',
+                    action="meta_extract",
+                    type="dataset",
+                    status="impossible",
                     message=(
-                        'custom metadata source is not '
-                        'available in %s: %s',
-                        self.dataset.path, f),
+                        "custom metadata source is not " "available in %s: %s",
+                        self.dataset.path,
+                        f,
+                    ),
                 )
         return
-    
+
     def extract(self, _=None) -> ExtractorResult:
         return ExtractorResult(
             extractor_version=self.get_version(),
             extraction_parameter=self.parameter or {},
             extraction_success=True,
             datalad_result_dict={"type": "dataset", "status": "ok"},
-            immediate_data=CustomDatasetMetadata(self.dataset).get_metadata()
+            immediate_data=CustomDatasetMetadata(self.dataset).get_metadata(),
         )
 
 
@@ -120,6 +121,7 @@ class CustomDatasetMetadata(object):
     """
     Util class to get custom metadata from json files
     """
+
     def __init__(self, dataset) -> None:
         self.dataset = dataset
 
@@ -143,20 +145,21 @@ class CustomDatasetMetadata(object):
         dsmeta = {}
         for srcfile in srcfiles:
             abssrcfile = self.dataset.pathobj / srcfile
-            lgr.debug('Load custom metadata from %s', abssrcfile)
+            lgr.debug("Load custom metadata from %s", abssrcfile)
             meta = jsonload(str(abssrcfile))
             dsmeta.update(meta)
             log_progress(
                 lgr.info,
-                'extractorcustomdataset',
-                f'Extracted custom metadata from {abssrcfile}',
+                "extractorcustomdataset",
+                f"Extracted custom metadata from {abssrcfile}",
                 update=1,
-                increment=True)        
-        
+                increment=True,
+            )
+
         log_progress(
             lgr.info,
-            'extractorcustomdataset',
-            'Finished custom metadata extraction from {path}'.format(
+            "extractorcustomdataset",
+            "Finished custom metadata extraction from {path}".format(
                 path=self.dataset.path
             ),
         )
@@ -186,15 +189,13 @@ def _get_dsmeta_srcfiles(ds) -> tuple:
       lists are relative
     """
     # Get metadata source filenames from configuration
-    cfg_srcfiles = ds.config.obtain(
-        'datalad.metadata.custom-dataset-source',
-        [])
+    cfg_srcfiles = ds.config.obtain("datalad.metadata.custom-dataset-source", [])
     cfg_srcfiles = ensure_list(cfg_srcfiles)
-    default_path = ds.pathobj / '.metadata' / 'dataset.json'
+    default_path = ds.pathobj / ".metadata" / "dataset.json"
     srcfiles = []
     if not cfg_srcfiles:
         if default_path.exists() or default_path.is_symlink():
-            srcfiles = ['.metadata/dataset.json']
+            srcfiles = [".metadata/dataset.json"]
     else:
         srcfiles = cfg_srcfiles
     return srcfiles, cfg_srcfiles
