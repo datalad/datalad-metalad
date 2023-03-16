@@ -63,24 +63,17 @@ class CustomFileExtractor(FileMetadataExtractor):
 
     def is_content_required(self) -> bool:
         return False
-
-    def extract(self, _=None) -> ExtractorResult:
+    
+    def get_required_content(self):
         # Instantiate CustomFileMetadata object
         file_metadata_obj = CustomFileMetadata(self.dataset, self.file_info)
         # Get required metadata file
-        res = next(file_metadata_obj.get_metafile())
-        if res["status"] in ("error", "impossible"):
-            return ExtractorResult(
-                extractor_version=self.get_version(),
-                extraction_parameter=self.parameter or {},
-                extraction_success=False,
-                datalad_result_dict={
-                    "type": "file",
-                    "status": res["status"],
-                    "message": res["message"],
-                },
-                immediate_data={},
-            )
+        yield from file_metadata_obj.get_metafile()
+        return True
+    
+    def extract(self, _=None) -> ExtractorResult:
+        # Instantiate CustomFileMetadata object
+        file_metadata_obj = CustomFileMetadata(self.dataset, self.file_info)
         # Extract metadata
         res = next(file_metadata_obj.get_metadata())
         return ExtractorResult(
@@ -101,6 +94,7 @@ class CustomFileMetadata(object):
         self.dataset = dataset
         self.file_info = file_info
         self.metafile_expression = self.get_metafile_expression()
+        self.metafile_path = self.get_metafile_objpath()
 
     def get_metafile_expression(self):
         """Obtain configured custom content source
@@ -116,7 +110,6 @@ class CustomFileMetadata(object):
         """Ensure that the file with to-be-extracted metadata is
         locally available before extraction
         """
-        self.metafile_path = self.get_metafile_objpath()
         if self.metafile_path.exists() or self.metafile_path.is_symlink():
             result = self.dataset.get(self.metafile_path, result_renderer="disabled")
             if result[0]["status"] in ("error", "impossible"):
