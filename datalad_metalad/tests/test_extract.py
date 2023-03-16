@@ -17,7 +17,10 @@ from typing import (
     Optional,
     Union,
 )
-from unittest.mock import patch
+from unittest.mock import (
+    ANY,
+    patch
+)
 from uuid import UUID
 
 from datalad.api import (
@@ -326,17 +329,14 @@ def test_path_parameter_directory(ds_path=None):
 def test_path_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
-
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             **common_kwargs)
-        eq_(fe.call_count, 1)
-        eq_(de.call_count, 0)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='file')
 
 
 @with_tree(meta_tree)
@@ -344,9 +344,7 @@ def test_extra_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
@@ -354,11 +352,10 @@ def test_extra_parameter_recognition(ds_path=None):
             path="k1",
             extractorargs=["v1", "k2", "v2", "k3", "v3"],
             **common_kwargs)
-
-        eq_(fe.call_count, 0)
-        eq_(de.call_count, 1)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='dataset')
         eq_(
-            de.call_args_list[0][0][0].extraction_parameter,
+            do_extr.call_args_list[0][1]['ep'].extraction_parameter,
             {
                 "k1": "v1",
                 "k2": "v2",
@@ -371,20 +368,17 @@ def test_path_and_extra_parameter_recognition(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
             **common_kwargs)
-
-        eq_(de.call_count, 0)
-        eq_(fe.call_count, 1)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='file')
         eq_(
-            fe.call_args_list[0][0][0].extraction_parameter,
+            do_extr.call_args_list[0][1]['ep'].extraction_parameter,
             {
                 "k1": "v1",
                 "k2": "v2",
@@ -396,20 +390,17 @@ def test_path_and_extra_parameter_recognition(ds_path=None):
 def test_context_dict_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
-
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+        
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
             context={"dataset_version": "xyz"},
             path="sub/one",
             **common_kwargs)
-
-        eq_(fe.call_count, 1)
-        eq_(fe.call_args[0][0].source_dataset_version, "xyz")
-        eq_(de.call_count, 0)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='file')
+        eq_(do_extr.call_args[1]['ep'].source_dataset_version, "xyz")
 
 
 @with_tree(meta_tree)
@@ -417,19 +408,16 @@ def test_context_str_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
             context='{"dataset_version": "rst"}',
             path="sub/one",
             **common_kwargs)
-
-        eq_(fe.call_count, 1)
-        eq_(fe.call_args[0][0].source_dataset_version, "rst")
-        eq_(de.call_count, 0)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='file')
+        eq_(do_extr.call_args[1]['ep'].source_dataset_version, "rst")
 
 
 @with_tree(meta_tree)
@@ -464,9 +452,7 @@ def test_extractor_parameter_handling(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-         patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_dataset",
             dataset=ds,
@@ -474,25 +460,21 @@ def test_extractor_parameter_handling(ds_path=None):
             path="k0",
             extractorargs=["v0", "k1", "v1"],
             **common_kwargs)
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='dataset')
+        eq_(do_extr.call_args[1]['ep'].extraction_parameter, {"k0": "v0", "k1": "v1"})
 
-        eq_(fe.call_count, 0)
-        eq_(de.call_count, 1)
-        eq_(de.call_args[0][0].extraction_parameter, {"k0": "v0", "k1": "v1"})
-
-    with patch("datalad_metalad.extract.do_file_extraction") as fe, \
-            patch("datalad_metalad.extract.do_dataset_extraction") as de:
-
+    with patch("datalad_metalad.extract.do_extraction") as do_extr:
         meta_extract(
             extractorname="metalad_example_file",
             dataset=ds,
             path="sub/one",
             extractorargs=["k0", "v0", "k1", "v1"],
             **common_kwargs)
-
-        eq_(de.call_count, 0)
-        eq_(fe.call_count, 1)
-        eq_(fe.call_args[0][0].file_tree_path, MetadataPath("sub/one"))
-        eq_(fe.call_args[0][0].extraction_parameter, {"k0": "v0", "k1": "v1"})
+        eq_(do_extr.call_count, 1)
+        do_extr.assert_called_with(ep=ANY, extractor_type='file')
+        eq_(do_extr.call_args[1]['ep'].file_tree_path, MetadataPath("sub/one"))
+        eq_(do_extr.call_args[1]['ep'].extraction_parameter, {"k0": "v0", "k1": "v1"})
 
 
 @with_tree(meta_tree)
@@ -609,7 +591,7 @@ def test_path_assembly(temp_dir=None):
             extractorname="metalad_core",
             path=str(file_path)
         )
-        extraction_arguments = dfe_mock.call_args[0][0]
+        extraction_arguments = dfe_mock.call_args[1]['ep']
         eq_(extraction_arguments.local_source_object_path, file_path.absolute())
         eq_(extraction_arguments.file_tree_path, MetadataPath(expected_path))
 
@@ -623,7 +605,7 @@ def test_path_assembly(temp_dir=None):
     ds.save(**common_kwargs)
 
     with chpwd(str(subdir_path)):
-        with patch("datalad_metalad.extract.do_file_extraction") as dfe_mock:
+        with patch("datalad_metalad.extract.do_extraction") as dfe_mock:
             # Check absolute path
             check_with_file_path(dfe_mock, file_path.absolute(), "sub1/info.txt")
             check_with_file_path(dfe_mock, file_path, "sub1/info.txt")
