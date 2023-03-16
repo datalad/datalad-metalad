@@ -364,7 +364,7 @@ def do_extraction(ep: ExtractionArguments, extractor_type: str):
             "extraction for %s at %s",
             extractor_type,
             extractor_type,
-            ep.source_dataset.path / ep.file_tree_path \
+            ep.source_dataset.path / ep.file_tree_path
             if extractor_type == 'file' else ep.source_dataset.path)
 
         yield from legacy_extractor_map[extractor_type](ep)
