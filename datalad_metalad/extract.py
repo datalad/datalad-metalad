@@ -310,7 +310,7 @@ class Extract(Interface):
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
         if path:
-            extractor_type = 'file'
+            extraction_arguments.extractor_type = 'file'
             # Check whether the path points to a sub_dataset.
             ensure_path_validity(source_dataset, file_tree_path)
         else:
