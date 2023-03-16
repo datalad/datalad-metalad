@@ -314,7 +314,7 @@ class Extract(Interface):
             # Check whether the path points to a sub_dataset.
             ensure_path_validity(source_dataset, file_tree_path)
         else:
-            extractor_type = 'dataset'
+            extraction_arguments.extractor_type = 'dataset'
         
         yield from do_extraction(ep=extraction_arguments, extractor_type=extractor_type)
         return
