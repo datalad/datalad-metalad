@@ -351,7 +351,8 @@ class Extract(Interface):
             ui.message(json.dumps(context))
 
 
-def do_extraction(ep: ExtractionArguments, extractor_type: str):
+def do_extraction(ep: ExtractionArguments):
+    extractor_type = ep.extractor_type    
 
     # Legacy extraction
     legacy_extractor_map = {
