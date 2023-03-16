@@ -104,6 +104,32 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_data_output_category(self) -> DataOutputCategory:
         raise NotImplementedError
+    
+    def get_required_content(self) -> Union[bool, Generator]:
+        """Let the extractor get the content that it needs locally.
+        
+        The default implementation is to do nothing and return True
+        Extractors that overwrite this function can return a boolean
+        (True/False) value OR yield DataLad result records.
+
+        Returns
+        -------
+        bool
+          True if all required content could be fetched, False
+          otherwise. If False is returned, the extractor
+          infrastructure will signal an error and the extractor's
+          extract method will not be called.
+        
+        Yields
+        ------
+        dict
+          DataLad result records. If a result record is yielded
+          with a failure 'status' (i.e. equal to 'impossible' or
+          'error') the extractor infrastructure will signal an error
+          and the extractor's extract method will not be called.
+        """
+        print("getting required content")
+        return True
 
     def get_state(self, dataset):
         """Report on extractor-related state and configuration
@@ -158,31 +184,6 @@ class DatasetMetadataExtractor(MetadataExtractorBase, metaclass=abc.ABCMeta):
         self.dataset = dataset
         self.ref_commit = ref_commit
         self.parameter = parameter or {}
-
-    def get_required_content(self) -> Union[bool, Generator]:
-        """Let the extractor get the content that it needs locally.
-        
-        The default implementation is to do nothing and return True
-        Extractors that overwrite this function can return a boolean
-        (True/False) value OR yield DataLad result records.
-
-        Returns
-        -------
-        bool
-          True if all required content could be fetched, False
-          otherwise. If False is returned, the extractor
-          infrastructure will signal an error and the extractor's
-          extract method will not be called.
-        
-        Yields
-        ------
-        dict
-          DataLad result records. If a result record is yielded
-          with a failure 'status' (i.e. equal to 'impossible' or
-          'error') the extractor infrastructure will signal an error
-          and the extractor's extract method will not be called.
-        """
-        return True
 
 
 class FileMetadataExtractor(MetadataExtractorBase, metaclass=abc.ABCMeta):
