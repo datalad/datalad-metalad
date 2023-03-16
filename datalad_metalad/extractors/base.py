@@ -128,7 +128,6 @@ class MetadataExtractorBase(metaclass=abc.ABCMeta):
           'error') the extractor infrastructure will signal an error
           and the extractor's extract method will not be called.
         """
-        print("getting required content")
         return True
 
     def get_state(self, dataset):
