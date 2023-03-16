@@ -83,6 +83,7 @@ class ExtractionArguments:
     source_dataset_version: str
     local_source_object_path: Path
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
+    extractor_type: str
     extractor_name: str
     extraction_parameter: Dict[str, str]
     file_tree_path: Optional[MetadataPath]
@@ -297,6 +298,7 @@ class Extract(Interface):
             local_source_object_path=(
                     source_dataset.pathobj / file_tree_path).absolute(),
             extractor_class=extractor_class,
+            extractor_type=None,
             extractor_name=extractor_name,
             extraction_parameter=args_to_dict(extractor_args),
             file_tree_path=file_tree_path,
@@ -316,7 +318,7 @@ class Extract(Interface):
         else:
             extraction_arguments.extractor_type = 'dataset'
         
-        yield from do_extraction(ep=extraction_arguments, extractor_type=extractor_type)
+        yield from do_extraction(ep=extraction_arguments)
         return
 
     @staticmethod
