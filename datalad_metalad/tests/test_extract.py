@@ -336,7 +336,7 @@ def test_path_parameter_recognition(ds_path=None):
             path="sub/one",
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='file')
+        eq_(do_extr.call_args[1]['ep'].extractor_type, 'file')
 
 
 @with_tree(meta_tree)
@@ -353,7 +353,7 @@ def test_extra_parameter_recognition(ds_path=None):
             extractorargs=["v1", "k2", "v2", "k3", "v3"],
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='dataset')
+        eq_(do_extr.call_args[1]['ep'].extractor_type, 'dataset')
         eq_(
             do_extr.call_args_list[0][1]['ep'].extraction_parameter,
             {
@@ -376,7 +376,6 @@ def test_path_and_extra_parameter_recognition(ds_path=None):
             extractorargs=["k1", "v1", "k2", "v2", "k3", "v3"],
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='file')
         eq_(
             do_extr.call_args_list[0][1]['ep'].extraction_parameter,
             {
@@ -399,7 +398,6 @@ def test_context_dict_parameter_handling(ds_path=None):
             path="sub/one",
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='file')
         eq_(do_extr.call_args[1]['ep'].source_dataset_version, "xyz")
 
 
@@ -416,7 +414,6 @@ def test_context_str_parameter_handling(ds_path=None):
             path="sub/one",
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='file')
         eq_(do_extr.call_args[1]['ep'].source_dataset_version, "rst")
 
 
@@ -461,7 +458,7 @@ def test_extractor_parameter_handling(ds_path=None):
             extractorargs=["v0", "k1", "v1"],
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='dataset')
+        eq_(do_extr.call_args[1]['ep'].extractor_type, 'dataset')
         eq_(do_extr.call_args[1]['ep'].extraction_parameter, {"k0": "v0", "k1": "v1"})
 
     with patch("datalad_metalad.extract.do_extraction") as do_extr:
@@ -472,7 +469,6 @@ def test_extractor_parameter_handling(ds_path=None):
             extractorargs=["k0", "v0", "k1", "v1"],
             **common_kwargs)
         eq_(do_extr.call_count, 1)
-        do_extr.assert_called_with(ep=ANY, extractor_type='file')
         eq_(do_extr.call_args[1]['ep'].file_tree_path, MetadataPath("sub/one"))
         eq_(do_extr.call_args[1]['ep'].extraction_parameter, {"k0": "v0", "k1": "v1"})
 

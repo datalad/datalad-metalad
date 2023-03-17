@@ -83,6 +83,7 @@ class ExtractionArguments:
     source_dataset_version: str
     local_source_object_path: Path
     extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
+    extractor_type: str
     extractor_name: str
     extraction_parameter: Dict[str, str]
     file_tree_path: Optional[MetadataPath]
@@ -297,6 +298,7 @@ class Extract(Interface):
             local_source_object_path=(
                     source_dataset.pathobj / file_tree_path).absolute(),
             extractor_class=extractor_class,
+            extractor_type=None,
             extractor_name=extractor_name,
             extraction_parameter=args_to_dict(extractor_args),
             file_tree_path=file_tree_path,
@@ -310,13 +312,13 @@ class Extract(Interface):
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
         if path:
-            extractor_type = 'file'
+            extraction_arguments.extractor_type = 'file'
             # Check whether the path points to a sub_dataset.
             ensure_path_validity(source_dataset, file_tree_path)
         else:
-            extractor_type = 'dataset'
+            extraction_arguments.extractor_type = 'dataset'
         
-        yield from do_extraction(ep=extraction_arguments, extractor_type=extractor_type)
+        yield from do_extraction(ep=extraction_arguments)
         return
 
     @staticmethod
@@ -351,7 +353,8 @@ class Extract(Interface):
             ui.message(json.dumps(context))
 
 
-def do_extraction(ep: ExtractionArguments, extractor_type: str):
+def do_extraction(ep: ExtractionArguments):
+    extractor_type = ep.extractor_type    
 
     # Legacy extraction
     legacy_extractor_map = {
@@ -364,7 +367,7 @@ def do_extraction(ep: ExtractionArguments, extractor_type: str):
             "extraction for %s at %s",
             extractor_type,
             extractor_type,
-            ep.source_dataset.path / ep.file_tree_path \
+            ep.source_dataset.path / ep.file_tree_path
             if extractor_type == 'file' else ep.source_dataset.path)
 
         yield from legacy_extractor_map[extractor_type](ep)
