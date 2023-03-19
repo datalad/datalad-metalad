@@ -30,7 +30,7 @@ If no explicit source file or expression is provided, the default location
 for a sidecar source file will be used. The default root directory is
 '.metadata/content/' and the source file is then required to be located at
 the same relative level of the filetree as the main file with content.
-The filename of the source file should be identical to that of te main file,
+The filename of the source file should be identical to that of the main file,
 and the extension should be '.json'.
 
 An example of a source file in the default location is '.metadata/content/myfile.json',
