@@ -233,7 +233,7 @@ class Extract(Interface):
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
-
+        
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = ([path] + extractorargs

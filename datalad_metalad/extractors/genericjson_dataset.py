@@ -6,10 +6,10 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Metadata extractor for custom (JSON-LD) metadata contained in a dataset
+"""A dataset-level extractor for generic JSON(-LD) metadata contained in a dataset
 
-One or more source files with metadata can be specified via the
-'datalad.metadata.custom-dataset-source' configuration variable.
+One or more source files with metadata can be specified as an
+extraction argument via the 'metadata_source' parameter.
 The content of these files must be a JSON object, and a metadata
 dictionary is built by updating it with the content of the JSON
 objects in the order in which they are given.
@@ -25,9 +25,10 @@ from datalad_metalad.extractors.base import (
 
 from pathlib import Path
 from uuid import UUID
+import json
 import logging
 
-lgr = logging.getLogger("datalad.metadata.extractors.custom_dataset")
+lgr = logging.getLogger("datalad.metadata.extractors.genericjson_dataset")
 from datalad.log import log_progress
 from datalad.support.json_py import load as jsonload
 from datalad.utils import (
@@ -36,9 +37,9 @@ from datalad.utils import (
 from typing import Generator
 
 
-class CustomDatasetExtractor(DatasetMetadataExtractor):
+class GenericJsonDatasetExtractor(DatasetMetadataExtractor):
     """
-    Main 'custom' dataset-level extractor class
+    Generic JSON dataset-level extractor class
     Inherits from metalad's DatasetMetadataExtractor class
     """
 
@@ -53,7 +54,7 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
 
     def get_required_content(self) -> Generator:
         # Get source files for metadata
-        srcfiles, cfg_srcfiles = _get_dsmeta_srcfiles(self.dataset)
+        srcfiles, cfg_srcfiles = _get_dsmeta_srcfiles(self.dataset, self.parameter)
         # Deal with no metadata sources
         if not srcfiles:
             yield dict(
@@ -100,7 +101,7 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
                     type="dataset",
                     status="impossible",
                     message=(
-                        "custom metadata source is not " "available in %s: %s",
+                        "metadata source is not available in %s: %s",
                         self.dataset.path,
                         f,
                     ),
@@ -113,75 +114,80 @@ class CustomDatasetExtractor(DatasetMetadataExtractor):
             extraction_parameter=self.parameter or {},
             extraction_success=True,
             datalad_result_dict={"type": "dataset", "status": "ok"},
-            immediate_data=CustomDatasetMetadata(self.dataset).get_metadata(),
+            immediate_data=GenericJsonDatasetMetadata(self.dataset, self.parameter).get_metadata(),
         )
 
 
-class CustomDatasetMetadata(object):
+class GenericJsonDatasetMetadata(object):
     """
     Util class to get custom metadata from json files
     """
 
-    def __init__(self, dataset) -> None:
+    def __init__(self, dataset, parameter: dict) -> None:
         self.dataset = dataset
+        self.parameter = parameter
 
     def get_metadata(self):
         """
         Function to load custom metadata from specified
         or default source(s)
         """
-        srcfiles, cfg_srcfiles = _get_dsmeta_srcfiles(self.dataset)
+        srcfiles, cfg_srcfiles = _get_dsmeta_srcfiles(self.dataset, self.parameter)
 
         log_progress(
             lgr.info,
-            "extractorcustomdataset",
-            "Start custom metadata extraction from {path}".format(
+            "extractorgenericjsondataset",
+            "Start generic json metadata extraction from {path}".format(
                 path=self.dataset.path
             ),
             total=len(srcfiles),
-            label="custom metadata extraction",
+            label="generic json metadata extraction",
             unit=" Files",
         )
         dsmeta = {}
         for srcfile in srcfiles:
             abssrcfile = self.dataset.pathobj / srcfile
-            lgr.debug("Load custom metadata from %s", abssrcfile)
+            lgr.debug("Load generic json metadata from %s", abssrcfile)
             meta = jsonload(str(abssrcfile))
             dsmeta.update(meta)
             log_progress(
                 lgr.info,
-                "extractorcustomdataset",
-                f"Extracted custom metadata from {abssrcfile}",
+                "extractorgenericjsondataset",
+                f"Extracted generic json metadata from {abssrcfile}",
                 update=1,
                 increment=True,
             )
 
         log_progress(
             lgr.info,
-            "extractorcustomdataset",
-            "Finished custom metadata extraction from {path}".format(
+            "extractorgenericjsondataset",
+            "Finished generic json metadata extraction from {path}".format(
                 path=self.dataset.path
             ),
         )
         return dsmeta
 
 
-def _get_dsmeta_srcfiles(ds) -> tuple:
+def _get_dsmeta_srcfiles(ds, extraction_args: dict) -> tuple:
     """Get the list of files containing dataset-level metadata
 
     Parameters
     ----------
-    ds
-      DataLad Dataset object
+    ds : Dataset
+      DataLad Dataset instance
+
+    extraction_args : dict
+     Extraction arguments that were provided to the meta-extract call
 
     Returns
     -------
     tuple(srcfiles, cfg_srcfiles)
       srcfiles is a list of all source files for metadata, including default
-      if it exists (empty list)
+      if it exists
 
       cfg_srcfiles is a list of all configured source files for metadata,
-      where configuration occurs via 'datalad.metadata.custom-dataset-source'
+      where configuration occurs as an extraction argument via the
+      'metadata_source' parameter 
 
       If no sources have been configured, the default '.metadata/dataset.json'
       is returned. If no sources are configured AND no file or symlink exists
@@ -189,8 +195,24 @@ def _get_dsmeta_srcfiles(ds) -> tuple:
       lists are relative
     """
     # Get metadata source filenames from configuration
-    cfg_srcfiles = ds.config.obtain("datalad.metadata.custom-dataset-source", [])
-    cfg_srcfiles = ensure_list(cfg_srcfiles)
+    if not extraction_args:
+        meta_source = []
+    else:
+        meta_source = extraction_args.get('metadata_source', None)
+        if meta_source:
+            if isinstance(meta_source, str):
+                try:
+                    # assuming json serialized list
+                    meta_source = json.loads(meta_source)
+                except:
+                    # assuming single string value
+                    meta_source = [meta_source]
+            else:
+                meta_source = ensure_list(meta_source)
+        else:
+            meta_source = []
+
+    cfg_srcfiles = ensure_list(meta_source)
     default_path = ds.pathobj / ".metadata" / "dataset.json"
     srcfiles = []
     if not cfg_srcfiles:

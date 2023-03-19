@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Test custom metadata extractor"""
+"""Test generic json dataset-level metadata extractor"""
 
 import json
 
@@ -97,7 +97,7 @@ def test_custom_dsmeta(path=None):
     # -> extraction yields ok result
     ds.save(result_renderer="disabled")
     assert_repo_status(ds.path)
-    res = ds.meta_extract(extractorname='metalad_custom_dataset')
+    res = ds.meta_extract(extractorname='metalad_genericjson_dataset')
     assert_status('ok', res)
     assert_result_count(res, 1)
     dsmeta = res[0]
@@ -105,13 +105,10 @@ def test_custom_dsmeta(path=None):
 
     # 2. Test configured source location, but non-existing file
     # -> extraction yields a failure result
-    ds.config.add(
-        'datalad.metadata.custom-dataset-source',
-        'nothere',
-        scope='branch')
-    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-            extractorname='metalad_custom_dataset',
+            extractorname='metalad_genericjson_dataset',
+            extractorargs=['metadata_source', 'nothere'],
+            # force_dataset_level=True,
             result_renderer='disabled',
             on_failure='ignore'
             )
@@ -120,7 +117,7 @@ def test_custom_dsmeta(path=None):
         action="meta_extract",
         status="impossible",
         message=(
-            'custom metadata source is not available in %s: %s',
+            'metadata source is not available in %s: %s',
             ds.path, 'nothere'),
         path=ds.path,
     )
@@ -128,37 +125,27 @@ def test_custom_dsmeta(path=None):
         res, 1, action='meta_extract', type='dataset', status='impossible',
         path=ds.path,
         message=(
-            'custom metadata source is not available in %s: %s',
+            'metadata source is not available in %s: %s',
             ds.path, 'nothere'),
     )
     assert_equal(res[0].get('metadata_record', {}), {})
 
-
     # 3. Test configured source location, file exists
     # -> extraction yields ok result
-    ds.config.set(
-        'datalad.metadata.custom-dataset-source',
-        # always POSIX!
-        'down/customloc',
-        scope='branch')
-    ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-        extractorname='metalad_custom_dataset',
+        extractorname='metalad_genericjson_dataset',
+        extractorargs=['metadata_source', 'down/customloc'],
+        # force_dataset_level=True,
         on_failure='ignore',
         result_renderer="disabled")
     assert_result_count(res, 1)
     assert_status('ok', res)
     assert_equal(testmeta, res[0]['metadata_record']['extracted_metadata'])
 
-    # 3. Test multiple configured source location, file exists
-    ds.config.add(
-        'datalad.metadata.custom-dataset-source',
-        # put back default
-        '.metadata/dataset.json',
-        scope='branch')
-    ds.save(result_renderer="disabled")
+    # 4. Test multiple configured source location, file exists
     res = ds.meta_extract(
-        extractorname='metalad_custom_dataset',
+        extractorname='metalad_genericjson_dataset',
+        extractorargs=['metadata_source', '["down/customloc", ".metadata/dataset.json"]'],
         on_failure='ignore',
         result_renderer="disabled")
     assert_result_count(res, 1)

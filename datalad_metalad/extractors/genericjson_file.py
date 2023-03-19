@@ -6,15 +6,35 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""MetadataRecord extractor for custom (JSON-LD) metadata contained in a dataset
+"""A file-level extractor for generic JSON(-LD) metadata
 
-One or more source files with metadata can be specified via the
-'datalad.metadata.custom-dataset-source' configuration variable.
-The content of these files must be a JSON object, and a metadata
-dictionary is built by updating it with the content of the JSON
-objects in the order in which they are given.
+When presented with a file in a dataset, the Generic JSON file-level
+extractor will extract metadata from a specified and related metadata
+source file. A sidecar source file with metadata can be specified as an
+extraction argument via the 'metadata_source' parameter. The metadata
+source file name can be specified explicitly or via a parameterized
+expression. The content of the source file must be a JSON object.
 
-By default a single file is read: '.metadata/dataset.json'
+An example of an explicitly specified source file:
+datalad meta-extract -d mydataset myfile.txt 'metadata_source' '_myfile_meta.json'
+
+An example of a parameterized expression:
+datalad meta-extract -d mydataset myfile.txt 'metadata_source' '{freldir}_{fname}_meta.json'
+
+In the case of a parameterized expression, the parameters 'freldir'
+and 'fname' are determined at runtime as the parent directory of the main
+file and the name of the main file, respectively. These parameter names are
+required and cannot be changed.
+
+If no explicit source file or expression is provided, the default location
+for a sidecar source file will be used. The default root directory is
+'.metadata/content/' and the source file is then required to be located at
+the same relative level of the filetree as the main file with content.
+The filename of the source file should be identical to that of te main file,
+and the extension should be '.json'.
+
+An example of a source file in the default location is '.metadata/content/myfile.json',
+for a main file specified as 'myfile.txt'.
 """
 
 from datalad_metalad.extractors.base import (
@@ -42,11 +62,7 @@ from datalad.utils import (
 from typing import Generator
 
 
-# what does a user have to do before running custom file extractor:
-# - use the default config to place metadata files inside `.metadata/content
-# - specify their own config using `dataset.config.set("datalad.metadata.custom-content-source",arg)``
-
-class CustomFileExtractor(FileMetadataExtractor):
+class GenericJsonFileExtractor(FileMetadataExtractor):
     """
     Main 'custom' file-level extractor class
     Inherits from metalad's FileMetadataExtractor class
@@ -66,14 +82,16 @@ class CustomFileExtractor(FileMetadataExtractor):
     
     def get_required_content(self):
         # Instantiate CustomFileMetadata object
-        file_metadata_obj = CustomFileMetadata(self.dataset, self.file_info)
+        file_metadata_obj = GenericJsonFileMetadata(
+            self.dataset, self.file_info, self.parameter)
         # Get required metadata file
         yield from file_metadata_obj.get_metafile()
         return True
     
     def extract(self, _=None) -> ExtractorResult:
         # Instantiate CustomFileMetadata object
-        file_metadata_obj = CustomFileMetadata(self.dataset, self.file_info)
+        file_metadata_obj = GenericJsonFileMetadata(
+            self.dataset, self.file_info, self.parameter)
         # Extract metadata
         res = next(file_metadata_obj.get_metadata())
         return ExtractorResult(
@@ -85,25 +103,39 @@ class CustomFileExtractor(FileMetadataExtractor):
         )
 
 
-class CustomFileMetadata(object):
+class GenericJsonFileMetadata(object):
     """
-    Util class to get custom file-level metadata from json file
+    Util class to get custom file-level metadata from a sidecar json file
     """
 
-    def __init__(self, dataset, file_info) -> None:
+    def __init__(self, dataset, file_info, parameter) -> None:
         self.dataset = dataset
         self.file_info = file_info
+        self.extraction_args = parameter
         self.metafile_expression = self.get_metafile_expression()
         self.metafile_path = self.get_metafile_objpath()
 
     def get_metafile_expression(self):
-        """Obtain configured custom content source
+        """Get configured custom metadata source from extraction arguments
 
         Defaults to the expression '.metadata/content/{freldir}/{fname}.json'
         """
-        return self.dataset.config.obtain(
-            "datalad.metadata.custom-content-source",
-            ".metadata/content/{freldir}/{fname}.json",
+        default_expr = ".metadata/content/{freldir}/{fname}.json"
+        if not self.extraction_args:
+            return default_expr
+        else:
+            return self.extraction_args.get('metadata_source', default_expr)
+        
+    def get_metafile_objpath(self) -> Path:
+        """Get the path of the metadata file given by the configured expression"""
+        fpath = Path(self.file_info.path)
+        # build associated metadata file path from POSIX
+        # pieces and convert to platform conventions at the end
+        return self.dataset.pathobj / PurePosixPath(
+            self.metafile_expression.format(
+                freldir=fpath.relative_to(self.dataset.pathobj).parent.as_posix(),
+                fname=fpath.name,
+            )
         )
 
     def get_metafile(self):
@@ -142,18 +174,6 @@ class CustomFileMetadata(object):
                     self.metafile_path,
                 ),
             )
-
-    def get_metafile_objpath(self) -> Path:
-        """Get the path of the metadata file given the configured expression"""
-        fpath = Path(self.file_info.path)
-        # build associated metadata file path from POSIX
-        # pieces and convert to platform conventions at the end
-        return self.dataset.pathobj / PurePosixPath(
-            self.metafile_expression.format(
-                freldir=fpath.relative_to(self.dataset.pathobj).parent.as_posix(),
-                fname=fpath.name,
-            )
-        )
 
     def get_metadata(self):
         """

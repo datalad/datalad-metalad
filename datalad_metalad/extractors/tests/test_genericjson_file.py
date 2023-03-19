@@ -6,7 +6,7 @@
 #   copyright and license terms.
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
-"""Test custom metadata extractor"""
+"""Test generic json file-level metadata extractor"""
 
 import json
 from datalad.support.exceptions import CapturedException
@@ -34,12 +34,13 @@ from datalad.tests.utils_pytest import (
 def test_custom_contentmeta(path=None):
     ds = Dataset(path).create(force=True)
     # use custom location
-    ds.config.add('datalad.metadata.custom-content-source',
-                  '{freldir}/_{fname}.dl.json',
-                  scope='branch')
+    # ds.config.add('datalad.metadata.custom-content-source',
+    #               '{freldir}/_{fname}.dl.json',
+    #               scope='branch')
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-        extractorname='metalad_custom_file',
+        extractorname='metalad_genericjson_file',
+        extractorargs=['metadata_source', '{freldir}/_{fname}.dl.json'],
         path="sub/one",
         result_renderer="disabled")
     assert_status('ok', res)
@@ -66,7 +67,7 @@ def test_custom_content_broken(path=None):
     ds = Dataset(path).create(force=True)
     ds.save(result_renderer="disabled")
     res = ds.meta_extract(
-        extractorname='metalad_custom_file',
+        extractorname='metalad_genericjson_file',
         path='sub/one',
         on_failure='ignore',
         result_renderer="disabled")
@@ -90,4 +91,32 @@ def test_custom_content_broken(path=None):
     #     metadata={},
     # )
 
+@with_tree(
+    tree={
+        '.metadata': {
+            'content': {
+                'sub': {
+                    'one.json': '{"correct":"JSON"}',
+                },
+            },
+        },
+        'sub': {
+            'one': '1',
+        }
+    })
+def test_default_content(path=None):
+    ds = Dataset(path).create(force=True)
+    ds.save(result_renderer="disabled")
+    res = ds.meta_extract(
+        extractorname='metalad_genericjson_file',
+        path='sub/one',
+        on_failure='ignore',
+        result_renderer="disabled")
+    assert_result_count(res, 1)
+    assert_in_results(
+        res,
+        action="meta_extract",
+        status="ok",
+        path=ds.pathobj / 'sub' / 'one',
+    )
     
