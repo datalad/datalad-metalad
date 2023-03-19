@@ -16,10 +16,10 @@ source file name can be specified explicitly or via a parameterized
 expression. The content of the source file must be a JSON object.
 
 An example of an explicitly specified source file:
-datalad meta-extract -d mydataset myfile.txt 'metadata_source' '_myfile_meta.json'
+datalad meta-extract -d mydataset metalad_genericjson_file myfile.txt 'metadata_source' '_myfile_meta.json'
 
 An example of a parameterized expression:
-datalad meta-extract -d mydataset myfile.txt 'metadata_source' '{freldir}_{fname}_meta.json'
+datalad meta-extract -d mydataset metalad_genericjson_file myfile.txt 'metadata_source' '{freldir}_{fname}_meta.json'
 
 In the case of a parameterized expression, the parameters 'freldir'
 and 'fname' are determined at runtime as the parent directory of the main

@@ -14,7 +14,14 @@ The content of these files must be a JSON object, and a metadata
 dictionary is built by updating it with the content of the JSON
 objects in the order in which they are given.
 
-By default a single file is read: '.metadata/dataset.json'
+An example of a single source file specified via extraction arguments:
+datalad meta-extract -d mydataset metalad_genericjson_dataset 'metadata_source' 'dataset_metadata.json'
+
+An example of a list of source file specified via extraction arguments:
+datalad meta-extract -d mydataset metalad_genericjson_dataset 'metadata_source' '["dataset_metadata1.json", "dataset_metadata2.json"]'
+
+By default a single file is read if no extraction arguments
+are provided: '.metadata/dataset.json'
 """
 
 from datalad_metalad.extractors.base import (
