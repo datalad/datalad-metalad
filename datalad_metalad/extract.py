@@ -233,7 +233,7 @@ class Extract(Interface):
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
-
+        
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = ([path] + extractorargs
@@ -364,8 +364,9 @@ def do_extraction(ep: ExtractionArguments):
     if not issubclass(ep.extractor_class, MetadataExtractorBase):
         lgr.debug(
             "performing legacy %s-level metadata "
-            "extraction for %s at %s",
+            "extraction (%s) for %s at %s",
             extractor_type,
+            ep.extractor_name,
             extractor_type,
             ep.source_dataset.path / ep.file_tree_path
             if extractor_type == 'file' else ep.source_dataset.path)
@@ -389,8 +390,9 @@ def do_extraction(ep: ExtractionArguments):
     
     lgr.debug(
             "performing %s-level metadata "
-            "extraction for %s at %s",
+            "extraction (%s) for %s at %s",
             extractor_type,
+            ep.extractor_name,
             extractor_type,
             ep.source_dataset.path / ep.file_tree_path \
             if extractor_type == 'file' else ep.source_dataset.path)

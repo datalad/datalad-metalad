@@ -17,7 +17,10 @@ from typing import (
     Optional,
     Union,
 )
-from unittest.mock import patch
+from unittest.mock import (
+    ANY,
+    patch
+)
 from uuid import UUID
 
 from datalad.api import (
