@@ -78,18 +78,6 @@ def test_custom_content_broken(path=None):
         status="error",
         path=ds.pathobj / 'sub' / 'one',
     )
-    # assert_result_count(
-    #     res, 1,
-    #     path=str(ds.pathobj / 'sub' / 'one'),
-    #     type='file',
-    #     # specific message does vary a lot across platforms
-    #     #message=
-    #     action="meta_extract",
-    #     status="error",
-    #     # exception=ce,
-    #     # message=("cannot load data from target path: %s", ce),
-    #     metadata={},
-    # )
 
 @with_tree(
     tree={
