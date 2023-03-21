@@ -54,6 +54,7 @@ from .extractors.base import (
     BaseMetadataExtractor,
     DataOutputCategory,
     DatasetMetadataExtractor,
+    FileInfo,
     FileMetadataExtractor,
     MetadataExtractor,
     MetadataExtractorBase,
@@ -88,7 +89,7 @@ class ExtractionArguments:
     source_dataset_id: UUID
     source_dataset_version: str
     local_source_object_path: Path
-    extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
+    extractor_class: Union[type(DatasetMetadataExtractor), type(FileMetadataExtractor), type(MetadataExtractorBase), type(BaseMetadataExtractor)]
     extractor_type: str
     extractor_name: str
     extraction_parameter: Dict[str, str]
@@ -129,9 +130,9 @@ class Extract(Interface):
     The extractor configuration can be parameterized with key-value pairs
     given as additional arguments. Each key-value pair consists of two
     arguments, first the key, followed by the value. If dataset level extraction
-    should be performed and you want to provide extractor arguments, you have to
-    specify '--force_dataset_level' to ensure dataset-level extraction. i.e. to
-    prevent interpretation of the key of the first extractor argument as path
+    should be performed, and you want to provide extractor arguments, you have
+    to specify '--force_dataset_level' to ensure dataset-level extraction. i.e.
+    to prevent interpretation of the key of the first extractor argument as path
     for a file-level extraction.
 
     The command can also take legacy datalad-metalad extractors and
@@ -405,8 +406,8 @@ def do_extraction(ep: ExtractionArguments):
 
     # Legacy extraction
     legacy_extractor_map = {
-        'file': legacy_extract_file,
-        'dataset': legacy_extract_dataset,
+        "file": legacy_extract_file,
+        "dataset": legacy_extract_dataset,
     }
     if not issubclass(ep.extractor_class, MetadataExtractorBase):
         lgr.debug(
@@ -415,32 +416,36 @@ def do_extraction(ep: ExtractionArguments):
             extractor_type,
             ep.extractor_name,
             ep.source_dataset.path / ep.file_tree_path
-            if extractor_type == 'file' else ep.source_dataset.path)
+            if extractor_type == "file" else ep.source_dataset.path)
 
         yield from legacy_extractor_map[extractor_type](ep)
         return
 
     # Latest generation extraction
-    extractor_class_map = {
-        'file': FileMetadataExtractor,
-        'dataset': DatasetMetadataExtractor,
+    extractor_class_map: dict[str, type(FileMetadataExtractor), type(DatasetMetadataExtractor)] = {
+        "file": FileMetadataExtractor,
+        "dataset": DatasetMetadataExtractor,
     }
     if not issubclass(ep.extractor_class, extractor_class_map[extractor_type]):
         msg = (
-            f"A {extractor_type}-level metadata-extraction was attempted",
-            "since no path argument was given" if extractor_type == 'dataset' else "",
-            f"but the specified extractor ({ep.extractor_name})",
+            f"A {extractor_type}-level metadata-extraction was attempted"
+            + (
+                " -since no path argument was given-"
+                if extractor_type == "dataset"
+                else ""
+            ) +
+            f" but the specified extractor ({ep.extractor_name})"
             f"is not a {extractor_type}-level extractor"
         )
         raise ValueError(msg)
 
     lgr.debug(
-            "performing %s-level metadata "
-            "extraction for %s at %s",
+            "performing %s-level metadata extraction for %s at %s",
             extractor_type,
             ep.extractor_name,
             ep.source_dataset.path / ep.file_tree_path
-            if extractor_type == "file" else ep.source_dataset.path)
+            if extractor_type == "file"
+            else ep.source_dataset.path)
 
     if extractor_type == "file":
         file_info = (
@@ -448,17 +453,17 @@ def do_extraction(ep: ExtractionArguments):
             if ep.file_info is None
             else ep.file_info
         )
-        extractor = ep.extractor_class(
+        extractor = cast(type(FileMetadataExtractor), ep.extractor_class)(
             ep.source_dataset,
             ep.source_dataset_version,
             file_info,
             ep.extraction_parameter)
         ensure_content_availability(extractor, file_info)
     else:
-        extractor = ep.extractor_class(
-        ep.source_dataset,
-        ep.source_dataset_version,
-        ep.extraction_parameter)
+        extractor = cast(type(DatasetMetadataExtractor), ep.extractor_class)(
+            ep.source_dataset,
+            ep.source_dataset_version,
+            ep.extraction_parameter)
 
     yield from perform_metadata_extraction(ep, extractor)
 
