@@ -42,7 +42,6 @@ from datalad.interface.base import (
     build_doc,
     eval_results,
 )
-from datalad.interface.utils import generic_result_renderer
 from datalad.interface.results import get_status_dict
 from datalad.support.constraints import (
     EnsureNone,
