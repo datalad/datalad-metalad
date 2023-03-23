@@ -50,7 +50,6 @@ from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
-    AnnexedFileInfo,
     BaseMetadataExtractor,
     DataOutputCategory,
     DatasetMetadataExtractor,
@@ -279,11 +278,7 @@ class Extract(Interface):
                         file_info = json.load(f)
                 else:
                     file_info = json.loads(file_info)
-            file_info = (
-                AnnexedFileInfo.from_dict(file_info)
-                if "key" in file_info
-                else FileInfo.from_dict(file_info)
-            )
+            file_info = FileInfo.from_dict(file_info)
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
 
@@ -613,10 +608,8 @@ def get_file_info(dataset: Dataset,
 
     # noinspection PyUnresolvedReferences
     return FileInfo(
-        type="file",     # TODO: what about the situation where path_status["type"] == "symlink"?
+        type="file",
         gitshasum=path_status["gitshasum"],
-        prev_gitshasum=path_status["prev_gitshasum"],
-        bytesize=path_status.get("bytesize", 0),
         state=path_status["state"],
         dataset_path=path_status["parentds"],
         path=path_status["path"],   # Absolute path, used by extractors

@@ -33,7 +33,6 @@ from datalad.distribution.dataset import Dataset
 class DatasetInfo:
     type: str
     gitshasum: str
-    prev_gitshasum: str
     state: str
     path: str
     dataset_path: str
@@ -43,20 +42,6 @@ class DatasetInfo:
 @dataclass
 class FileInfo(DatasetInfo):
     intra_dataset_path: str
-    bytesize: int
-
-
-@dataclass_json
-@dataclass
-class AnnexedFileInfo(FileInfo):
-    humansize: str
-    key: str
-    backend: str
-    mtime: str
-    keyname: str
-    has_content: bool
-    hashdirlower: str = ""
-    hashdirmixed: str = ""
 
 
 @dataclass
