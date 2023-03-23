@@ -165,6 +165,7 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
 
     flag_2_type = {
         "100644": "file",
+        "100755": "file",
         "120000": "file",
         "160000": "dataset",
     }
