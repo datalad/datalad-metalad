@@ -5,6 +5,9 @@ import hashlib
 
 __docformat__ = 'restructuredtext'
 
+# What generations of the extractors etc are supported by this given version of metalad
+__supported_generations__ = [2, 3, 4]
+
 
 # defines a datalad command suite
 # this symbol must be identified as a setuptools entrypoint
