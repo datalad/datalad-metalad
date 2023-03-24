@@ -6,7 +6,6 @@ Relates to datalad_metalad issue #68
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -23,16 +22,14 @@ from datalad.distribution.dataset import (
 )
 from datalad.runner import GitRunner
 from datalad.runner.coreprotocols import StdOutErrCapture
-from datalad.runner.nonasyncrunner import STDOUT_FILENO, STDERR_FILENO
+from datalad.runner.nonasyncrunner import STDERR_FILENO
 from datalad.runner.protocol import GeneratorMixIn
 from datalad.runner.utils import LineSplitter
-from datalad.support.annexrepo import AnnexRepo
 from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
 )
 from datalad.support.exceptions import NoDatasetFound
-from datalad.support.gitrepo import GitRepo
 
 from .base import Provider
 from ..documentedinterface import (
@@ -54,13 +51,6 @@ __docformat__ = "restructuredtext"
 
 
 lgr = logging.getLogger('datalad.metadata.pipeline.provider.datasettraverse')
-
-# By default, we exclude all paths that start with "."
-standard_excludes = ["^\\..*"]
-standard_exclude_matcher = [
-    re.compile(standard_exclude)
-    for standard_exclude in standard_excludes
-]
 
 
 std_args = dict(
@@ -177,7 +167,8 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
 
     result = {}
     for line in ls_files(dataset):
-        tag, flag, shasum, number, path = line.split()
+        line, path = line.split("\t", maxsplit=1)
+        tag, flag, shasum, number = line.split()
         full_path = dataset.repo.pathobj / path
         result[full_path] = {
             "type": flag_2_type[flag],
@@ -331,9 +322,6 @@ class DatasetTraverser(Provider):
         if TraversalType.FILE in self.item_set:
             for element_path, element_info in ls_struct(dataset).items():
                 if element_info["type"] == "file":
-                    if self.is_excluded(element_path):
-                        lgr.debug(f"Ignoring excluded path {element_path}")
-                        continue
                     traverse_result = self._generate_result(
                         dataset=dataset,
                         dataset_path=str(dataset.pathobj),
@@ -358,14 +346,6 @@ class DatasetTraverser(Provider):
                         submodule_path
                     )
         return
-
-    def is_excluded(self, path: Path) -> bool:
-        """Check whether any of the path parts matches an exclude-pattern."""
-        return any([
-            matcher.match(part)
-            for part in Path(path).parts
-            for matcher in standard_exclude_matcher
-        ])
 
     def is_installed(self, dataset: Dataset) -> bool:
         try:
