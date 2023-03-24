@@ -234,6 +234,7 @@ class DatasetTraverser(Provider):
             self.top_level_dir,
             purpose="dataset_traversal"
         )
+        self.root_dataset_version = self.root_dataset.repo.get_hexsha()
         self.fs_base_path = Path(
             resolve_path(self.top_level_dir, self.root_dataset)
         )
@@ -258,34 +259,40 @@ class DatasetTraverser(Provider):
 
     def _get_base_dataset_result(self,
                                  dataset: Dataset,
+                                 dataset_hexsha: str,
                                  id_key: str = "dataset_id",
                                  version_key: str = "dataset_version"
                                  ) -> dict[str, str]:
         return {
             id_key: str(dataset.id),
-            version_key: str(dataset.repo.get_hexsha())
+            version_key: dataset_hexsha
         }
 
     def _get_dataset_result_part(self,
-                                 dataset: Dataset
+                                 dataset: Dataset,
+                                 dataset_hexsha: str
                                  ) -> dict[str, str | Path]:
         if dataset.pathobj == self.fs_base_path:
             return {
                 "dataset_path": Path(""),
-                **self._get_base_dataset_result(dataset)
+                **self._get_base_dataset_result(dataset, dataset_hexsha)
             }
         else:
             return {
                 "dataset_path": dataset.pathobj.relative_to(self.fs_base_path),
-                **self._get_base_dataset_result(dataset),
+                **self._get_base_dataset_result(dataset, dataset_hexsha),
                 **self._get_base_dataset_result(
                     self.root_dataset,
+                    self.root_dataset_version,
                     "root_dataset_id",
                     "root_dataset_version"
                 )
             }
 
-    def _traverse_dataset(self, dataset_path: Path) -> Generator:
+    def _traverse_dataset(self,
+                          dataset_path: Path,
+                          is_root: bool = False
+                          ) -> Generator:
         """Traverse all elements of dataset, and potentially its subdatasets.
 
         This method will traverse the dataset `dataset` and yield traversal
@@ -297,7 +304,13 @@ class DatasetTraverser(Provider):
         :rtype: Generator[PipelineData]
         """
 
-        dataset = require_dataset(dataset_path, purpose="dataset_traversal")
+        if is_root:
+            dataset = self.root_dataset
+            dataset_hexsha = self.root_dataset_version
+        else:
+            dataset = require_dataset(dataset_path, purpose="dataset_traversal")
+            dataset_hexsha = dataset.repo.get_hexsha()
+
         element_path = resolve_path("", dataset)
 
         if TraversalType.DATASET in self.item_set:
@@ -305,6 +318,7 @@ class DatasetTraverser(Provider):
                 return
             traverse_result = self._generate_result(
                 dataset=dataset,
+                dataset_hexsha=dataset_hexsha,
                 dataset_path=str(dataset.pathobj),
                 element_path=element_path,
                 element_info={
@@ -324,6 +338,7 @@ class DatasetTraverser(Provider):
                 if element_info["type"] == "file":
                     traverse_result = self._generate_result(
                         dataset=dataset,
+                        dataset_hexsha=dataset_hexsha,
                         dataset_path=str(dataset.pathobj),
                         element_path=element_path,
                         element_info=element_info
@@ -376,6 +391,7 @@ class DatasetTraverser(Provider):
 
     def _generate_result(self,
                          dataset: Dataset,
+                         dataset_hexsha: str,
                          dataset_path: str,
                          element_path: Path,
                          element_info: dict
@@ -392,8 +408,8 @@ class DatasetTraverser(Provider):
                 element_path,
                 element_info
             ),
-            **self._get_dataset_result_part(dataset)
+            **self._get_dataset_result_part(dataset, dataset_hexsha)
         })
 
-    def next_object(self) -> Iterable:
-        yield from self._traverse_dataset(self.fs_base_path)
+    def next_object(self) -> Generator:
+        yield from self._traverse_dataset(self.fs_base_path, True)
