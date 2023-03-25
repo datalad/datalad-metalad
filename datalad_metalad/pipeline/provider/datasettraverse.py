@@ -11,7 +11,6 @@ from enum import Enum
 from pathlib import Path
 from typing import (
     Generator,
-    Iterable,
     Optional,
 )
 
@@ -232,6 +231,7 @@ class DatasetTraverser(Provider):
         self.traverse_sub_datasets = traverse_sub_datasets
         self.root_dataset = require_dataset(
             self.top_level_dir,
+            check_installed=True,
             purpose="dataset_traversal"
         )
         self.root_dataset_version = self.root_dataset.repo.get_hexsha()
@@ -308,7 +308,19 @@ class DatasetTraverser(Provider):
             dataset = self.root_dataset
             dataset_hexsha = self.root_dataset_version
         else:
-            dataset = require_dataset(dataset_path, purpose="dataset_traversal")
+            try:
+                dataset = require_dataset(
+                    dataset=dataset_path,
+                    check_installed=True,
+                    purpose="dataset_traversal"
+                )
+            except NoDatasetFound:
+                lgr.info(
+                    "ignoring not installed sub-dataset at %s",
+                    dataset_path
+                )
+                return
+
             dataset_hexsha = dataset.repo.get_hexsha()
 
         element_path = resolve_path("", dataset)
@@ -319,7 +331,9 @@ class DatasetTraverser(Provider):
             traverse_result = self._generate_result(
                 dataset=dataset,
                 dataset_hexsha=dataset_hexsha,
-                dataset_path=str(dataset.pathobj),
+                dataset_path=str(
+                    dataset.pathobj.relative_to(self.fs_base_path)
+                ),
                 element_path=element_path,
                 element_info={
                     "type": TraversalType.DATASET.value,
@@ -339,7 +353,9 @@ class DatasetTraverser(Provider):
                     traverse_result = self._generate_result(
                         dataset=dataset,
                         dataset_hexsha=dataset_hexsha,
-                        dataset_path=str(dataset.pathobj),
+                        dataset_path=str(
+                            dataset.pathobj.relative_to(self.fs_base_path)
+                        ),
                         element_path=element_path,
                         element_info=element_info
                     )
@@ -349,25 +365,9 @@ class DatasetTraverser(Provider):
                     ))
 
         if self.traverse_sub_datasets:
-            repo = dataset.repo
-            for submodule_info in repo.get_submodules():
-                submodule_path = submodule_info["path"]
-                sub_dataset = Dataset(submodule_path)
-                if sub_dataset.is_installed():
-                    yield from self._traverse_dataset(submodule_info["path"])
-                else:
-                    lgr.debug(
-                        "ignoring not installed sub-dataset at %s",
-                        submodule_path
-                    )
+            for submodule_info in dataset.repo.get_submodules():
+                yield from self._traverse_dataset(submodule_info["path"])
         return
-
-    def is_installed(self, dataset: Dataset) -> bool:
-        try:
-            require_dataset(dataset, purpose="dataset traversal")
-            return True
-        except NoDatasetFound:
-            return False
 
     def _get_element_info_object(self,
                                  dataset: Dataset,
