@@ -45,6 +45,11 @@ from datalad.interface.base import (
     eval_results,
 )
 from datalad.interface.utils import generic_result_renderer
+from datalad.runner import GitRunner
+from datalad.runner.coreprotocols import StdOutErrCapture
+from datalad.runner.nonasyncrunner import STDERR_FILENO
+from datalad.runner.protocol import GeneratorMixIn
+from datalad.runner.utils import LineSplitter
 from datalad.support.annexrepo import AnnexRepo
 from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
@@ -186,8 +191,8 @@ class Extract(Interface):
             if it identifies the root of a dataset, i.e. "", we
             assume a dataset level metadata extractor is
             specified.
-            You might provide an absolute file path, but it has to contain
-            the dataset path as prefix.""",
+            You may provide an absolute file path, but it has to contain the
+            dataset path as prefix.""",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
@@ -789,7 +794,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
             f"unknown extractor class: {type(ea.extractor_class).__name__}")
 
 
-def annex_status(annex_repo, paths=None):
+def xxx_annex_status(annex_repo, paths=None):
     info = annex_repo.get_content_annexinfo(
         paths=paths,
         eval_availability=False,
@@ -807,6 +812,65 @@ def annex_status(annex_repo, paths=None):
     return info
 
 
+def ls_files(dataset: Dataset,
+             path: Optional[Union[str, Path]] = None
+             ) -> Generator:
+    class GeneratorStdOutErrCapture(StdOutErrCapture, GeneratorMixIn):
+        def pipe_data_received(self, fd, data):
+            self.send_result((fd, data))
+
+    line_splitter = LineSplitter()
+    runner = GitRunner()
+    generator = runner.run(
+        ['git', 'ls-files', '-s', '-m', '-t', '--exclude-standard']
+        + [str(path)] if path else [],
+        protocol=GeneratorStdOutErrCapture,
+        cwd=dataset.repo.pathobj
+    )
+    stderr = bytearray()
+    for file_number, data in generator:
+        if file_number == STDERR_FILENO:
+            stderr += data
+            continue
+        for line in line_splitter.process(data.decode()):
+            yield line
+
+    data = line_splitter.finish_processing()
+    if data:
+        yield data
+
+
+def annex_status(dataset: Dataset,
+                 path_pattern: Optional[Union[str, Path]] = None
+                 ) -> dict[Path, dict]:
+
+    flag_2_type = {
+        "100644": "file",
+        "100755": "file",
+        "120000": "file",
+        "160000": "dataset",
+    }
+
+    tag_2_status = {
+        "C": "modified",
+        "H": "clean",
+    }
+
+    result = {}
+    for line in ls_files(dataset, path_pattern):
+        line, path = line.split("\t", maxsplit=1)
+        tag, flag, shasum, number = line.split()
+        full_path = dataset.repo.pathobj / path
+        result[full_path] = {
+            "status": "ok",
+            "type": flag_2_type[flag],
+            "path": full_path,
+            "gitshasum": shasum,
+            "state": tag_2_status[tag],
+        }
+    return result
+
+
 def legacy_get_file_info(dataset: Dataset,
                          path: Path
                          ) -> dict:
@@ -816,7 +880,7 @@ def legacy_get_file_info(dataset: Dataset,
             # The dataset path might include a symlink, this requires us to
             # convert the path to be based on dataset.repo.pathobj
             path = dataset.repo.pathobj.resolve() / path.relative_to(dataset.pathobj)
-        status = annex_status(dataset.repo, [path])
+        status = annex_status(dataset.repo, path)
         if status and status[path].get("status") == "error":
             raise ValueError(
                 f"error getting status for file: {path}: "
