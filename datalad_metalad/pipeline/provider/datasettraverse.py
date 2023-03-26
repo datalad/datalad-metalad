@@ -385,7 +385,8 @@ class DatasetTraverser(Provider):
         intra_dataset_path = element_path.relative_to(dataset.pathobj)
         file_keys = {
             **dataset_keys,
-            "intra_dataset_path": str(intra_dataset_path)
+            "intra_dataset_path": str(intra_dataset_path),
+            "fs_base_path": str(self.fs_base_path)
         }
         return FileInfo.from_dict({**element_info, **file_keys})
 

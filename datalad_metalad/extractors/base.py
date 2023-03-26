@@ -41,6 +41,7 @@ class DatasetInfo:
 @dataclass_json
 @dataclass
 class FileInfo(DatasetInfo):
+    fs_base_path: str
     intra_dataset_path: str
 
 
