@@ -21,9 +21,7 @@ from datalad.distribution.dataset import (
 )
 from datalad.runner import GitRunner
 from datalad.runner.coreprotocols import StdOutErrCapture
-from datalad.runner.nonasyncrunner import STDERR_FILENO
-from datalad.runner.protocol import GeneratorMixIn
-from datalad.runner.utils import LineSplitter
+from datalad.runner.exception import CommandError
 from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
@@ -97,65 +95,12 @@ class DatasetTraverseResult(PipelineResult):
         )
 
 
-# The following code is copied from datalad.tests.utils because importing
-# it from there pulls in `pytest` and `nose`
-def get_annexstatus(ds, paths=None):
-    """Report a status for annexed contents.
-
-    Assemble states for git content info, amended with annex info on 'HEAD'
-    (to get the last committed stage and with it possibly vanished content),
-    and lastly annex info wrt to the present worktree, to also get info on
-    added/staged content this fuses the info reported from
-    - git ls-files
-    - git annex findref HEAD
-    - git annex find --include '*'"""
-    info = ds.get_content_annexinfo(
-        paths=paths,
-        eval_availability=False,
-        init=ds.get_content_annexinfo(
-            paths=paths,
-            ref='HEAD',
-            eval_availability=False,
-            init=ds.status(
-                paths=paths,
-                eval_submodule_state='full')
-        )
-    )
-    ds._mark_content_availability(info)
-    return info
-
-
-def ls_files(dataset: Dataset) -> Generator:
-    class GeneratorStdOutErrCapture(StdOutErrCapture, GeneratorMixIn):
-        def pipe_data_received(self, fd, data):
-            self.send_result((fd, data))
-
-    line_splitter = LineSplitter()
-    runner = GitRunner()
-    generator = runner.run(
-        ['git', 'ls-files', '-s', '-m', '-t', '--exclude-standard'],
-        protocol=GeneratorStdOutErrCapture,
-        cwd=dataset.repo.pathobj
-    )
-    stderr = bytearray()
-    for file_number, data in generator:
-        if file_number == STDERR_FILENO:
-            stderr += data
-            continue
-        for line in line_splitter.process(data.decode()):
-            yield line
-
-    data = line_splitter.finish_processing()
-    if data:
-        yield data
-
-
 def ls_struct(dataset: Dataset) -> dict[Path, dict]:
 
     flag_2_type = {
         "100644": "file",
         "100755": "file",
-        "120000": "file",
+        "120000": "symlink",
         "160000": "dataset",
     }
 
@@ -164,17 +109,66 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
         "H": "clean",
     }
 
-    result = {}
-    for line in ls_files(dataset):
+    runner = GitRunner()
+    git_files = runner.run(
+        ["git", "ls-files", "-s", "-m", "-t", "--exclude-standard"],
+        protocol=StdOutErrCapture,
+        cwd=dataset.repo.pathobj
+    )
+    try:
+        annexed_here_out = runner.run(
+            ["git", "annex", "find", "--format=${bytesize} ${file}\n"],
+            protocol=StdOutErrCapture,
+            cwd=dataset.repo.pathobj
+        )
+        annexed_not_here_out = runner.run(
+            ["git", "annex", "find", "--not", "--in", "here", "--format=${bytesize} ${file}\n"],
+            protocol=StdOutErrCapture,
+            cwd=dataset.repo.pathobj
+        )
+        annexed_here = {
+            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
+            for line in annexed_here_out["stdout"].splitlines()
+            if line
+        }
+        annexed_not_here = {
+            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
+            for line in annexed_not_here_out["stdout"].splitlines()
+            if line
+        }
+        annexed = {
+            **annexed_here,
+            **annexed_not_here
+        }
+    except CommandError:
+        annexed = set()
+
+    result = dict()
+    for line in git_files["stdout"].splitlines():
         line, path = line.split("\t", maxsplit=1)
         tag, flag, shasum, number = line.split()
         full_path = dataset.repo.pathobj / path
-        result[full_path] = {
-            "type": flag_2_type[flag],
-            "path": full_path,
-            "gitshasum": shasum,
-            "state": tag_2_status[tag],
-        }
+        if path in annexed:
+            result[full_path] = {
+                "type": "file",
+                "path": full_path,
+                "gitshasum": shasum,
+                "state": tag_2_status[tag],
+                "annexed": True,
+                "bytesize": int(annexed[path]),
+                "content_available": path in annexed_here
+            }
+        else:
+            result[full_path] = {
+                "type": flag_2_type[flag],
+                "path": full_path,
+                "gitshasum": shasum,
+                "state": tag_2_status[tag],
+                "annexed": False,
+                "bytesize": 0,
+                "content_available": False
+            }
+
     return result
 
 

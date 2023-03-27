@@ -43,6 +43,9 @@ class DatasetInfo:
 class FileInfo(DatasetInfo):
     fs_base_path: str
     intra_dataset_path: str
+    annexed: bool
+    content_available: bool
+    bytesize: int
 
 
 @dataclass
