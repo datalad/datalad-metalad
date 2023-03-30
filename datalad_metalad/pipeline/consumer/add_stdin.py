@@ -80,7 +80,7 @@ class StdinAdder(Consumer):
         self.input_queue = Queue()
         self.runner = WitlessRunner()
         self.runner.run(
-            cmd=["datalad", "meta-add", "-d", dataset, "-i", "-"],
+            cmd=["datalad", "meta-add", "-d", dataset, "--json-lines", "-i", "-"],
             protocol=GeneratorNoCapture,
             stdin=self.input_queue
         )
