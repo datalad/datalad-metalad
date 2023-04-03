@@ -1,3 +1,4 @@
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -121,10 +122,10 @@ class StdinAdder(Consumer):
             else:
                 path = ""
 
-            self.input_queue.put({
-                **metadata_record,
-                **(additional_values or {})
-            })
+            self.input_queue.put((json.dumps({
+                    **metadata_record,
+                    **(additional_values or {})
+                }) + "\n").encode())
 
             add_result = MetadataStdinAddResult(ResultState.SUCCESS, path)
             pipeline_data.set_result("path", path)
