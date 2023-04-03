@@ -122,14 +122,17 @@ class StdinAdder(Consumer):
             else:
                 path = ""
 
-            self.input_queue.put((json.dumps({
-                    **metadata_record,
-                    **(additional_values or {})
-                }) + "\n").encode())
+            metadata_str = (json.dumps({
+                **metadata_record,
+                **(additional_values or {})
+            }) + "\n").encode()
+
+            logger.debug("sending metadata to meta-add: %s", metadata_str)
+            self.input_queue.put(metadata_str)
 
             add_result = MetadataStdinAddResult(ResultState.SUCCESS, path)
             pipeline_data.set_result("path", path)
-            pipeline_data.add_result_list("batch_add", [add_result])
+            pipeline_data.add_result_list("stdin_add", [add_result])
 
         return pipeline_data
 
