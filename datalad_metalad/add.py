@@ -780,26 +780,26 @@ def get_tvl_uuid_mrr_metadata_file_tree(
         # record, fetch or create it.
         if ap.root_dataset_id in (MetadataPath(""), None):
             mrr = get_metadata_root_record_from_top_nodes(
-                tree_version_list,
-                uuid_set,
-                ap.dataset_id,
-                ap.dataset_version,
-                ap.unversioned_path or MetadataPath(""),
-                ap.dataset_path or MetadataPath(""),
-                None,
-                None,
-                True)
+                tree_version_list=tree_version_list,
+                uuid_set=uuid_set,
+                dataset_id=ap.dataset_id,
+                primary_data_version=ap.dataset_version,
+                prefix_path=ap.unversioned_path or MetadataPath(""),
+                dataset_tree_path=ap.dataset_path or MetadataPath(""),
+                root_dataset_id=None,
+                root_dataset_version=None,
+                auto_create=True)
         else:
             mrr = get_metadata_root_record_from_top_nodes(
-                tree_version_list,
-                uuid_set,
-                ap.root_dataset_id,
-                ap.root_dataset_version,
-                ap.unversioned_path or MetadataPath(""),
-                ap.dataset_path or MetadataPath(""),
-                ap.dataset_id,
-                ap.dataset_version,
-                True)
+                tree_version_list=tree_version_list,
+                uuid_set=uuid_set,
+                dataset_id=ap.dataset_id,
+                primary_data_version=ap.dataset_version,
+                prefix_path=ap.unversioned_path or MetadataPath(""),
+                dataset_tree_path=ap.dataset_path or MetadataPath(""),
+                root_dataset_id=ap.root_dataset_id,
+                root_dataset_version=ap.root_dataset_version,
+                auto_create=True)
         metadata, file_tree = ensure_mrr_elements_exist(mrr)
         ap.mrr_cache[mrr_cache_key] = (mrr, metadata, file_tree)
 
