@@ -115,6 +115,11 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
         protocol=StdOutErrCapture,
         cwd=dataset.repo.pathobj
     )
+    git_tree = runner.run(
+        ["git", "ls-tree", "--format=%(objectsize)%x09%(path)", "-r", "HEAD"],
+        protocol=StdOutErrCapture,
+        cwd=dataset.repo.pathobj
+    )
     try:
         annexed_here_out = runner.run(
             ["git", "annex", "find", "--format=${bytesize} ${file}\n"],
@@ -143,6 +148,11 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
     except CommandError:
         annexed = set()
 
+    size_info = {
+        line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
+        for line in git_tree["stdout"].splitlines()
+        if line.split(maxsplit=1)[1] not in annexed
+    }
     result = dict()
     for line in git_files["stdout"].splitlines():
         line, path = line.split("\t", maxsplit=1)
@@ -165,7 +175,7 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
                 "annexed": False,
-                "bytesize": 0,
+                "bytesize": size_info[path],
                 "content_available": False
             }
 
