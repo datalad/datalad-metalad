@@ -466,7 +466,10 @@ def perform_metadata_extraction(
             extracted_metadata=result.immediate_data)
         if issubclass(ep.extractor_class, FileMetadataExtractor):
             result.datalad_result_dict["metadata_record"].update(
-                dict(path=ep.file_tree_path)
+                dict(
+                    type="file",
+                    path=ep.file_tree_path,
+                )
             )
         if issubclass(ep.extractor_class, DatasetMetadataExtractor):
             result.datalad_result_dict["metadata_record"].update(
