@@ -454,7 +454,6 @@ def perform_metadata_extraction(
     result.datalad_result_dict.update(result_template)
     if result.extraction_success:
         result.datalad_result_dict["metadata_record"] = dict(
-            type="dataset",
             dataset_id=ep.source_dataset_id,
             dataset_version=ep.source_dataset_version,
             extractor_name=ep.extractor_name,
@@ -473,7 +472,10 @@ def perform_metadata_extraction(
             )
         if issubclass(ep.extractor_class, DatasetMetadataExtractor):
             result.datalad_result_dict["metadata_record"].update(
-                dict(path=ep.source_dataset.path)
+                dict(
+                    type="dataset",
+                    path=ep.source_dataset.path
+                )
             )
     
     yield result.datalad_result_dict
