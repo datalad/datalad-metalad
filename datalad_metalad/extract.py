@@ -468,6 +468,10 @@ def perform_metadata_extraction(
             result.datalad_result_dict["metadata_record"].update(
                 dict(path=ep.file_tree_path)
             )
+        if issubclass(ep.extractor_class, DatasetMetadataExtractor):
+            result.datalad_result_dict["metadata_record"].update(
+                dict(path=ep.source_dataset.path)
+            )
     
     yield result.datalad_result_dict
 
@@ -692,6 +696,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
                     {
                         "metadata_record": dict(
                             type="dataset",
+                            path=ea.source_dataset.path,
                             dataset_id=ea.source_dataset_id,
                             dataset_version=ea.source_dataset_version,
                             extractor_name=ea.extractor_name,
@@ -724,6 +729,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
             type="dataset",
             metadata_record=dict(
                 type="dataset",
+                path=ea.source_dataset.path,
                 dataset_id=ea.source_dataset_id,
                 dataset_version=ea.source_dataset_version,
                 extractor_name=ea.extractor_name,
