@@ -5,6 +5,12 @@ from setuptools import setup
 
 import versioneer
 
+from _datalad_buildsupport.setup import (
+    BuildManPage,
+)
+
+cmdclass = versioneer.get_cmdclass()
+cmdclass.update(build_manpage=BuildManPage)
 
 # Give setuptools a hint to complain if it's too old a version
 # 30.3.0 allows us to put most metadata in setup.cfg
@@ -18,7 +24,7 @@ SETUP_REQUIRES += ['wheel'] if 'bdist_wheel' in sys.argv else []
 setup(
     name="datalad_metalad",
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    cmdclass=cmdclass,
     setup_requires=SETUP_REQUIRES,
     packages=[
         'datalad_metalad',
@@ -38,14 +44,15 @@ setup(
         'datalad_metalad.pathutils',
         'datalad_metalad.pathutils.tests',
         'datalad_metalad.tests',
-        'datalad_metalad.metadatatypes'
+        'datalad_metalad.metadatatypes',
+        '_datalad_buildsupport',
     ],
     package_dir={
-        'datalad_metalad.pipeline': 'datalad_metalad/pipeline'
+        'datalad_metalad.pipeline': 'datalad_metalad/pipeline',
     },
     package_data={
         'datalad_metalad.pipeline': ['pipelines/*.json'],
-        'datalad_metalad.extractors.legacy.tests': ['data/*']
+        'datalad_metalad.extractors.legacy.tests': ['data/*'],
     },
     entry_points={
         'datalad.extensions': [
@@ -81,6 +88,6 @@ setup(
         ],
         'datalad.metadata.filters': [
             'metalad_demofilter=datalad_metalad.filters.demofilter:DemoFilter',
-        ]
+        ],
     },
 )
