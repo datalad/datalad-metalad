@@ -175,7 +175,7 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
                 "annexed": False,
-                "bytesize": size_info[path],
+                "bytesize": int(size_info[path]),
                 "content_available": False
             }
 
