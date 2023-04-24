@@ -42,6 +42,7 @@ from ...extractors.base import (
     DatasetInfo,
     FileInfo,
 )
+from ...utils import ls_struct
 
 
 __docformat__ = "restructuredtext"
@@ -95,7 +96,9 @@ class DatasetTraverseResult(PipelineResult):
         )
 
 
-def ls_struct(dataset: Dataset) -> dict[Path, dict]:
+def xxx_ls_struct(dataset: Dataset,
+              files: list[Path] | None = None
+              ) -> dict[Path, dict]:
 
     flag_2_type = {
         "100644": "file",
@@ -109,25 +112,28 @@ def ls_struct(dataset: Dataset) -> dict[Path, dict]:
         "H": "clean",
     }
 
+    file_args = list(map(str, files)) if files else []
+    git_file_args = ["--"] + file_args if file_args else []
+
     runner = GitRunner()
     git_files = runner.run(
-        ["git", "ls-files", "-s", "-m", "-t", "--exclude-standard"],
+        ["git", "ls-files", "-s", "-m", "-t", "--exclude-standard"] + git_file_args,
         protocol=StdOutErrCapture,
         cwd=dataset.repo.pathobj
     )
     git_tree = runner.run(
-        ["git", "ls-tree", "--format=%(objectsize)%x09%(path)", "-r", "HEAD"],
+        ["git", "ls-tree", "--full-tree", "--format=%(objectsize)%x09%(path)", "-r", "HEAD"] + file_args,
         protocol=StdOutErrCapture,
         cwd=dataset.repo.pathobj
     )
     try:
         annexed_here_out = runner.run(
-            ["git", "annex", "find", "--format=${bytesize} ${file}\n"],
+            ["git", "annex", "find", "--format=${bytesize} ${file}\n"] + file_args,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
         annexed_not_here_out = runner.run(
-            ["git", "annex", "find", "--not", "--in", "here", "--format=${bytesize} ${file}\n"],
+            ["git", "annex", "find", "--not", "--in", "here", "--format=${bytesize} ${file}\n"] + file_args,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
@@ -221,7 +227,7 @@ class DatasetTraverser(Provider):
                  top_level_dir: str | Path,
                  item_type: str,
                  traverse_sub_datasets: bool = False
-                 ):
+                 ) -> None:
 
         known_types = tuple(DatasetTraverser.name_to_item_set.keys())
         if item_type.lower() not in known_types:

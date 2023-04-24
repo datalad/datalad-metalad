@@ -77,6 +77,7 @@ from .exceptions import ExtractorNotFoundError
 from .utils import (
     args_to_dict,
     check_dataset,
+    ls_struct,
 )
 
 
@@ -597,9 +598,7 @@ def get_file_info(dataset: Dataset,
 
     path = dataset.pathobj / relative_path
 
-    path_status = (
-            list(dataset.status(path, result_renderer="disabled")) or [None])[0]
-
+    path_status = ls_struct(dataset, [path]).get(path, None)
     if path_status is None:
         raise FileNotFoundError(
             "no dataset status for dataset: {} file: {}".format(
@@ -616,10 +615,14 @@ def get_file_info(dataset: Dataset,
         type="file",
         gitshasum=path_status["gitshasum"],
         state=path_status["state"],
-        dataset_path=path_status["parentds"],
+        dataset_path="",
         path=path_status["path"],   # Absolute path, used by extractors
+        fs_base_path=dataset.path,
         intra_dataset_path=str(
-            MetadataPath(*path_relative_to_dataset.parts)))
+            MetadataPath(*path_relative_to_dataset.parts)),
+        annexed=True,
+        content_available=True,
+        bytesize=666)
 
 
 def get_path_info(dataset: Dataset,
@@ -812,63 +815,13 @@ def xxx_annex_status(annex_repo, paths=None):
     return info
 
 
-def ls_files(dataset: Dataset,
-             path: Optional[Union[str, Path]] = None
-             ) -> Generator:
-    class GeneratorStdOutErrCapture(StdOutErrCapture, GeneratorMixIn):
-        def pipe_data_received(self, fd, data):
-            self.send_result((fd, data))
-
-    line_splitter = LineSplitter()
-    runner = GitRunner()
-    generator = runner.run(
-        ['git', 'ls-files', '-s', '-m', '-t', '--exclude-standard']
-        + [str(path)] if path else [],
-        protocol=GeneratorStdOutErrCapture,
-        cwd=dataset.repo.pathobj
-    )
-    stderr = bytearray()
-    for file_number, data in generator:
-        if file_number == STDERR_FILENO:
-            stderr += data
-            continue
-        for line in line_splitter.process(data.decode()):
-            yield line
-
-    data = line_splitter.finish_processing()
-    if data:
-        yield data
-
-
 def annex_status(dataset: Dataset,
                  path_pattern: Optional[Union[str, Path]] = None
                  ) -> dict[Path, dict]:
 
-    flag_2_type = {
-        "100644": "file",
-        "100755": "file",
-        "120000": "file",
-        "160000": "dataset",
-    }
-
-    tag_2_status = {
-        "C": "modified",
-        "H": "clean",
-    }
-
-    result = {}
-    for line in ls_files(dataset, path_pattern):
-        line, path = line.split("\t", maxsplit=1)
-        tag, flag, shasum, number = line.split()
-        full_path = dataset.repo.pathobj / path
-        result[full_path] = {
-            "status": "ok",
-            "type": flag_2_type[flag],
-            "path": full_path,
-            "gitshasum": shasum,
-            "state": tag_2_status[tag],
-        }
-    return result
+    return ls_struct(
+        dataset,
+        [Path(path_pattern)] if path_pattern else None)
 
 
 def legacy_get_file_info(dataset: Dataset,
@@ -880,11 +833,7 @@ def legacy_get_file_info(dataset: Dataset,
             # The dataset path might include a symlink, this requires us to
             # convert the path to be based on dataset.repo.pathobj
             path = dataset.repo.pathobj.resolve() / path.relative_to(dataset.pathobj)
-        status = annex_status(dataset.repo, path)
-        if status and status[path].get("status") == "error":
-            raise ValueError(
-                f"error getting status for file: {path}: "
-                f"{status.get('error_message', '')}")
+        status = annex_status(dataset, path)
     if not status:
         status = dataset.repo.status([path], untracked="no")
     if not status or path not in status:
