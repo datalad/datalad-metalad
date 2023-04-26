@@ -192,7 +192,7 @@ def ls_struct(dataset: Dataset,
         if path in annexed:
             result[full_path] = {
                 "type": "file",
-                "path": full_path,
+                "path": str(full_path),
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
                 "annexed": True,
@@ -202,11 +202,11 @@ def ls_struct(dataset: Dataset,
         else:
             result[full_path] = {
                 "type": flag_2_type[flag],
-                "path": full_path,
+                "path": str(full_path),
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
                 "annexed": False,
-                "bytesize": int(size_info[path]),
+                "bytesize": 0 if size_info[path] == "-" else int(size_info[path]),
                 "content_available": False
             }
 
