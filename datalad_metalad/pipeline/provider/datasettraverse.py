@@ -19,9 +19,6 @@ from datalad.distribution.dataset import (
     require_dataset,
     resolve_path,
 )
-from datalad.runner import GitRunner
-from datalad.runner.coreprotocols import StdOutErrCapture
-from datalad.runner.exception import CommandError
 from datalad.support.constraints import (
     EnsureBool,
     EnsureChoice,
@@ -94,98 +91,6 @@ class DatasetTraverseResult(PipelineResult):
                else {}
                )
         )
-
-
-def xxx_ls_struct(dataset: Dataset,
-              files: list[Path] | None = None
-              ) -> dict[Path, dict]:
-
-    flag_2_type = {
-        "100644": "file",
-        "100755": "file",
-        "120000": "symlink",
-        "160000": "dataset",
-    }
-
-    tag_2_status = {
-        "C": "modified",
-        "H": "clean",
-    }
-
-    file_args = list(map(str, files)) if files else []
-    git_file_args = ["--"] + file_args if file_args else []
-
-    runner = GitRunner()
-    git_files = runner.run(
-        ["git", "ls-files", "-s", "-m", "-t", "--exclude-standard"] + git_file_args,
-        protocol=StdOutErrCapture,
-        cwd=dataset.repo.pathobj
-    )
-    git_tree = runner.run(
-        ["git", "ls-tree", "--full-tree", "--format=%(objectsize)%x09%(path)", "-r", "HEAD"] + file_args,
-        protocol=StdOutErrCapture,
-        cwd=dataset.repo.pathobj
-    )
-    try:
-        annexed_here_out = runner.run(
-            ["git", "annex", "find", "--format=${bytesize} ${file}\n"] + file_args,
-            protocol=StdOutErrCapture,
-            cwd=dataset.repo.pathobj
-        )
-        annexed_not_here_out = runner.run(
-            ["git", "annex", "find", "--not", "--in", "here", "--format=${bytesize} ${file}\n"] + file_args,
-            protocol=StdOutErrCapture,
-            cwd=dataset.repo.pathobj
-        )
-        annexed_here = {
-            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
-            for line in annexed_here_out["stdout"].splitlines()
-            if line
-        }
-        annexed_not_here = {
-            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
-            for line in annexed_not_here_out["stdout"].splitlines()
-            if line
-        }
-        annexed = {
-            **annexed_here,
-            **annexed_not_here
-        }
-    except CommandError:
-        annexed = set()
-
-    size_info = {
-        line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
-        for line in git_tree["stdout"].splitlines()
-        if line.split(maxsplit=1)[1] not in annexed
-    }
-    result = dict()
-    for line in git_files["stdout"].splitlines():
-        line, path = line.split("\t", maxsplit=1)
-        tag, flag, shasum, number = line.split()
-        full_path = dataset.repo.pathobj / path
-        if path in annexed:
-            result[full_path] = {
-                "type": "file",
-                "path": full_path,
-                "gitshasum": shasum,
-                "state": tag_2_status[tag],
-                "annexed": True,
-                "bytesize": int(annexed[path]),
-                "content_available": path in annexed_here
-            }
-        else:
-            result[full_path] = {
-                "type": flag_2_type[flag],
-                "path": full_path,
-                "gitshasum": shasum,
-                "state": tag_2_status[tag],
-                "annexed": False,
-                "bytesize": int(size_info[path]),
-                "content_available": False
-            }
-
-    return result
 
 
 class DatasetTraverser(Provider):

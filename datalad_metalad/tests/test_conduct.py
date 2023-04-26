@@ -211,8 +211,7 @@ def test_extract():
                     f"testproc2.extractor_name=metalad_core"],
                 configuration=extract_pipeline))
 
-        print(pipeline_results)
-        eq_(len(pipeline_results), 3)
+        assert len(pipeline_results) == 13
         assert_true(all(map(lambda e: e["status"] == "ok", pipeline_results)))
 
         # Ensure that each pipeline data carries two metadata results,

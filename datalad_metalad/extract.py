@@ -620,9 +620,9 @@ def get_file_info(dataset: Dataset,
         fs_base_path=dataset.path,
         intra_dataset_path=str(
             MetadataPath(*path_relative_to_dataset.parts)),
-        annexed=True,
-        content_available=True,
-        bytesize=666)
+        annexed=path_status["annexed"],
+        has_content=path_status["has_content"],
+        bytesize=path_status["bytesize"])
 
 
 def get_path_info(dataset: Dataset,

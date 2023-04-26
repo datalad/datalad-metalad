@@ -153,22 +153,22 @@ def ls_struct(dataset: Dataset,
     )
     try:
         annexed_here_out = runner.run(
-            ["git", "annex", "find", "--format=${bytesize} ${file}\n"] + path_args,
+            ["git", "annex", "find", "--format=${key} ${bytesize} ${file}\n"] + path_args,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
         annexed_not_here_out = runner.run(
-            ["git", "annex", "find", "--not", "--in", "here", "--format=${bytesize} ${file}\n"] + path_args,
+            ["git", "annex", "find", "--not", "--in", "here", "--format=¼{key} ${bytesize} ${file}\n"] + path_args,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
         annexed_here = {
-            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
+            line.split(maxsplit=2)[2]: line.split(maxsplit=2)[:2]
             for line in annexed_here_out["stdout"].splitlines()
             if line
         }
         annexed_not_here = {
-            line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
+            line.split(maxsplit=2)[2]: line.split(maxsplit=2)[:2]
             for line in annexed_not_here_out["stdout"].splitlines()
             if line
         }
@@ -196,8 +196,9 @@ def ls_struct(dataset: Dataset,
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
                 "annexed": True,
-                "bytesize": int(annexed[path]),
-                "content_available": path in annexed_here
+                "key": annexed[path][0],
+                "bytesize": int(annexed[path][1]),
+                "has_content": path in annexed_here
             }
         else:
             result[full_path] = {
@@ -207,7 +208,7 @@ def ls_struct(dataset: Dataset,
                 "state": tag_2_status[tag],
                 "annexed": False,
                 "bytesize": 0 if size_info[path] == "-" else int(size_info[path]),
-                "content_available": False
+                "has_content": False
             }
 
     return result
