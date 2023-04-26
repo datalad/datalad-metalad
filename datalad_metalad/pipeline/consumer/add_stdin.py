@@ -2,14 +2,18 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from queue import Queue
 from typing import (
     Dict,
     Optional,
     cast,
 )
 
-from datalad.cmd import BatchedCommand
 from datalad.support.constraints import EnsureBool
+from datalad.runner.coreprotocols import NoCapture
+from datalad.runner.protocol import GeneratorMixIn
+from datalad.runner.runner import WitlessRunner
+
 
 from .base import Consumer
 from ..documentedinterface import (
@@ -31,7 +35,7 @@ logger = logging.getLogger("datalad.meta-conduct.consumer.add")
 
 
 @dataclass
-class MetadataBatchAddResult(PipelineResult):
+class MetadataStdinAddResult(PipelineResult):
     path: str
 
     def to_dict(self) -> Dict:
@@ -41,10 +45,14 @@ class MetadataBatchAddResult(PipelineResult):
         }
 
 
-class BatchAdder(Consumer):
+class GeneratorNoCapture(NoCapture, GeneratorMixIn):
+    pass
+
+
+class StdinAdder(Consumer):
 
     interface_documentation = DocumentedInterface(
-        "A component that adds metadata to a dataset in batch mode",
+        "A component that adds metadata to a dataset that is read from stdin",
         [
             ParameterEntry(
                 keyword="dataset",
@@ -70,20 +78,18 @@ class BatchAdder(Consumer):
                  aggregate: Optional[bool] = True):
 
         self.aggregate = aggregate
-        self.batched_add = BatchedCommand(
-            ["datalad", "meta-add", "-d", dataset, "--batch-mode", "-"])
-
-    def __del__(self):
-        if self.batched_add is not None:
-            self.batched_add("")
-            self.batched_add.close()
+        self.input_queue = Queue()
+        self.runner = WitlessRunner()
+        self.runner.run(
+            cmd=["datalad", "meta-add", "-d", dataset, "--json-lines", "-i", "-"],
+            protocol=GeneratorNoCapture,
+            stdin=self.input_queue
+        )
 
     def consume(self, pipeline_data: PipelineData) -> PipelineData:
 
         if pipeline_data.state == PipelineDataState.STOP:
-            self.batched_add("")
-            self.batched_add.close()
-            self.batched_add = None
+            self.input_queue.put(None)
 
         metadata_result_list = pipeline_data.get_result("metadata")
         if not metadata_result_list:
@@ -116,21 +122,17 @@ class BatchAdder(Consumer):
             else:
                 path = ""
 
-            metadata_record_json = json.dumps({
+            metadata_str = (json.dumps({
                 **metadata_record,
                 **(additional_values or {})
-            })
+            }) + "\n").encode()
 
-            logger.debug(f"adding {repr(metadata_record_json)}")
-            response = json.loads(self.batched_add(metadata_record_json))
+            logger.debug("sending metadata to meta-add: %s", metadata_str)
+            self.input_queue.put(metadata_str)
 
-            if response["status"] == "ok":
-                add_result = MetadataBatchAddResult(ResultState.SUCCESS, path)
-                pipeline_data.set_result("path", path)
-            else:
-                add_result = MetadataBatchAddResult(ResultState.FAILURE, path)
-                add_result.base_error = response
-            pipeline_data.add_result_list("batch_add", [add_result])
+            add_result = MetadataStdinAddResult(ResultState.SUCCESS, path)
+            pipeline_data.set_result("path", path)
+            pipeline_data.add_result_list("stdin_add", [add_result])
 
         return pipeline_data
 

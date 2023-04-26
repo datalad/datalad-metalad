@@ -1,7 +1,15 @@
 from typing import List, Optional
 
-from datalad.support.exceptions import InsufficientArgumentsError
+from datalad.support.exceptions import (
+    InsufficientArgumentsError,
+    NoDatasetArgumentFound,
+)
 from datalad.utils import ensure_unicode
+
+
+class NoDatasetIdFound(NoDatasetArgumentFound):
+    """Raised whenever a dataset ID cannot be found in a dataset."""
+    pass
 
 
 class MetadataKeyException(RuntimeError):

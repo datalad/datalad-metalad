@@ -43,7 +43,7 @@ md(rds) all possible paths would be:
                 sds-path = path of sds-pd-version in rds-version
                 add metadata_root_record to uuid-set(rds).sds-pd-version, sds-path
             else:
-                Error("Cannot find path of sds-uuid@sds-pd-version in any rds@version)
+                Error("Cannot find path of sds-uuid@sds-pd-version in any rds@version")
                 Error("What can you do? Not much besides re-aggregating")
                 Error("What can we do? Add a structure that allows for 'detached' metadata")
 
@@ -128,7 +128,7 @@ class Aggregate(Interface):
     i.e. the directory that contains the ".datalad"-entry, to the top-level
     directory of the respective sub-dataset.
 
-    Aggregate works on existing metadata, it will not extract meta data from
+    Aggregate works on existing metadata, it will not extract metadata from
     data file. To create metadata, use the meta-extract command.
 
     As a result of the aggregation, the metadata of all specified sub-datasets
@@ -305,7 +305,7 @@ def copy_uuid_set(destination_metadata_store: str,
 
         # If the destination does not contain a version list for the
         # source UUID, we add a copy of the source version list with
-        # a the specified path prefix
+        # the specified path prefix
         if uuid not in destination_uuid_set.uuids():
 
             lgr.debug(
@@ -349,7 +349,7 @@ def copy_uuid_set(destination_metadata_store: str,
                     element=element.deepcopy(
                         new_destination=destination_metadata_store))
 
-                # Unget the versioned element
+                # un-get the versioned element
                 lgr.debug(
                     f"persisting copied metadata element for pd version "
                     f"{pd_version} of UUID: {uuid}")
@@ -368,7 +368,7 @@ def copy_uuid_set(destination_metadata_store: str,
                     primary_data_version=pd_version,
                     prefix_path=old_path)
 
-            # Unget the version list in the destination, that should persist it
+            # un-get the version list in the destination, that should persist it
             lgr.debug(f"persisting copied version list for UUID: {uuid}")
             destination_uuid_set.unget_version_list(uuid)
 

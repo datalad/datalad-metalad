@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -9,10 +12,19 @@ class ResultState(Enum):
     FAILURE = "error"
     STOP = "stop"
 
+    def to_json(self):
+        return f'"{self.name}"'
+
 
 class PipelineDataState(Enum):
     CONTINUE = "continue"
     STOP = "stop"
+
+    def to_dict(self) -> str:
+        return self.name
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
 
 
 @dataclass
@@ -24,7 +36,7 @@ class PipelineResult:
         self.message = ""
         self.base_error = None
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> dict:
         result = dict(state=self.state.name)
         if self.base_error is not None:
             result["error"] = self.base_error
@@ -32,14 +44,18 @@ class PipelineResult:
             result["message"] = self.message
         return result
 
+    def to_json(self):
+        return json.dumps(self.to_dict())
+
 
 class PipelineData:
     def __init__(self,
-                 initial_result: Optional[Iterable[Tuple[str, List[PipelineResult]]]] = None):
+                 initial_result: Optional[Iterable[Tuple[str, List[PipelineResult]]]] = None,
+                 state: PipelineDataState = PipelineDataState.CONTINUE):
 
         self._result: Dict[str, List[PipelineResult]] = dict(initial_result or ())
         self._dynamic = dict()
-        self.state = PipelineDataState.CONTINUE
+        self.state = state
 
     def __eq__(self, other):
         return self._result == other._result \
@@ -81,17 +97,20 @@ class PipelineData:
             "result": self._result
         })
 
-    def to_json(self) -> Dict:
-        json_obj = {
+    def to_dict(self) -> Dict:
+        obj = {
             "state": self.state.name,
             "result": {
                 key: [
-                    result.to_json()
+                    result.to_dict()
                     for result in value
                 ]
                 for key, value in self._result.items()
                 if key not in ("path",)
             }
         }
-        json_obj["result"]["path"] = str(self._result["path"])
-        return json_obj
+        obj["result"]["path"] = str(self._result["path"])
+        return obj
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())

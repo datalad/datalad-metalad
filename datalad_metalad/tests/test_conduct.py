@@ -76,6 +76,30 @@ extract_pipeline = {
 }
 
 
+extract_consume_pipeline = {
+    "provider": {
+        "name": "provider",
+        "module": "datalad_metalad.pipeline.provider.datasettraverse",
+        "class": "DatasetTraverser",
+        "arguments": {}
+    },
+    "processors": [
+        {
+            "name": "testproc1",
+            "module": "datalad_metalad.pipeline.processor.extract",
+            "class": "MetadataExtractor",
+            "arguments": {}
+        }
+    ],
+    "consumer": {
+        "module": "datalad_metalad.pipeline.consumer.add",
+        "class": "BatchAdder",
+        "name": "adder",
+        "arguments": {}
+    }
+}
+
+
 @dataclass
 class ConductTestResult(PipelineResult):
     path: Path
@@ -85,11 +109,14 @@ class ConductTestResult(PipelineResult):
 class StringResult(PipelineResult):
     content: str
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> Dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "content": self.content
         }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
 
 class ConductTestTraverser(Provider):
@@ -182,14 +209,19 @@ def test_extract():
                     f"testproc1.extractor_name=metalad_example_dataset",
                     f"testproc2.extractor_type=dataset",
                     f"testproc2.extractor_name=metalad_core"],
-                configuration=extract_pipeline))
+                configuration=extract_pipeline,
+                processing_mode="sequential"))
 
-        eq_(len(pipeline_results), 3)
-        assert_true(all(map(lambda e: e["status"] == "ok", pipeline_results)))
+        assert len(pipeline_results) == 13
+        assert all(map(lambda e: e["status"] == "ok", pipeline_results))
 
         # Ensure that each pipeline data carries two metadata results,
-        # one from each extractor in the pipeline definition.
-        assert_true(all(map(lambda e: len(e["pipeline_data"]["result"]["metadata"]) == 2, pipeline_results)))
+        # one from each extractor in the pipeline definition
+        metadata_results = [
+            result["pipeline_data"]["result"]["metadata"]
+            for result in pipeline_results
+            if result["pipeline_data"]["result"]["dataset-traversal-record"][0]["type"] == "dataset"]
+        assert all(map(lambda e: len(e) == 2, metadata_results))
 
 
 def test_multiple_adder():
@@ -222,7 +254,8 @@ def test_multiple_adder():
                     ]
                 ))
             ],
-            configuration=adder_pipeline))
+            configuration=adder_pipeline,
+            processing_mode="sequential"))
 
     eq_(len(pipeline_results), 1)
     result = pipeline_results[0]

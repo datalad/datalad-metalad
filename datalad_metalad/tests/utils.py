@@ -17,7 +17,8 @@ from datalad.tests.utils_pytest import assert_repo_status
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 
-def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
+def create_dataset(directory: str,
+                   dataset_id: Optional[UUID] = None) -> GitRepo:
 
     git_repo = GitRepo(directory)
 
@@ -26,10 +27,14 @@ def create_dataset(directory: str, dataset_id: UUID) -> GitRepo:
     datalad_dir.mkdir()
 
     datalad_config = datalad_dir / "config"
-    datalad_config.write_text(
-        '[datalad "dataset"]\n'
-        f'\tid = {dataset_id}')
+    if dataset_id is not None:
+        datalad_config.write_text(
+            '[datalad "dataset"]\n'
+            f"\tid = {dataset_id}")
+    else:
+        datalad_config.write_text("\n")
 
+    git_repo.save("add a configuration", [datalad_config])
     return git_repo
 
 

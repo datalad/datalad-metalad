@@ -32,11 +32,15 @@ from datalad.tests.utils_pytest import (
     with_tempfile,
 )
 
+from ...exceptions import NoDatasetIdFound
 from ...tests import (
     make_ds_hierarchy_with_metadata,
     _get_dsmeta_from_core_metadata,
 )
-from ...tests.utils import create_dataset_proper
+from ...tests.utils import (
+    create_dataset,
+    create_dataset_proper,
+)
 
 
 @pytest.mark.parametrize("annex", [True, False])
@@ -131,9 +135,16 @@ def test_plainest(path=None):
 
     r = GitRepo(path, create=True)
     # Expect an exception, when the dataset is unusable because it has
-    # no dataset id
+    # no commit yet.
     assert_raises(
-        expected_exception,
+        NoDatasetIdFound,
+        meta_extract, dataset=path, extractorname="metalad_core")
+
+    dataset = create_dataset(path)
+    # Expect an exception, when the dataset is unusable because it has
+    # no dataset id.
+    assert_raises(
+        NoDatasetIdFound,
         meta_extract, dataset=path, extractorname="metalad_core")
 
     # Expect proper extract run on a proper dataset.

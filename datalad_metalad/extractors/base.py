@@ -7,9 +7,12 @@
 #
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """MetadataRecord extractor base class"""
+from __future__ import annotations
+
 import abc
-import dataclasses
 import enum
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 from typing import (
     Any,
     Dict,
@@ -24,17 +27,28 @@ from uuid import UUID
 from datalad.distribution.dataset import Dataset
 
 
-@dataclasses.dataclass
-class FileInfo:
-    type: str           # TODO: state constants
-    git_sha_sum: str
-    byte_size: int
-    state: str          # TODO: state constants
+# TODO: cleanup the class definitions
+@dataclass_json
+@dataclass
+class DatasetInfo:
+    type: str
+    gitshasum: str
+    state: str
     path: str
+    dataset_path: str
+
+
+@dataclass_json
+@dataclass
+class FileInfo(DatasetInfo):
+    fs_base_path: str
     intra_dataset_path: str
+    annexed: bool
+    has_content: bool
+    bytesize: int
 
 
-@dataclasses.dataclass
+@dataclass
 class ExtractorResult:
     extractor_version: str
     extraction_parameter: Dict[str, Any]

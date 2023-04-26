@@ -12,6 +12,7 @@ or run a file-level metadata extractor on a file
 """
 import json
 import logging
+import sys
 import time
 from os import curdir
 from pathlib import (
@@ -20,12 +21,14 @@ from pathlib import (
 )
 from typing import (
     Dict,
+    Generator,
     Iterable,
     List,
     Optional,
     Tuple,
     Type,
     Union,
+    cast,
 )
 from uuid import UUID
 
@@ -42,7 +45,13 @@ from datalad.interface.base import (
     eval_results,
 )
 from datalad.interface.utils import generic_result_renderer
+from datalad.runner import GitRunner
+from datalad.runner.coreprotocols import StdOutErrCapture
+from datalad.runner.nonasyncrunner import STDERR_FILENO
+from datalad.runner.protocol import GeneratorMixIn
+from datalad.runner.utils import LineSplitter
 from datalad.support.annexrepo import AnnexRepo
+from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
@@ -64,9 +73,11 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from .exceptions import ExtractorNotFoundError
+
 from .utils import (
     args_to_dict,
     check_dataset,
+    ls_struct,
 )
 
 
@@ -83,13 +94,14 @@ class ExtractionArguments:
     source_dataset_id: UUID
     source_dataset_version: str
     local_source_object_path: Path
-    extractor_class: Union[type(MetadataExtractor), type(FileMetadataExtractor)]
+    extractor_class: Union[type(DatasetMetadataExtractor), type(FileMetadataExtractor), type(MetadataExtractorBase), type(BaseMetadataExtractor)]
     extractor_type: str
     extractor_name: str
     extraction_parameter: Dict[str, str]
     file_tree_path: Optional[MetadataPath]
     agent_name: str
     agent_email: str
+    file_info: Optional[FileInfo]
 
 
 @build_doc
@@ -123,9 +135,9 @@ class Extract(Interface):
     The extractor configuration can be parameterized with key-value pairs
     given as additional arguments. Each key-value pair consists of two
     arguments, first the key, followed by the value. If dataset level extraction
-    should be performed and you want to provide extractor arguments, you have to
-    specify '--force_dataset_level' to ensure dataset-level extraction. i.e. to
-    prevent interpretation of the key of the first extractor argument as path
+    should be performed, and you want to provide extractor arguments, you have
+    to specify '--force_dataset_level' to ensure dataset-level extraction. i.e.
+    to prevent interpretation of the key of the first extractor argument as path
     for a file-level extraction.
 
     The command can also take legacy datalad-metalad extractors and
@@ -180,8 +192,8 @@ class Extract(Interface):
             if it identifies the root of a dataset, i.e. "", we
             assume a dataset level metadata extractor is
             specified.
-            You might provide an absolute file path, but it has to contain
-            the dataset path as prefix.""",
+            You may provide an absolute file path, but it has to contain the
+            dataset path as prefix.""",
             constraints=EnsureStr() | EnsureNone()),
         dataset=Parameter(
             args=("-d", "--dataset"),
@@ -203,6 +215,15 @@ class Extract(Interface):
             given parameters and exit. The context can be used in subsequent
             calls to meta-extract with identical parameter, except from
             --get-context, to speed up the execution of meta-extract."""),
+        file_info=Parameter(
+            args=("--file-info",),
+            doc="""File info, a JSON-serialized dictionary that provides status
+            information for the file that is passed to the file extractor. If
+            '-' is given, the JSON-serialized dictionary is read from stdin."""),
+        subdatasets=Parameter(
+            args=("--subdatasets",),
+            doc="""Subdataset info, a JSON-serialized dictionary that provides
+            subdataset information, as returned by `Dataset.subdatasets()"""),
         force_dataset_level=Parameter(
             args=("--force-dataset-level",),
             action="store_true"),
@@ -232,14 +253,17 @@ class Extract(Interface):
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
             get_context: bool = False,
+            file_info: Optional[Union[str, FileInfo]] = None,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
 
         # Get basic arguments
         extractor_name = extractorname
-        extractor_args = ([path] + extractorargs
-                          if force_dataset_level
-                          else extractorargs)
+        extractor_args = (
+            [path] + (extractorargs or [])
+            if force_dataset_level
+            else extractorargs
+        )
         path = None if force_dataset_level else path
         context = (
             {}
@@ -247,12 +271,32 @@ class Extract(Interface):
             else (
                 json.loads(context)
                 if isinstance(context, str)
-                else context))
+                else context
+            )
+        )
+
+        if file_info:
+            if isinstance(file_info, str):
+                if file_info == "-":
+                    file_info = json.load(sys.stdin)
+                elif file_info.startswith("@"):
+                    with open(file_info[1:]) as f:
+                        file_info = json.load(f)
+                else:
+                    file_info = json.loads(file_info)
+            file_info = FileInfo.from_dict(file_info)
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
+
         source_dataset_version = context.get("dataset_version", None)
         if source_dataset_version is None:
             source_dataset_version = source_dataset.repo.get_hexsha()
+            if source_dataset_version is None:
+                # If the version is still None, there is probably no repository
+                # or the repository has no commits.
+                raise NoDatasetFound(
+                    "No valid commits found in dataset at: "
+                    f"{source_dataset.repo.pathobj.absolute()}")
 
         if get_context is True:
             yield dict(
@@ -294,17 +338,21 @@ class Extract(Interface):
 
         extraction_arguments = ExtractionArguments(
             source_dataset=source_dataset,
-            source_dataset_id=UUID(source_dataset.id),
+            source_dataset_id=UUID(source_dataset.id)
+                              if source_dataset.id is not None
+                              else UUID(int=0),
             source_dataset_version=source_dataset_version,
             local_source_object_path=(
                     source_dataset.pathobj / file_tree_path).absolute(),
             extractor_class=extractor_class,
-            extractor_type=None,
+            extractor_type="",
             extractor_name=extractor_name,
             extraction_parameter=args_to_dict(extractor_args),
             file_tree_path=file_tree_path,
             agent_name=source_dataset.config.get("user.name"),
-            agent_email=source_dataset.config.get("user.email"))
+            agent_email=source_dataset.config.get("user.email"),
+            file_info=file_info
+        )
 
         # If a path is given, we assume file-level metadata extraction is
         # requested, and the extractor class should be a subclass of
@@ -313,12 +361,12 @@ class Extract(Interface):
         # requested and the extractor class is a subclass of
         # DatasetMetadataExtractor (or a legacy extractor class).
         if path:
-            extraction_arguments.extractor_type = 'file'
+            extraction_arguments.extractor_type = "file"
             # Check whether the path points to a sub_dataset.
             ensure_path_validity(source_dataset, file_tree_path)
         else:
-            extraction_arguments.extractor_type = 'dataset'
-        
+            extraction_arguments.extractor_type = "dataset"
+
         yield from do_extraction(ep=extraction_arguments)
         return
 
@@ -355,60 +403,68 @@ class Extract(Interface):
 
 
 def do_extraction(ep: ExtractionArguments):
-    extractor_type = ep.extractor_type    
+    extractor_type = ep.extractor_type
 
     # Legacy extraction
     legacy_extractor_map = {
-        'file': legacy_extract_file,
-        'dataset': legacy_extract_dataset,
+        "file": legacy_extract_file,
+        "dataset": legacy_extract_dataset,
     }
     if not issubclass(ep.extractor_class, MetadataExtractorBase):
         lgr.debug(
             "performing legacy %s-level metadata "
             "extraction for %s at %s",
             extractor_type,
-            extractor_type,
+            ep.extractor_name,
             ep.source_dataset.path / ep.file_tree_path
-            if extractor_type == 'file' else ep.source_dataset.path)
+            if extractor_type == "file" else ep.source_dataset.path)
 
         yield from legacy_extractor_map[extractor_type](ep)
         return
-    
+
     # Latest generation extraction
-    extractor_class_map = {
-        'file': FileMetadataExtractor,
-        'dataset': DatasetMetadataExtractor,
+    extractor_class_map: dict[str, type(FileMetadataExtractor), type(DatasetMetadataExtractor)] = {
+        "file": FileMetadataExtractor,
+        "dataset": DatasetMetadataExtractor,
     }
     if not issubclass(ep.extractor_class, extractor_class_map[extractor_type]):
         msg = (
-            f"A {extractor_type}-level metadata-extraction was attempted",
-            "since no path argument was given" if extractor_type == 'dataset' else "",
-            f"but the specified extractor ({ep.extractor_name})",
+            f"A {extractor_type}-level metadata-extraction was attempted"
+            + (
+                " -since no path argument was given-"
+                if extractor_type == "dataset"
+                else ""
+            ) +
+            f" but the specified extractor ({ep.extractor_name})"
             f"is not a {extractor_type}-level extractor"
         )
         raise ValueError(msg)
-    
+
     lgr.debug(
-            "performing %s-level metadata "
-            "extraction for %s at %s",
+            "performing %s-level metadata extraction for %s at %s",
             extractor_type,
-            extractor_type,
-            ep.source_dataset.path / ep.file_tree_path \
-            if extractor_type == 'file' else ep.source_dataset.path)
-    
-    if extractor_type == 'file':
-        file_info = get_file_info(ep.source_dataset, ep.file_tree_path)
-        extractor = ep.extractor_class(
+            ep.extractor_name,
+            ep.source_dataset.path / ep.file_tree_path
+            if extractor_type == "file"
+            else ep.source_dataset.path)
+
+    if extractor_type == "file":
+        file_info = (
+            get_file_info(ep.source_dataset, ep.file_tree_path)
+            if ep.file_info is None
+            else ep.file_info
+        )
+        extractor = cast(type(FileMetadataExtractor), ep.extractor_class)(
             ep.source_dataset,
             ep.source_dataset_version,
             file_info,
             ep.extraction_parameter)
         ensure_content_availability(extractor, file_info)
     else:
-        extractor = ep.extractor_class(
-        ep.source_dataset,
-        ep.source_dataset_version,
-        ep.extraction_parameter)
+        extractor = cast(type(DatasetMetadataExtractor), ep.extractor_class)(
+            ep.source_dataset,
+            ep.source_dataset_version,
+            ep.extraction_parameter)
 
     yield from perform_metadata_extraction(ep, extractor)
 
@@ -417,19 +473,19 @@ def perform_metadata_extraction(
         ep: ExtractionArguments,
         extractor: Union[DatasetMetadataExtractor, FileMetadataExtractor]
     ):
-    
+
     # Get output category; only IMMEDIATE is supported
     output_category = extractor.get_data_output_category()
     if output_category != DataOutputCategory.IMMEDIATE:
         raise NotImplementedError(
             f"Output category {output_category} not supported")
-    
+
     # Prepare result record
     result_template = {
         "action": "meta_extract",
         "path": ep.local_source_object_path
     }
-    
+
     # Get required content
     res = extractor.get_required_content()
     if isinstance(res, bool):
@@ -441,13 +497,14 @@ def perform_metadata_extraction(
             return
     else:
         failure_count = 0
-        for r in res:
+        generator = cast(Generator, res)
+        for r in generator:
             if r["status"] in ("error", "impossible"):
                 failure_count += 1
                 yield r
         if failure_count > 0:
             return
-    
+
     # Run extraction and update result
     result = extractor.extract(None)
     result.datalad_result_dict.update(result_template)
@@ -467,7 +524,7 @@ def perform_metadata_extraction(
             result.datalad_result_dict["metadata_record"].update(
                 dict(path=ep.file_tree_path)
             )
-    
+
     yield result.datalad_result_dict
 
 
@@ -541,9 +598,7 @@ def get_file_info(dataset: Dataset,
 
     path = dataset.pathobj / relative_path
 
-    path_status = (
-            list(dataset.status(path, result_renderer="disabled")) or [None])[0]
-
+    path_status = ls_struct(dataset, [path]).get(path, None)
     if path_status is None:
         raise FileNotFoundError(
             "no dataset status for dataset: {} file: {}".format(
@@ -557,13 +612,17 @@ def get_file_info(dataset: Dataset,
 
     # noinspection PyUnresolvedReferences
     return FileInfo(
-        type="file",     # TODO: what about the situation where path_status["type"] == "symlink"?
-        git_sha_sum=path_status["gitshasum"],
-        byte_size=path_status.get("bytesize", 0),
+        type="file",
+        gitshasum=path_status["gitshasum"],
         state=path_status["state"],
+        dataset_path="",
         path=path_status["path"],   # Absolute path, used by extractors
+        fs_base_path=dataset.path,
         intra_dataset_path=str(
-            MetadataPath(*path_relative_to_dataset.parts)))
+            MetadataPath(*path_relative_to_dataset.parts)),
+        annexed=path_status["annexed"],
+        has_content=path_status["has_content"],
+        bytesize=path_status["bytesize"])
 
 
 def get_path_info(dataset: Dataset,
@@ -738,7 +797,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
             f"unknown extractor class: {type(ea.extractor_class).__name__}")
 
 
-def annex_status(annex_repo, paths=None):
+def xxx_annex_status(annex_repo, paths=None):
     info = annex_repo.get_content_annexinfo(
         paths=paths,
         eval_availability=False,
@@ -756,21 +815,25 @@ def annex_status(annex_repo, paths=None):
     return info
 
 
+def annex_status(dataset: Dataset,
+                 path_pattern: Optional[Union[str, Path]] = None
+                 ) -> dict[Path, dict]:
+
+    return ls_struct(
+        dataset,
+        [Path(path_pattern)] if path_pattern else None)
+
+
 def legacy_get_file_info(dataset: Dataset,
                          path: Path
-                         ) -> Dict:
-
+                         ) -> dict:
     status = None
     if isinstance(dataset.repo, AnnexRepo):
         if dataset.pathobj != dataset.repo.pathobj:
             # The dataset path might include a symlink, this requires us to
             # convert the path to be based on dataset.repo.pathobj
             path = dataset.repo.pathobj.resolve() / path.relative_to(dataset.pathobj)
-        status = annex_status(dataset.repo, [path])
-        if status and status[path].get("status") == "error":
-            raise ValueError(
-                f"error getting status for file: {path}: "
-                f"{status.get('error_message', '')}")
+        status = annex_status(dataset, path)
     if not status:
         status = dataset.repo.status([path], untracked="no")
     if not status or path not in status:
@@ -789,7 +852,11 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
         file_path = ea.source_dataset.pathobj / ea.file_tree_path
         # Determine the file type:
         extractor = ea.extractor_class()
-        status = legacy_get_file_info(ea.source_dataset, file_path)
+        status = (
+            legacy_get_file_info(ea.source_dataset, file_path)
+            if ea.file_info is None
+            else ea.file_info.to_dict()
+        )
         ensure_legacy_content_availability(ea, extractor, "content", [status])
 
         for result in extractor(ea.source_dataset,

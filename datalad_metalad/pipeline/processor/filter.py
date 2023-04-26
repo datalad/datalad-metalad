@@ -30,7 +30,7 @@ class MetadataFilterResult(PipelineResult):
 
     def to_json(self) -> Dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "path": str(self.path),
             "metadata_record": self.metadata_record
         }

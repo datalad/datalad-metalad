@@ -26,6 +26,9 @@ from dataladmetadatamodel.metadatapath import MetadataPath
 from dataladmetadatamodel.mtreenode import MTreeNode
 
 
+__docformat__ = "restructuredtext"
+
+
 root_path = MetadataPath("")
 
 
@@ -80,20 +83,15 @@ class MTreeSearch:
         """
         Search the tree und yield nodes that match the pattern.
 
-        Parameters
-        ----------
-        pattern: file name with shell-style wildcards
-        traversal_order: specify whether to use depth-first-order
-                         or breadth-first-order in search
-        item_indicator: a string that indicates that the current
-                        mtree-node is an item in an enclosing context,
-                        for example: ".datalad_metadata-root-record"
-                        could indicate a dataset-node.
+        :param pattern: file name with shell-style wildcards
+        :param traversal_order: specify whether to use depth-first-order
+            or breadth-first-order in search
+        :param item_indicator: a string that indicates that the current
+            mtree-node is an item in an enclosing context, for example:
+            ".datalad_metadata-root-record" could indicate a dataset-node.
 
-        Returns:
-        -------
-
-        Yields a 3-tuple, which describes a full-match, or an item-match.
+        :return: yields a 3-tuple, which describes a full-match, or an
+            item-match.
 
         A full-match is a tree-node whose path matches the complete pattern.
 

@@ -672,7 +672,7 @@ def _get_top_nodes(realm: Path,
         # with an un-versioned path. In both cases the internal dataset-tree
         # path is "". If set, the un-versioned path is stored in the prefix
         # path element in the version list (which confusingly is also called
-        # "path".
+        # "path").
         assert ap.dataset_path in (top_level_dataset_tree_path, None)
 
         # We leave the creation of the respective nodes to auto_create
@@ -738,7 +738,7 @@ def get_tvl_uuid_mrr_metadata_file_tree(
     Read tree version list, uuid set, metadata root record, dataset-level
     metadata, and filetree from the metadata store, for the given root
     dataset id, root dataset version, dataset id, dataset version, dataset path,
-    and unversioned path.
+    and un-versioned path.
 
     This function caches results in order to avoid costly persist operations.
 

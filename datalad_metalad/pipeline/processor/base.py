@@ -18,7 +18,7 @@ class Processor(PipelineElement, metaclass=abc.ABCMeta):
         """
         Execute the processor. If we want to use process worker pools,
         we cannot return an iterator or generator as a result.
-        Therefore this method will collect all results from self.process
+        Therefore, this method will collect all results from self.process
         and return them in a list of tuples, which consist of the passed
         context and .
         """
