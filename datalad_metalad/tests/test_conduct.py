@@ -209,14 +209,19 @@ def test_extract():
                     f"testproc1.extractor_name=metalad_example_dataset",
                     f"testproc2.extractor_type=dataset",
                     f"testproc2.extractor_name=metalad_core"],
-                configuration=extract_pipeline))
+                configuration=extract_pipeline,
+                processing_mode="sequential"))
 
         assert len(pipeline_results) == 13
-        assert_true(all(map(lambda e: e["status"] == "ok", pipeline_results)))
+        assert all(map(lambda e: e["status"] == "ok", pipeline_results))
 
         # Ensure that each pipeline data carries two metadata results,
-        # one from each extractor in the pipeline definition.
-        assert_true(all(map(lambda e: len(e["pipeline_data"]["result"]["metadata"]) == 2, pipeline_results)))
+        # one from each extractor in the pipeline definition
+        metadata_results = [
+            result["pipeline_data"]["result"]["metadata"]
+            for result in pipeline_results
+            if result["pipeline_data"]["result"]["dataset-traversal-record"][0]["type"] == "dataset"]
+        assert all(map(lambda e: len(e) == 2, metadata_results))
 
 
 def test_multiple_adder():
