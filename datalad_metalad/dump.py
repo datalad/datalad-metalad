@@ -27,14 +27,18 @@ from uuid import UUID
 
 from datalad.distribution.dataset import datasetmethod
 from datalad.interface.base import (
-    Interface,
     build_doc,
     eval_results,
 )
-from datalad.support.constraints import (
-    EnsureNone,
-    EnsureStr,
+from datalad_next.commands import (
+    EnsureCommandParameterization,
+    ValidatedInterface,
 )
+from datalad_next.constraints import (
+    EnsureStr,
+    EnsureNone,
+)
+from datalad_next.constraints.dataset import EnsureDataset
 from datalad.support.param import Parameter
 from datalad.ui import ui
 from dataladmetadatamodel.datasettree import datalad_root_record_name
@@ -413,7 +417,7 @@ def dump_from_uuid_set(mapper: str,
 
 
 @build_doc
-class Dump(Interface):
+class Dump(ValidatedInterface):
     """Dump a dataset's aggregated metadata for dataset and file metadata
 
     Two types of metadata are supported:
@@ -431,6 +435,16 @@ class Dump(Interface):
 
     (The tree-format is the default format and does not require a prefix).
     """
+
+    # Define parameter constraints
+    _validator_ = EnsureCommandParameterization(
+        param_constraints=dict(
+            dataset=EnsureDataset(installed=True, purpose='meta-dump'),
+            path=EnsureStr(),
+        ),
+        validate_defaults=("dataset",)
+    )
+
 
     # Use a custom renderer to emit a self-contained metadata record. The
     # emitted record can be fed into meta-add for example.
@@ -481,7 +495,6 @@ class Dump(Interface):
             args=("path",),
             metavar="DATASET_FILE_PATH_PATTERN",
             doc="path to query metadata for",
-            constraints=EnsureStr() | EnsureNone(),
             nargs="?"),
         recursive=Parameter(
             args=("-r", "--recursive",),
@@ -501,6 +514,8 @@ class Dump(Interface):
             path="",
             recursive=False):
 
+        # dataset is a DatasetParameter() from datalad-next
+        dataset = dataset.ds.path
         metadata_store_path, tree_version_list, uuid_set = get_metadata_objects(
             dataset,
             default_mapper_family)
