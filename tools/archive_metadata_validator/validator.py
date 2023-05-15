@@ -83,12 +83,12 @@ def possible_paths(item: Union[List, dict, Any], prefix: Optional[str] = "") -> 
     result = []
     if isinstance(item, dict):
         for key, value in item.items():
-            result += possible_paths(value, ("" if prefix is "" else prefix + ".") + key)
+            result += possible_paths(value, ("" if prefix == "" else prefix + ".") + key)
     elif isinstance(item, list):
         for index, element in enumerate(item):
             result += possible_paths(element, prefix + "[" + str(index) + "]")
     else:
-        result += [("" if prefix is "" else prefix + ".") + f"<content value='{item}'>"]
+        result += [("" if prefix == "" else prefix + ".") + f"<content value='{item}'>"]
     return result
 
 
