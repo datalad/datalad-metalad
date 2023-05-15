@@ -1,5 +1,5 @@
 # emacs: -*- mode: python; py-indent-offset: 4; tab-width: 4; indent-tabs-mode: nil -*-
-# ex: set sts=4 ts=4 sw=4 noet:
+# ex: set sts=4 ts=4 sw=4 et:
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the datalad package for the
@@ -62,6 +62,8 @@ class DataOutputCategory(enum.Enum):
 
 
 class MetadataExtractorBase(metaclass=abc.ABCMeta):
+
+    __generation__ = 4
 
     @abc.abstractmethod
     def extract(self,
@@ -255,6 +257,10 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
     # ATM this doesn't do anything, but inheritance from this class enables
     # detection of new-style extractor API
 
+    # associated with times when metadata records collections (ds- vs cn-) were aggregated
+    # within  `.datalad/metadata/aggregate_v1.json` .
+    __generation__ = 3
+
     @abc.abstractmethod
     def __call__(self,
                  dataset: Dataset,
@@ -349,6 +355,8 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
 # XXX this is the legacy-legacy interface, keep around for a bit more and then
 # remove
 class BaseMetadataExtractor:
+
+    __generation__ = 2
 
     NEEDS_CONTENT = True   # majority of the extractors need data content
 

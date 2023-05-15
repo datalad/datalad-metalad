@@ -1,5 +1,5 @@
 # emacs: -*- mode: python; py-indent-offset: 4; tab-width: 4; indent-tabs-mode: nil -*-
-# ex: set sts=4 ts=4 sw=4 noet:
+# ex: set sts=4 ts=4 sw=4 et:
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 #
 #   See COPYING file distributed along with the datalad package for the
@@ -234,7 +234,7 @@ class Extract(Interface):
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
-
+        
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = ([path] + extractorargs
@@ -365,8 +365,9 @@ def do_extraction(ep: ExtractionArguments):
     if not issubclass(ep.extractor_class, MetadataExtractorBase):
         lgr.debug(
             "performing legacy %s-level metadata "
-            "extraction for %s at %s",
+            "extraction (%s) for %s at %s",
             extractor_type,
+            ep.extractor_name,
             extractor_type,
             ep.source_dataset.path / ep.file_tree_path
             if extractor_type == 'file' else ep.source_dataset.path)
@@ -390,8 +391,9 @@ def do_extraction(ep: ExtractionArguments):
     
     lgr.debug(
             "performing %s-level metadata "
-            "extraction for %s at %s",
+            "extraction (%s) for %s at %s",
             extractor_type,
+            ep.extractor_name,
             extractor_type,
             ep.source_dataset.path / ep.file_tree_path \
             if extractor_type == 'file' else ep.source_dataset.path)
@@ -465,7 +467,10 @@ def perform_metadata_extraction(
             extracted_metadata=result.immediate_data)
         if issubclass(ep.extractor_class, FileMetadataExtractor):
             result.datalad_result_dict["metadata_record"].update(
-                dict(path=ep.file_tree_path)
+                dict(
+                    type="file",
+                    path=ep.file_tree_path,
+                )
             )
     
     yield result.datalad_result_dict
