@@ -1,6 +1,6 @@
 coverage
 datalad>=0.18
-datalad-metadata-model>=0.3.6
+datalad-metadata-model>=0.3.10
 sphinx>=1.7.8
 sphinx-rtd-theme
 pyyaml

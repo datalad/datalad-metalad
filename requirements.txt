@@ -4,4 +4,4 @@ sphinx>=1.7.8
 sphinx-rtd-theme
 pytest
 pyyaml
-datalad-metadata-model>=0.3.6
+datalad-metadata-model>=0.3.10
