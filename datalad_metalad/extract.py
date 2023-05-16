@@ -869,4 +869,4 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
 
     else:
         raise ValueError(
-            f"unknown extractor class: {type(ea.extractor_class).__name__}")
+            f"unknown extractor class: {ea.extractor_class.__name__}")
