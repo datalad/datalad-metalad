@@ -287,6 +287,13 @@ class Extract(Interface):
                         f"dataset given by {source_dataset.pathobj}"
                     )
                 path_object = relative_path
+            # a basic sanity check: Does the to-be-extracted file exist (as a
+            # file or symlink)
+            if not (source_dataset.pathobj / path_object).exists() and \
+                    not (source_dataset.pathobj / path_object).is_symlink():
+                raise ValueError(
+                    "To-be-extracted file %s does not exist" % str(path_object)
+                )
 
         _, file_tree_path = get_path_info(source_dataset, path_object, None)
 
