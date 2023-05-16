@@ -45,7 +45,6 @@ from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
 from .extractors.base import (
-    BaseMetadataExtractor,
     DataOutputCategory,
     DatasetMetadataExtractor,
     FileInfo,
@@ -53,6 +52,8 @@ from .extractors.base import (
     MetadataExtractor,
     MetadataExtractorBase,
 )
+
+from datalad_deprecated.metadata.extractors.base import BaseMetadataExtractor
 
 from datalad.support.constraints import (
     EnsureNone,
