@@ -458,6 +458,7 @@ def perform_metadata_extraction(
             type="dataset",
             dataset_id=ep.source_dataset_id,
             dataset_version=ep.source_dataset_version,
+            extractor_id=extractor.get_id(),
             extractor_name=ep.extractor_name,
             extractor_version=extractor.get_version(),
             extraction_parameter=ep.extraction_parameter,
