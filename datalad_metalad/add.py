@@ -42,6 +42,7 @@ from datalad.interface.base import (
     build_doc,
     eval_results,
 )
+from datalad.interface.results import get_status_dict
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr
@@ -195,6 +196,8 @@ class Add(Interface):
     required_keys_lines = "\n".join(map(repr, required_keys))
     required_additional_keys_lines = "\n".join(
         map(repr, required_additional_keys))
+
+    result_renderer = "generic"
 
     _params_ = dict(
         metadata=Parameter(
@@ -500,7 +503,7 @@ def add_finite_set(metadata_objects: List[JSONType],
                 continue
 
             if len(result) == 1:
-                yield result[0]
+                yield get_status_dict(**result[0])
 
         for tree_version_list, uuid_set in tvl_us_cache.values():
             tree_version_list.write_out(str(metadata_store))
