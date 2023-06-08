@@ -89,7 +89,7 @@ class DatasetTraverseResult(PipelineResult):
             **({"element_info": self.element_info.to_dict()}
                if self.element_info is not None
                else {}
-               )
+            )
         )
 
 
@@ -327,5 +327,5 @@ class DatasetTraverser(Provider):
             **self._get_dataset_result_part(dataset, dataset_hexsha)
         })
 
-    def next_object(self) -> Generator:
+    def next_object(self) -> Generator[PipelineData]:
         yield from self._traverse_dataset(self.fs_base_path, True)
