@@ -6,7 +6,7 @@ import json
 from argparse import ArgumentParser
 
 from datalad_metalad.pipeline.provider.datasettraverse import DatasetTraverser
-from datalad_metalad.pipeline.pipelinedata import PipelineData, PipelineDataState, ResultState
+from datalad_metalad.pipeline.pipelinedata import PipelineDataState, ResultState
 
 
 argument_parser = ArgumentParser(
@@ -32,6 +32,7 @@ argument_parser.add_argument(
     help='traverse subdatasets ("True" or "False" [default])'
 )
 
+
 def main():
     arguments = argument_parser.parse_args()
     traverser = DatasetTraverser(
@@ -44,8 +45,9 @@ def main():
             for result in element.get_result('dataset-traversal-record'):
                 if result.state == ResultState.SUCCESS:
                     output = result.to_dict()
-                    for key in ('dataset_id', 'dataset_version'):
+                    for key in ('dataset_id', 'dataset_version', 'fs_base_path'):
                         output['element_info'][key] = output[key]
+                    output['element_info']['status'] = 'ok'
                     print(json.dumps(output['element_info']))
 
 
