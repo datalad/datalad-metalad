@@ -24,13 +24,15 @@ def main():
     for line in sys.stdin.readlines():
         file_info = json.loads(line)
         fs_base_path = Path(file_info['fs_base_path'])
-        cmd_line = ['-d', "'" + str(fs_base_path / file_info['dataset_path']) + "'"]
+        cmd_line = [
+            '-d', str(fs_base_path / file_info['dataset_path']),
+        ]
         if file_info['type'] == 'file':
-            cmd_line.extend(['--file-info', "'" + line + "'"])
-        cmd_line.append("'" + arguments.extractor_name + "'")
+            cmd_line.extend(['--file-info', json.dumps(file_info)])
+        cmd_line.append(arguments.extractor_name)
         if file_info['type'] == 'file':
-            cmd_line.append("'" + file_info['path'] + "'")
-        print (' '.join(cmd_line))
+            cmd_line.append(file_info['path'])
+        print ('\n'.join(cmd_line))
 
 
 if __name__ == '__main__':
