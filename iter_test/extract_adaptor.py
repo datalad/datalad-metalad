@@ -26,6 +26,7 @@ def main():
         fs_base_path = Path(file_info['fs_base_path'])
         cmd_line = [
             '-d', str(fs_base_path / file_info['dataset_path']),
+            '-c', f'{{"dataset_version": "{file_info["dataset_version"]}"}}'
         ]
         if file_info['type'] == 'file':
             cmd_line.extend(['--file-info', json.dumps(file_info)])
