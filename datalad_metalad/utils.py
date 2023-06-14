@@ -147,7 +147,7 @@ def ls_struct(dataset: Dataset,
         cwd=dataset.repo.pathobj
     )
     git_tree = runner.run(
-        ["git", "ls-tree", "--full-tree", "--format=%(objectsize)%x09%(path)", "-r", "HEAD"] + path_args,
+        ["git", "ls-tree", "--full-tree", "-l", "-r", "HEAD"] + path_args,
         protocol=StdOutErrCapture,
         cwd=dataset.repo.pathobj
     )
@@ -179,11 +179,19 @@ def ls_struct(dataset: Dataset,
     except CommandError:
         annexed = set()
 
+    def split_git_tree_line(line: str) -> tuple[str, str]:
+        info, path = line.split("\t")
+        flag, typ, gitsha, size = info.split()
+        return size, path
+
     size_info = {
-        line.split(maxsplit=1)[1]: line.split(maxsplit=1)[0]
-        for line in git_tree["stdout"].splitlines()
-        if line.split(maxsplit=1)[1] not in annexed
+        name: size
+        for size, name in (
+            split_git_tree_line(line)
+            for line in git_tree["stdout"].splitlines())
+        if name not in annexed
     }
+
     result = dict()
     for line in git_files["stdout"].splitlines():
         line, path = line.split("\t", maxsplit=1)
