@@ -158,7 +158,7 @@ def ls_struct(dataset: Dataset,
             cwd=dataset.repo.pathobj
         )
         annexed_not_here_out = runner.run(
-            ["git", "annex", "find", "--not", "--in", "here", "--format=¼{key} ${bytesize} ${file}\n"] + path_args,
+            ["git", "annex", "find", "--not", "--in", "here", "--format=${key} ${bytesize} ${file}\n"] + path_args,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
