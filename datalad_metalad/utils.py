@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import json
 import pkg_resources
 import sys
@@ -151,6 +152,14 @@ def ls_struct(dataset: Dataset,
         protocol=StdOutErrCapture,
         cwd=dataset.repo.pathobj
     )
+
+    def split_git_annex_line(line: str) -> tuple[str, str]:
+        info, path = line.split("\t")
+        flag, typ, gitsha, size = info.split()
+        if path.startswith('"'):
+            path = codecs.escape_decode(path[1:-1])[0].decode("utf-8")
+        return size, path
+
     try:
         annexed_here_out = runner.run(
             ["git", "annex", "find", "--format=${key} ${bytesize} ${file}\n"] + path_args,
@@ -180,8 +189,10 @@ def ls_struct(dataset: Dataset,
         annexed = set()
 
     def split_git_tree_line(line: str) -> tuple[str, str]:
-        info, path = line.split("\t")
+        info, path = line.split("\t", maxsplit=1)
         flag, typ, gitsha, size = info.split()
+        if path.startswith('"'):
+            path = codecs.escape_decode(path[1:-1])[0].decode("utf-8")
         return size, path
 
     size_info = {
@@ -192,10 +203,16 @@ def ls_struct(dataset: Dataset,
         if name not in annexed
     }
 
+    def split_git_files_line(line: str) -> tuple[str, str, str, str, str]:
+        info, path = line.split("\t", maxsplit=1)
+        tag, flag, gitshasum, number = info.split()
+        if path.startswith('"'):
+            path = codecs.escape_decode(path[1:-1])[0].decode("utf-8")
+        return tag, flag, gitshasum, number, path
+
     result = dict()
     for line in git_files["stdout"].splitlines():
-        line, path = line.split("\t", maxsplit=1)
-        tag, flag, shasum, number = line.split()
+        tag, flag, shasum, number, path = split_git_files_line(line)
         full_path = dataset.repo.pathobj / path
         if path in annexed:
             result[full_path] = {
