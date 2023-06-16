@@ -21,7 +21,8 @@ argument_parser.add_argument(
 
 def main():
     arguments = argument_parser.parse_args()
-    for line in sys.stdin.readlines():
+    line = sys.stdin.readline()
+    while line:
         file_info = json.loads(line)
         fs_base_path = Path(file_info['fs_base_path'])
         cmd_line = [
@@ -33,7 +34,8 @@ def main():
         cmd_line.append(arguments.extractor_name)
         if file_info['type'] == 'file':
             cmd_line.append(file_info['path'])
-        print ('\n'.join(cmd_line))
+        sys.stdout.write('\n'.join(cmd_line) + '\n')
+        line = sys.stdin.readline()
 
 
 if __name__ == '__main__':
