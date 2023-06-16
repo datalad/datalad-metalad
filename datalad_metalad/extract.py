@@ -599,13 +599,9 @@ def get_file_info(dataset: Dataset,
     path = dataset.pathobj / relative_path
 
     path_status = ls_struct(dataset, [path]).get(path, None)
-    if path_status is None:
+    if not path_status:
         raise FileNotFoundError(
-            "no dataset status for dataset: {} file: {}".format(
-                dataset.path, path))
-
-    if path_status["state"] == "untracked":
-        raise ValueError("file not tracked: {}".format(path))
+            f"file: {path} not in dataset: {dataset.path}")
 
     path_relative_to_dataset = PurePath(
         path_status["path"]).relative_to(dataset.pathobj)
