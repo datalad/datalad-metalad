@@ -9,8 +9,8 @@ from pathlib import Path
 
 
 argument_parser = argparse.ArgumentParser(
-    prog='extract_adaptor',
-    description='Iterate over the elements of a dataset',
+    prog='extract_file_adaptor',
+    description='Create file extract command line from an iterator record',
 )
 
 argument_parser.add_argument(
@@ -24,16 +24,18 @@ def main():
     line = sys.stdin.readline()
     while line:
         file_info = json.loads(line)
+        if file_info['type'] != 'file':
+            sys.stderr.write(f'ignoring record with type {file_info["type"]}\n')
+            continue
+
         fs_base_path = Path(file_info['fs_base_path'])
         cmd_line = [
             '-d', str(fs_base_path / file_info['dataset_path']),
             '-c', f'{{"dataset_version": "{file_info["dataset_version"]}"}}'
         ]
-        if file_info['type'] == 'file':
-            cmd_line.extend(['--file-info', json.dumps(file_info)])
+        cmd_line.extend(['--file-info', json.dumps(file_info)])
         cmd_line.append(arguments.extractor_name)
-        if file_info['type'] == 'file':
-            cmd_line.append(file_info['path'])
+        cmd_line.append(file_info['path'])
         sys.stdout.write('\n'.join(cmd_line) + '\n')
         line = sys.stdin.readline()
 
