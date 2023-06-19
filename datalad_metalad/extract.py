@@ -57,6 +57,7 @@ from datalad.ui import ui
 from .extractors.base import (
     BaseMetadataExtractor,
     DataOutputCategory,
+    DatasetInfo,
     DatasetMetadataExtractor,
     FileInfo,
     FileMetadataExtractor,
@@ -101,7 +102,7 @@ class ExtractionArguments:
     file_tree_path: Optional[MetadataPath]
     agent_name: str
     agent_email: str
-    file_info: Optional[FileInfo]
+    file_info: Optional[Union[FileInfo, DatasetInfo]]
 
 
 @build_doc
@@ -253,7 +254,7 @@ class Extract(Interface):
             dataset: Optional[Union[Dataset, str]] = None,
             context: Optional[Union[str, Dict[str, str]]] = None,
             get_context: bool = False,
-            file_info: Optional[Union[str, FileInfo]] = None,
+            file_info: Optional[Union[str, FileInfo, DatasetInfo]] = None,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
 
@@ -284,7 +285,12 @@ class Extract(Interface):
                         file_info = json.load(f)
                 else:
                     file_info = json.loads(file_info)
-            file_info = FileInfo.from_dict(file_info)
+            # TODO: detect DatasetInfo differently
+            file_info = (
+                FileInfo.from_dict(file_info)
+                if 'intra_dataset_path' in file_info
+                else DatasetInfo.from_dict(file_info)
+            )
 
         source_dataset = check_dataset(dataset or curdir, "extract metadata")
 
