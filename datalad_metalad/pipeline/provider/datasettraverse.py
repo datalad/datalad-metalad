@@ -38,6 +38,7 @@ from ..pipelinedata import (
 from ...extractors.base import (
     DatasetInfo,
     FileInfo,
+    AnnexedFileInfo,
 )
 from ...utils import ls_struct
 
@@ -303,7 +304,10 @@ class DatasetTraverser(Provider):
             "intra_dataset_path": str(intra_dataset_path),
             "fs_base_path": str(self.fs_base_path)
         }
-        return FileInfo.from_dict({**element_info, **file_keys})
+        if element_info['annexed']:
+            return AnnexedFileInfo.from_dict({**element_info, **file_keys})
+        else:
+            return FileInfo.from_dict({**element_info, **file_keys})
 
     def _generate_result(self,
                          dataset: Dataset,

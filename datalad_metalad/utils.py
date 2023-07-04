@@ -4,6 +4,7 @@ import codecs
 import json
 import pkg_resources
 import sys
+from collections import defaultdict
 from itertools import islice
 from pathlib import Path
 from typing import Dict, List, Union
@@ -133,6 +134,13 @@ def ls_struct(dataset: Dataset,
         "160000": "dataset",
     }
 
+    flag_2_executable = {
+        "100644": False,
+        "100755": True,
+        "120000": False,
+        "160000": False,
+    }
+
     tag_2_status = {
         "C": "modified",
         "H": "clean",
@@ -171,6 +179,11 @@ def ls_struct(dataset: Dataset,
             protocol=StdOutErrCapture,
             cwd=dataset.repo.pathobj
         )
+        annexed_whereis_out = runner.run(
+            ["git", "annex", "whereis", "--format=${uuid} ${file}\n"] + path_args,
+            protocol=StdOutErrCapture,
+            cwd=dataset.repo.pathobj
+        )
         annexed_here = {
             line.split(maxsplit=2)[2]: line.split(maxsplit=2)[:2]
             for line in annexed_here_out["stdout"].splitlines()
@@ -181,6 +194,9 @@ def ls_struct(dataset: Dataset,
             for line in annexed_not_here_out["stdout"].splitlines()
             if line
         }
+        annexed_whereis = defaultdict(list)
+        for uuid, name in [line.split(maxsplit=1) for line in annexed_whereis_out["stdout"].splitlines() if line]:
+            annexed_whereis[name].append(uuid)
         annexed = {
             **annexed_here,
             **annexed_not_here
@@ -217,23 +233,25 @@ def ls_struct(dataset: Dataset,
         if path in annexed:
             result[full_path] = {
                 "type": "file",
+                "executable": False,
                 "path": str(full_path),
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
+                "bytesize": int(annexed[path][1]),
                 "annexed": True,
                 "key": annexed[path][0],
-                "bytesize": int(annexed[path][1]),
+                'locations': annexed_whereis[path],
                 "has_content": path in annexed_here
             }
         else:
             result[full_path] = {
                 "type": flag_2_type[flag],
+                "executable": flag_2_executable[flag],
                 "path": str(full_path),
                 "gitshasum": shasum,
                 "state": tag_2_status[tag],
-                "annexed": False,
                 "bytesize": 0 if size_info[path] == "-" else int(size_info[path]),
-                "has_content": False
+                "annexed": False,
             }
 
     return result

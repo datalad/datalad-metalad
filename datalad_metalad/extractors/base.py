@@ -41,11 +41,19 @@ class DatasetInfo:
 @dataclass_json
 @dataclass
 class FileInfo(DatasetInfo):
+    executable: bool
     fs_base_path: str
     intra_dataset_path: str
-    annexed: bool
-    has_content: bool
     bytesize: int
+    annexed: bool
+
+
+@dataclass_json
+@dataclass
+class AnnexedFileInfo(FileInfo):
+    key: str
+    locations: list
+    has_content: bool
 
 
 @dataclass
