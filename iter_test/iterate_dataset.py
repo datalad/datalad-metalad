@@ -45,8 +45,9 @@ def main():
             for result in element.get_result('dataset-traversal-record'):
                 if result.state == ResultState.SUCCESS:
                     output = result.to_dict()
-                    for key in ('dataset_id', 'dataset_version', 'fs_base_path'):
-                        output['element_info'][key] = output[key]
+                    for key in ('dataset_id', 'dataset_version', 'fs_base_path', 'root_dataset_id', 'root_dataset_version'):
+                        if key in output:
+                            output['element_info'][key] = output[key]
                     output['element_info']['status'] = 'ok'
                     print(json.dumps(output['element_info']))
 
