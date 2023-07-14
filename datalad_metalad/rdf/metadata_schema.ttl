@@ -1,0 +1,68 @@
+
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix ex:      <http://www.example.com/>.
+@prefix dl:      <http://dl.org/>.
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+
+# Instances of the class 'dl:DatasetInstance' represent a dataset version,
+# that is defined by a commit. It is not called `dl:DatasetVersion`, because
+# a version is usually assigned manually to a hand-picked instance, and not all
+# instances have versions.
+dl:DatasetInstance
+    a rdfs:Class.
+
+
+dl:gitsha
+    a rdf:Property;
+    rdfs:domain dl:DatasetInstance.
+
+
+# Types of this should be a `rdf:Seq` that contains `dl:MetadataEntry`-instances
+dl:metadata
+    a rdf:Property;
+    rdfs:domain dl:DatasetInstance;
+    rdfs:domain dl:DatasetElement.
+
+
+# An instance of `dl:MetadataEntry` represents metadata in a given format.
+# The format is described as the property `metadataFormat`, the metadata itself
+# is contained in the property `metadataContent`, which should be a string.
+dl:MetadataEntry
+    a rdfs:Class.
+
+dl:metadataFormat
+    a rdf:Property;
+    rdfs:domain dl:MetadataEntry.
+
+dl:metadataContent
+    a rdf:Property;
+    rdfs:domain dl:MetadataEntry.
+
+
+ex:mde1
+    a dl:MetadataEntry;
+    dl:metadataFormat "metalad_core";
+    dl:metadataContent: "{\"some\": \"json-data\"}".
+
+
+ex:mde2
+    a dl:MetadataEntry;
+    dl:metadataFormat "studyminimeta";
+    dl:metadataContent: "{\"some more\": \"different json-data\"}".
+
+
+ex:dvver1
+    a dl:DatasetInstance;
+    dl:gitsha "000000000000000000000000000";
+    dl:metadata ([
+                     a dl:MetadataContent;
+                     dl:metadataFormat "xxx";
+                     dl:metadataContent: "c-xxx"]
+                 [
+                     a dl:MetadataContent;
+                     dl:metadataFormat "yyy";
+                     dl:metadataContent: "c-yyy"
+                 ]
+      ).
