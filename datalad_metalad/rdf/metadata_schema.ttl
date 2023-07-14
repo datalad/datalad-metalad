@@ -2,7 +2,7 @@
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#>.
 @prefix ex:      <http://www.example.com/>.
-@prefix dl:      <http://dl.org/>.
+@prefix dl:      <http://datalad.org/>.
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 
 
@@ -41,28 +41,16 @@ dl:metadataContent
     rdfs:domain dl:MetadataEntry.
 
 
-ex:mde1
-    a dl:MetadataEntry;
-    dl:metadataFormat "metalad_core";
-    dl:metadataContent: "{\"some\": \"json-data\"}".
-
-
-ex:mde2
-    a dl:MetadataEntry;
-    dl:metadataFormat "studyminimeta";
-    dl:metadataContent: "{\"some more\": \"different json-data\"}".
-
-
-ex:dvver1
+ex:exampleInstance_1
     a dl:DatasetInstance;
     dl:gitsha "000000000000000000000000000";
     dl:metadata ([
                      a dl:MetadataContent;
-                     dl:metadataFormat "xxx";
-                     dl:metadataContent: "c-xxx"]
+                     dl:metadataFormat "metalad_core";
+                     dl:metadataContent: "{\"some\": \"json-data\"}"]
                  [
                      a dl:MetadataContent;
-                     dl:metadataFormat "yyy";
-                     dl:metadataContent: "c-yyy"
+                     dl:metadataFormat "studyminimeta";
+                     dl:metadataContent: "{\"some more\": \"different json-data\"}"
                  ]
       ).
