@@ -6,24 +6,43 @@
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 
 
+
 # Instances of the class 'dl:DatasetInstance' represent a dataset version,
 # that is defined by a commit. It is not called `dl:DatasetVersion`, because
 # a version is usually assigned manually to a hand-picked instance, and not all
 # instances have versions.
-dl:DatasetInstance
-    a rdfs:Class.
-
+dl:DatasetInstance a rdfs:Class .
 
 dl:gitsha
     a rdf:Property;
-    rdfs:domain dl:DatasetInstance.
+    rdfs:domain dl:DatasetInstance, dl:DatasetElement;
+    rdfs:range xsd:string .
+
+
+# Instances of the class dl:DatasetElement represent a single element of a
+# dataset that could be a file or a sub-dataset
+dl:DatasetElement a rdfs:Class .
+
+dl:path
+    a rdf:Property;
+    rdfs:domain dl:DatasetElement .
+
+
+# Instances of the class dl:DatasetFileElement represent a file in a
+# dataset
+dl:DatasetFileElement rdfs:subClassOf dl:DatasetElement .
+
+
+
+dl:DatasetSubDatasetElement rdfs:subClassOf dl:DatasetElement .
+
+
 
 
 # Types of this should be a `rdf:Seq` that contains `dl:MetadataEntry`-instances
 dl:metadata
     a rdf:Property;
-    rdfs:domain dl:DatasetInstance;
-    rdfs:domain dl:DatasetElement.
+    rdfs:domain dl:DatasetInstance, dl:DatasetElement.
 
 
 # An instance of `dl:MetadataEntry` represents metadata in a given format.
