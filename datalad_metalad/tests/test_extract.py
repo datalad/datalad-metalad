@@ -500,6 +500,15 @@ def test_external_extractor(ds_path=None):
 
     ds = _create_dataset_at_path(ds_path)
 
+    code = """
+import sys
+
+if sys.argv[1] == '--get-uuid':
+    print('01234567-1234-2345-3456-789abcdef012')
+else:
+    print('True')
+"""
+
     for path, extractor_name in ((None, "metalad_external_dataset"),
                                  ("sub/one", "metalad_external_file")):
         result = meta_extract(
@@ -509,8 +518,8 @@ def test_external_extractor(ds_path=None):
             extractorargs=[
                 "extractor-id", str(UUID(int=32)),
                 "data-output-category", "IMMEDIATE",
-                "command", ["python", "-c", "print('True')"],
-                "arguments", ["-c", "print('True')"]
+                "command", ["python", "-c", code],
+                "arguments", ["-c", code]
             ],
             **common_kwargs)
         eq_(len(result), 1)
