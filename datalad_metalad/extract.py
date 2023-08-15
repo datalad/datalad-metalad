@@ -811,24 +811,6 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
             f"{ea.extractor_class.__name__}")
 
 
-def xxx_annex_status(annex_repo, paths=None):
-    info = annex_repo.get_content_annexinfo(
-        paths=paths,
-        eval_availability=False,
-        init=annex_repo.get_content_annexinfo(
-            paths=paths,
-            ref="HEAD",
-            eval_availability=False,
-            init=annex_repo.status(
-                paths=paths,
-                untracked="no",
-                eval_submodule_state="full")
-        )
-    )
-    annex_repo._mark_content_availability(info)
-    return info
-
-
 def annex_status(dataset: Dataset,
                  path_pattern: Optional[Union[str, Path]] = None
                  ) -> dict[Path, dict]:
