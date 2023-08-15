@@ -2,6 +2,8 @@
 import os
 import hashlib
 
+from ._version import get_versions
+
 
 __docformat__ = 'restructuredtext'
 
@@ -108,9 +110,5 @@ def get_agent_id(name, email):
     ).encode('utf-8')).hexdigest()
 
 
-from datalad import setup_package
-from datalad import teardown_package
-
-from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions

@@ -1,7 +1,9 @@
-six
+dataclasses_json
 datalad>=0.18
-sphinx>=1.7.8
-sphinx-rtd-theme
-pytest
-pyyaml
 datalad-metadata-model>=0.3.10
+pyyaml
+six
+
+# Documentation building
+sphinx==5.3.0
+sphinx-rtd-theme

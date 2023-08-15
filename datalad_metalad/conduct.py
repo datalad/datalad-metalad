@@ -101,7 +101,7 @@ class Conduct(Interface):
     - A list of processors. A processor reads data,
       either from the previous processor or the provider and performs
       computations on the data and return a result that is processed by
-      the next processor. The computation may have side-effect,
+      the next processor. The computation may have side effects,
       e.g. store metadata.
 
     The provider is usually executed in the current processes' main
@@ -109,7 +109,7 @@ class Conduct(Interface):
     i.e. workers. The maximum number of workers is given by the
     parameter `max_workers`.
 
-    Which provider and which processors are used is defined in an
+    Which provider and which processors are used is defined in a
     "configuration", which is given as JSON-serialized dictionary.
     """
 
@@ -303,7 +303,7 @@ def process_parallel(executor,
                 status="ok",
                 path=str(path),
                 logger=lgr,
-                pipeline_data=pipeline_data.to_json())
+                pipeline_data=pipeline_data.to_dict())
             continue
 
         lgr.debug(f"Starting new instance of {processor_specs[0]} on {pipeline_data}")
@@ -343,7 +343,7 @@ def process_parallel(executor,
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_data=pipeline_data.to_json())
+                            pipeline_data=pipeline_data.to_dict())
                 else:
                     lgr.debug(
                         f"Starting processor[{next_index}]"
@@ -396,7 +396,7 @@ def process_parallel(executor,
                             status="ok",
                             path=str(path),
                             logger=lgr,
-                            pipeline_data=pipeline_data.to_json())
+                            pipeline_data=pipeline_data.to_dict())
                 else:
                     lgr.debug(
                         f"Handing pipeline data {pipeline_data} to"
@@ -418,6 +418,10 @@ def process_parallel(executor,
                     status="error",
                     logger=lgr,
                     message=traceback.format_exc())
+
+    if consumer_instance:
+        consumer_instance.consume(PipelineData(state=PipelineDataState.STOP))
+
     return
 
 
@@ -434,6 +438,9 @@ def process_sequential(provider_instance: Provider,
             processor_specs=processor_specs,
             evaluated_constructor_args=evaluated_constructor_args,
             consumer_instance=consumer_instance)
+
+    if consumer_instance:
+        consumer_instance.consume(PipelineData(state=PipelineDataState.STOP))
 
 
 def process_downstream(pipeline_data: PipelineData,
@@ -493,7 +500,7 @@ def process_downstream(pipeline_data: PipelineData,
             status="ok",
             path=str(path),
             logger=lgr,
-            pipeline_data=pipeline_data.to_json())
+            pipeline_data=pipeline_data.to_dict())
 
         lgr.debug(
             f"Pipeline finished, returning datalad result {datalad_result}")

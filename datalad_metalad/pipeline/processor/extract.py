@@ -1,15 +1,13 @@
 """
 Extract metadata and add it to a conduct-element.
 """
+from __future__ import annotations
+
 import enum
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import (
-    cast,
-    Dict,
-    Optional,
-)
+from typing import cast
 
 from datalad.api import meta_extract
 from datalad.support.constraints import EnsureChoice
@@ -38,12 +36,12 @@ class ExtractorType(enum.Enum):
 @dataclass
 class MetadataExtractorResult(PipelineResult):
     path: str
-    context: Optional[Dict] = None
-    metadata_record: Optional[Dict] = field(init=False)
+    context: dict | None = None
+    metadata_record: dict | None = field(init=False)
 
-    def to_json(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
-            **super().to_json(),
+            **super().to_dict(),
             "path": str(self.path),
             "metadata_record": self.metadata_record
         }
@@ -90,18 +88,19 @@ class MetadataExtractor(Processor):
                 f"{dataset_traverse_record.type}")
             return pipeline_data
 
-        dataset_path = (
-                dataset_traverse_record.fs_base_path
-                / dataset_traverse_record.dataset_path
-        )
         object_type = dataset_traverse_record.type
+        dataset_path = dataset_traverse_record.fs_base_path / dataset_traverse_record.element_info.dataset_path
+        intra_dataset_path = (
+            ""
+            if object_type == "dataset"
+            else dataset_traverse_record.element_info.intra_dataset_path)
 
         if object_type == "file":
-            object_path = Path(dataset_traverse_record.path)
             kwargs = dict(
                 extractorname=self.extractor_name,
                 dataset=dataset_path,
-                path=dataset_path / object_path.relative_to(dataset_path),
+                path=intra_dataset_path,
+                file_info=dataset_traverse_record.element_info.to_dict(),
                 result_renderer="disabled")
         elif object_type == "dataset":
             kwargs = dict(
@@ -115,7 +114,7 @@ class MetadataExtractor(Processor):
         results = []
         for extract_result in meta_extract(**kwargs):
 
-            path = str(dataset_path / extract_result.get("path", ""))
+            path = str(Path(dataset_path) / extract_result.get("path", ""))
 
             if extract_result["status"] == "ok":
                 md_extractor_result = MetadataExtractorResult(ResultState.SUCCESS, path)

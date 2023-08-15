@@ -1,0 +1,9 @@
+{
+  "provider": {
+    "module": "datalad_metalad.pipeline.provider.datasettraverse",
+    "class": "DatasetTraverser",
+    "name": "traverser",
+    "arguments": {}
+  },
+  "processors": []
+}
