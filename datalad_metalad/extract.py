@@ -55,6 +55,7 @@ from datalad.support.exceptions import NoDatasetFound
 from datalad.ui import ui
 
 from .extractors.base import (
+    AnnexedFileInfo,
     BaseMetadataExtractor,
     DataOutputCategory,
     DatasetInfo,
@@ -613,18 +614,26 @@ def get_file_info(dataset: Dataset,
         path_status["path"]).relative_to(dataset.pathobj)
 
     # noinspection PyUnresolvedReferences
-    return FileInfo(
+    common_args = dict(
         type="file",
         gitshasum=path_status["gitshasum"],
         state=path_status["state"],
-        dataset_path="",
         path=path_status["path"],   # Absolute path, used by extractors
+        dataset_path="",
+        executable=path_status["executable"],
         fs_base_path=dataset.path,
-        intra_dataset_path=str(
-            MetadataPath(*path_relative_to_dataset.parts)),
-        annexed=path_status["annexed"],
-        has_content=path_status["has_content"],
-        bytesize=path_status["bytesize"])
+        intra_dataset_path=str(MetadataPath(*path_relative_to_dataset.parts)),
+        bytesize=path_status["bytesize"],
+        annexed=path_status["annexed"])
+
+    if path_status["annexed"] is True:
+        return AnnexedFileInfo(**{
+            **common_args,
+            "key": path_status["key"],
+            "locations": path_status["locations"],
+            "has_content": path_status["has_content"]})
+    else:
+        return FileInfo(**common_args)
 
 
 def get_path_info(dataset: Dataset,
