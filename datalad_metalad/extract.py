@@ -548,13 +548,15 @@ def get_extractor_class(extractor_name: str) -> Union[
     # Therefore, we have to use to extractors in
     # `datalad_metalad.extractors.legacy` instead of any old extractor code
     # from datalad core.
+    # In addition, we do not recognize metadata classes that are contained
+    # in datalad-deprecated.
     entry_points = [
         entry_point
         for entry_point in iter_entry_points(
             "datalad.metadata.extractors",
             extractor_name
         )
-        if entry_point.dist.project_name != "datalad"
+        if entry_point.dist.project_name not in ("datalad", "datalad-deprecated")
     ]
 
     if not entry_points:
