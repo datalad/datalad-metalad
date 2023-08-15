@@ -805,7 +805,6 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
                 extracted_metadata=dataset_result))
 
     else:
-        module_name = ea.extractor_class.__module__
         raise ValueError(
             f"unrecognized extractor class: {ea.extractor_class.__module__}."
             f"{ea.extractor_class.__name__}")
@@ -920,4 +919,5 @@ def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
 
     else:
         raise ValueError(
-            f"unknown extractor class: {type(ea.extractor_class).__name__}")
+            f"unrecognized extractor class: {ea.extractor_class.__module__}."
+            f"{ea.extractor_class.__name__}")
