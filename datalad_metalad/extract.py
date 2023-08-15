@@ -429,12 +429,13 @@ def do_extraction(ep: ExtractionArguments):
         yield from legacy_extractor_map[extractor_type](ep)
         return
 
-    # Latest generation extraction
-    extractor_class_map: dict[str, type(FileMetadataExtractor), type(DatasetMetadataExtractor)] = {
+    # Check whether Latest generation extractor classes are used
+    extractor_class_latest = {
         "file": FileMetadataExtractor,
         "dataset": DatasetMetadataExtractor,
-    }
-    if not issubclass(ep.extractor_class, extractor_class_map[extractor_type]):
+    }[extractor_type]
+
+    if not issubclass(ep.extractor_class, extractor_class_latest):
         msg = (
             f"A {extractor_type}-level metadata-extraction was attempted"
             + (
@@ -804,8 +805,10 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
                 extracted_metadata=dataset_result))
 
     else:
+        module_name = ea.extractor_class.__module__
         raise ValueError(
-            f"unknown extractor class: {type(ea.extractor_class).__name__}")
+            f"unrecognized extractor class: {ea.extractor_class.__module__}."
+            f"{ea.extractor_class.__name__}")
 
 
 def xxx_annex_status(annex_repo, paths=None):
