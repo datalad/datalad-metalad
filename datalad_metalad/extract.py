@@ -53,9 +53,16 @@ from datalad.runner.nonasyncrunner import STDERR_FILENO
 from datalad.runner.protocol import GeneratorMixIn
 from datalad.runner.utils import LineSplitter
 from datalad.support.annexrepo import AnnexRepo
+from datalad.support.constraints import (
+    EnsureNone,
+    EnsureStr,
+)
 from datalad.support.exceptions import NoDatasetFound
+from datalad.support.param import Parameter
 from datalad.ui import ui
+from dataladmetadatamodel.metadatapath import MetadataPath
 
+from .exceptions import ExtractorNotFoundError
 from .extractors.base import (
     AnnexedFileInfo,
     BaseMetadataExtractor,
@@ -67,17 +74,6 @@ from .extractors.base import (
     MetadataExtractor,
     MetadataExtractorBase,
 )
-
-from datalad.support.constraints import (
-    EnsureNone,
-    EnsureStr,
-)
-from datalad.support.param import Parameter
-
-from dataladmetadatamodel.metadatapath import MetadataPath
-
-from .exceptions import ExtractorNotFoundError
-
 from .utils import (
     args_to_dict,
     check_dataset,
