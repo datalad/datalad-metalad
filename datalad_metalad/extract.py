@@ -10,6 +10,8 @@
 Run a dataset-level metadata extractor on a dataset
 or run a file-level metadata extractor on a file
 """
+from __future__ import annotations
+
 import json
 import logging
 import sys
