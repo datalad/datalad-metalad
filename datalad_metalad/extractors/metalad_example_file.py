@@ -8,6 +8,7 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """MetadataRecord extractor for files stored in Datalad's own core storage"""
 import logging
+import os
 import time
 from uuid import UUID
 
@@ -24,7 +25,7 @@ class MetaladExampleFileExtractor(FileMetadataExtractor):
         return DataOutputCategory.IMMEDIATE
 
     def is_content_required(self) -> bool:
-        return True
+        return False
 
     def get_id(self) -> UUID:
         return UUID("89fae179-eceb-4af2-8088-dfebdae6e2c0")
@@ -33,6 +34,7 @@ class MetaladExampleFileExtractor(FileMetadataExtractor):
         return "0.0.1"
 
     def extract(self, _=None) -> ExtractorResult:
+        # Perform a very simple file analysis.
         return ExtractorResult(
             extractor_version=self.get_version(),
             extraction_parameter=self.parameter or {},
@@ -41,12 +43,14 @@ class MetaladExampleFileExtractor(FileMetadataExtractor):
                 "type": "file",
                 "status": "ok"
             },
-            immediate_data={
-                "@id": get_file_id(dict(
+            immediate_data=({
+                "@id": os.readlink(self.file_info.path)
+                    if os.path.islink(self.file_info.path)
+                    else get_file_id(dict(
                     path=self.file_info.path,
                     type=self.file_info.type)),
                 "type": self.file_info.type,
                 "path": self.file_info.intra_dataset_path,
                 "content_byte_size": self.file_info.bytesize,
                 "comment": f"example file extractor executed at {time.time()}"
-            })
+            }))
