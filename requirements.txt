@@ -1,4 +1,3 @@
-six
 datalad>=0.18
 sphinx>=1.7.8
 sphinx-rtd-theme

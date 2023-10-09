@@ -20,7 +20,6 @@ metadata.
 
 from .base import MetadataExtractor
 
-from six import text_type
 import logging
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_annex')
 from datalad.log import log_progress
@@ -50,7 +49,7 @@ class AnnexMetadataExtractor(MetadataExtractor):
         # limit query to paths that are annexed
         query_paths = [
             # go relative to minimize cmdline footprint of annex call
-            text_type(Path(s['path']).relative_to(ds.pathobj))
+            str(Path(s['path']).relative_to(ds.pathobj))
             for s in status
             # anything that looks like an annexed file
             if s.get('type', None) == 'file' \

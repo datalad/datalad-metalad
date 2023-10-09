@@ -61,9 +61,6 @@ from .. import (
     get_file_id,
     get_agent_id,
 )
-from six import (
-    text_type,
-)
 from datalad.support.json_py import (
     loads as jsonloads,
     load as jsonload,
@@ -203,7 +200,7 @@ def yield_run_records(ds):
         if not isinstance(rec, dict):
             # this is a runinfo file name
             rec = jsonload(
-                text_type(ds.pathobj / '.datalad' / 'runinfo' / rec),
+                str(ds.pathobj / '.datalad' / 'runinfo' / rec),
                 # TODO this should not be necessary, instead jsonload()
                 # should be left on auto, and `run` should save compressed
                 # files with an appropriate extension

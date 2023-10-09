@@ -20,7 +20,6 @@ By default a single file is read: '.metadata/dataset.json'
 from .base import MetadataExtractor
 
 import os.path as op
-from six import text_type
 import logging
 lgr = logging.getLogger('datalad.metadata.extractors.custom')
 
@@ -49,7 +48,7 @@ class CustomMetadataExtractor(MetadataExtractor):
         if process_type in ('all', 'dataset'):
             srcfiles, _ = _get_dsmeta_srcfiles(dataset)
             for f in srcfiles:
-                f = text_type(dataset.pathobj / f)
+                f = str(dataset.pathobj / f)
                 if op.lexists(f):
                     yield dict(path=f)
 
@@ -78,7 +77,7 @@ class CustomMetadataExtractor(MetadataExtractor):
                 meta_fpath = _get_fmeta_objpath(ds, mfile_expr, rec)
                 if meta_fpath is not None and op.exists(meta_fpath):
                     try:
-                        meta = jsonload(text_type(meta_fpath))
+                        meta = jsonload(str(meta_fpath))
                         if isinstance(meta, dict) and meta \
                                 and '@id' not in meta:
                             # in case we have a single, top-level
@@ -136,7 +135,7 @@ def _get_dsmeta_srcfiles(ds):
     # OK to be always POSIX
     srcfiles = ['.metadata/dataset.json'] \
         if not cfg_srcfiles and op.lexists(
-            text_type(ds.pathobj / '.metadata' / 'dataset.json')) \
+            str(ds.pathobj / '.metadata' / 'dataset.json')) \
         else cfg_srcfiles
     return srcfiles, cfg_srcfiles
 
@@ -154,7 +153,7 @@ def _get_fmeta_objpath(ds, expr, rec):
         return
     # build associated metadata file path from POSIX
     # pieces and convert to platform conventions at the end
-    return text_type(
+    return str(
         ds.pathobj / PurePosixPath(expr.format(
             freldir=fpath.relative_to(
                 ds.pathobj).parent.as_posix(),
@@ -183,7 +182,7 @@ def _yield_dsmeta(ds):
                 # no further operation on half-broken metadata
                 return
         lgr.debug('Load custom metadata from %s', abssrcfile)
-        meta = jsonload(text_type(abssrcfile))
+        meta = jsonload(str(abssrcfile))
         dsmeta.update(meta)
     if dsmeta:
         if '@id' not in dsmeta:
