@@ -217,7 +217,7 @@ class Extract(Interface):
             an even number of extractor arguments.
             
             If dataset level extraction should be performed and you want to
-            provide extractor arguments. you have tp specify
+            provide extractor arguments. You have to specify
             '--force-dataset-level' to ensure dataset-level extraction. i.e. to
             prevent interpretation of the key of the first extractor argument
             as path for a file-level extraction.""",

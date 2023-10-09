@@ -104,7 +104,7 @@ def test_custom_dsmeta(path=None):
     res = ds.meta_extract(extractorname='metalad_runprov')
     # only a single results
     assert_result_count(res, 1)
-    # 2 actvities, 1 agent, 2 generated entities
+    # 2 activities, 1 agent, 2 generated entities
     eq_(len(res[0]['metadata_record']['extracted_metadata']['@graph']), 3)
     # all properly ID'ed
     assert(all('@id' in d for d in res[0]['metadata_record']['extracted_metadata']['@graph']))
