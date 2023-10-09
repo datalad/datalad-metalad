@@ -7,7 +7,6 @@ pre-commit
 pyyaml
 pytest
 pytest-cov
-six
 
 # required for extractor tests
 ExifRead

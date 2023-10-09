@@ -8,8 +8,6 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test runprov metadata extractor"""
 
-from six import text_type
-
 from datalad.distribution.dataset import Dataset
 from datalad.tests.utils_pytest import (
     assert_in,
@@ -48,7 +46,7 @@ def test_custom_dsmeta(path=None):
     res = ds.meta_extract(extractorname='metalad_runprov', path='dummy0')
     assert_result_count(res, 1)
     eq_(res[0]["type"], "file")
-    eq_(res[0]["path"], text_type(ds.pathobj / 'dummy0'))
+    eq_(res[0]["path"], str(ds.pathobj / 'dummy0'))
     for r in res:
         # we have something from the extractor
         md = r.get('metadata_record', {}).get('extracted_metadata', None)
@@ -80,7 +78,7 @@ def test_custom_dsmeta(path=None):
         extractorname='metalad_runprov', path='dummy0')
     assert_result_count(fileres, 1)
     assert_result_count(
-        fileres, 1, type='file', path=text_type(ds.pathobj / 'dummy0'))
+        fileres, 1, type='file', path=str(ds.pathobj / 'dummy0'))
 
     # smoke test to see if anything breaks with a record in a sidecar
     # file
@@ -97,7 +95,7 @@ def test_custom_dsmeta(path=None):
     assert_result_count(res, 1)
     eq_(res[0]['type'], 'file')
     assert_result_count(
-        res, 1, type='file', path=text_type(ds.pathobj / 'dummy_side'))
+        res, 1, type='file', path=str(ds.pathobj / 'dummy_side'))
 
     # check that it survives a partial report (no _core metadata extracted)
     # for JSON-LD reporting
