@@ -12,6 +12,7 @@ or run a file-level metadata extractor on a file
 """
 import json
 import logging
+import sys
 import time
 from os import curdir
 from pathlib import (
@@ -489,42 +490,45 @@ def get_extractor_class(extractor_name: str) -> Union[
                                             Type[FileMetadataExtractor]]:
 
     """ Get an extractor from its name """
-    from pkg_resources import iter_entry_points
+    if sys.version_info < (3, 10):
+        from importlib_metadata import entry_points
+    else:
+        from importlib.metadata import entry_points
 
     # The extractor class names of the old datalad-contained extractors have
     # been changed, when the extractors were moved to datalad_metalad.
     # Therefore, we have to use to extractors in
     # `datalad_metalad.extractors.legacy` instead of any old extractor code
     # from datalad core.
-    entry_points = [
+    entry_point_list = [
         entry_point
-        for entry_point in iter_entry_points(
-            "datalad.metadata.extractors",
-            extractor_name
+        for entry_point in entry_points(
+            group="datalad.metadata.extractors",
+            name=extractor_name,
         )
-        if entry_point.dist.project_name != "datalad"
+        if entry_point.dist.name != "datalad"
     ]
 
-    if not entry_points:
-        entry_points = [
+    if not entry_point_list:
+        entry_point_list = [
             entry_point
-            for entry_point in iter_entry_points(
-                "datalad.metadata.extractors",
-                extractor_name
+            for entry_point in entry_points(
+                group="datalad.metadata.extractors",
+                name=extractor_name,
             )
-            if entry_point.dist.project_name == "datalad"
+            if entry_point.dist.name == "datalad"
         ]
 
-    if not entry_points:
+    if not entry_point_list:
         raise ExtractorNotFoundError(
             "Requested metadata extractor '{}' not available".format(
                 extractor_name))
 
-    entry_point, ignored_entry_points = entry_points[-1], entry_points[:-1]
+    entry_point, ignored_entry_points = entry_point_list[-1], entry_point_list[:-1]
     lgr.debug(
         "Using metadata extractor %s from distribution %s",
         extractor_name,
-        entry_point.dist.project_name)
+        entry_point.dist.name)
 
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
@@ -532,8 +536,8 @@ def get_extractor_class(extractor_name: str) -> Union[
             "MetadataRecord extractor %s from distribution %s overrides "
             "metadata extractor from distribution %s",
             extractor_name,
-            entry_point.dist.project_name,
-            ignored_entry_point.dist.project_name)
+            entry_point.dist.name,
+            ignored_entry_point.dist.name)
 
     return entry_point.load()
 

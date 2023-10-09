@@ -12,6 +12,7 @@ Run a metadata filter on a set of metadata elements
 import json
 import logging
 from pathlib import Path
+import sys
 from typing import (
     Dict,
     Iterable,
@@ -285,10 +286,13 @@ def run_filter(filter_name: str,
 
 def get_filter_class(filter_name: str) -> Type[MetadataFilterBase]:
     """ Get a filter class from its name"""
-    from pkg_resources import iter_entry_points
+    if sys.version_info < (3, 10):
+        from importlib_metadata import entry_points
+    else:
+        from importlib.metadata import entry_points
 
     entry_points = list(
-        iter_entry_points("datalad.metadata.filters", filter_name))
+        entry_points(group="datalad.metadata.filters", name=filter_name))
 
     if not entry_points:
         raise ValueError(
@@ -299,7 +303,7 @@ def get_filter_class(filter_name: str) -> Type[MetadataFilterBase]:
     lgr.debug(
         "Using metadata filter %s from distribution %s",
         filter_name,
-        entry_point.dist.project_name)
+        entry_point.dist.name)
 
     # Inform about overridden entry points
     for ignored_entry_point in ignored_entry_points:
@@ -307,8 +311,8 @@ def get_filter_class(filter_name: str) -> Type[MetadataFilterBase]:
             "MetadataRecord filter %s from distribution %s overrides "
             "metadata filter from distribution %s",
             filter_name,
-            entry_point.dist.project_name,
-            ignored_entry_point.dist.project_name)
+            entry_point.dist.name,
+            ignored_entry_point.dist.name)
 
     return entry_point.load()
 
