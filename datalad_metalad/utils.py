@@ -4,7 +4,7 @@ from itertools import islice
 from pathlib import Path
 from typing import Dict, List, Union
 
-if sys.version_info < (3, 10):
+if sys.version_info < (3, 9):
     from importlib_resources import files
 else:
     from importlib.resources import files

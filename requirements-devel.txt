@@ -2,6 +2,7 @@ coverage
 datalad>=0.18
 datalad-metadata-model>=0.3.10
 importlib-resources
+importlib-metadata
 sphinx>=1.7.8
 sphinx-rtd-theme
 pre-commit

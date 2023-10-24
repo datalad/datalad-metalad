@@ -286,7 +286,7 @@ def run_filter(filter_name: str,
 
 def get_filter_class(filter_name: str) -> Type[MetadataFilterBase]:
     """ Get a filter class from its name"""
-    if sys.version_info < (3, 10):
+    if sys.version_info < (3, 9):
         from importlib_metadata import entry_points
     else:
         from importlib.metadata import entry_points
