@@ -8,8 +8,6 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test annex metadata extractor"""
 
-from six import text_type
-
 from datalad.distribution.dataset import Dataset
 from datalad.tests.utils_pytest import (
     assert_equal,
@@ -29,7 +27,7 @@ def test_annex_contentmeta(path=None):
     (ds.pathobj / 'ignored').write_text(u'nometa')
     ds.save(result_renderer="disabled")
     ds.repo.set_metadata(
-        text_type(mfile_path.relative_to(ds.pathobj)),
+        str(mfile_path.relative_to(ds.pathobj)),
         init={'tag': 'mytag', 'fancy': 'this?'}
     )
     res = ds.meta_extract(extractorname='metalad_annex', path=str(mfile_path))
@@ -38,7 +36,7 @@ def test_annex_contentmeta(path=None):
     assert_result_count(res, 1)
     assert_result_count(
         res, 1,
-        path=text_type(mfile_path),
+        path=str(mfile_path),
         type='file',
         status='ok',
         action='meta_extract')

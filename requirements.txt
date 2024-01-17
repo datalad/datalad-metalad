@@ -1,7 +1,8 @@
-six
 datalad>=0.18
-sphinx>=1.7.8
-sphinx-rtd-theme
+datalad-metadata-model>=0.3.10
+importlib-resources
+importlib-metadata
 pytest
 pyyaml
-datalad-metadata-model>=0.3.10
+sphinx>=1.7.8
+sphinx-rtd-theme

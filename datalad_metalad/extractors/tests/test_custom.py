@@ -9,7 +9,6 @@
 """Test custom metadata extractor"""
 
 import json
-from six import text_type
 
 from datalad.distribution.dataset import Dataset
 from datalad.tests.utils_pytest import (
@@ -177,7 +176,7 @@ def test_custom_contentmeta(path=None):
 
     assert_result_count(
         res, 1,
-        path=text_type(ds.pathobj / 'sub' / 'one'),
+        path=str(ds.pathobj / 'sub' / 'one'),
         type='file',
         status='ok',
         action='meta_extract')
@@ -212,7 +211,7 @@ def test_custom_content_broken(path=None):
     assert_result_count(res, 1)
     assert_result_count(
         res, 1,
-        path=text_type(ds.pathobj / 'sub' / 'one'),
+        path=str(ds.pathobj / 'sub' / 'one'),
         type='file',
         # specific message does vary a lot across platforms
         #message=

@@ -8,9 +8,13 @@
 # ## ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ##
 """Test all extractors at a basic level"""
 
-from pkg_resources import iter_entry_points
+import sys
 
 import pytest
+if sys.version_info < (3, 9):
+    from importlib_metadata import entry_points
+else:
+    from importlib.metadata import entry_points
 
 from datalad.api import (
     Dataset,
@@ -47,7 +51,7 @@ def test_api(path=None, *, annex):
     assert_repo_status(ds.path)
 
     processed_extractors, skipped_extractors = [], []
-    for extractor_ep in iter_entry_points("datalad.metadata.extractors"):
+    for extractor_ep in entry_points(group="datalad.metadata.extractors"):
 
         # There are a number of extractors that do not
         # work on empty datasets, or datasets, or without

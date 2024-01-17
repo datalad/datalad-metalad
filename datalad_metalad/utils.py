@@ -1,9 +1,13 @@
 import json
-import pkg_resources
 import sys
 from itertools import islice
 from pathlib import Path
 from typing import Dict, List, Union
+
+if sys.version_info < (3, 9):
+    from importlib_resources import files
+else:
+    from importlib.resources import files
 
 from datalad.distribution.dataset import (
     Dataset,
@@ -82,8 +86,7 @@ def read_json_object(path_or_object: Union[str, JSONType]) -> JSONType:
         else:
             try:
                 json_object = json.loads(
-                    pkg_resources.resource_string(
-                        "datalad_metalad.pipeline",
+                    files("datalad_metalad.pipeline").joinpath(
                         f"pipelines/{path_or_object}_pipeline.json"))
                 return json_object
             except FileNotFoundError:

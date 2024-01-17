@@ -22,10 +22,6 @@ from .. import (
 from datalad.utils import (
     Path,
 )
-from six import (
-    iteritems,
-    string_types,
-)
 
 import logging
 lgr = logging.getLogger('datalad.metadata.extractors.metalad_core')
@@ -319,7 +315,7 @@ def _get_urls_from_whereis(wi, prefixes=('http', 'dl+archive:')):
     from "whereis" output"""
     return [
         url
-        for remote, rprops in iteritems(wi.get('remotes', {}) if 'status' in wi else wi)
+        for remote, rprops in (wi.get('remotes', {}) if 'status' in wi else wi).items()
         for url in rprops.get('urls', [])
         if any(url.startswith(pref) for pref in prefixes)
     ]
@@ -433,7 +429,7 @@ def whereis_file_(self, paths):
         with keys: 'description', 'here', 'urls' (list) that contain
         the values of the respective 'git annex whereis' response.
     """
-    if isinstance(paths, string_types):
+    if isinstance(paths, str):
         raise ValueError('whereis_file(paths): paths must be '
                          'iterable, not a string type')
 
