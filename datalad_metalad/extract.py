@@ -46,17 +46,6 @@ from datalad.interface.utils import generic_result_renderer
 from datalad.support.annexrepo import AnnexRepo
 from datalad.ui import ui
 
-from .extractors.base import (
-    DataOutputCategory,
-    DatasetMetadataExtractor,
-    FileInfo,
-    FileMetadataExtractor,
-    MetadataExtractor,
-    MetadataExtractorBase,
-)
-
-from datalad_deprecated.metadata.extractors.base import BaseMetadataExtractor
-
 from datalad.support.constraints import (
     EnsureNone,
     EnsureStr,
@@ -66,6 +55,15 @@ from datalad.support.param import Parameter
 from dataladmetadatamodel.metadatapath import MetadataPath
 
 from .exceptions import ExtractorNotFoundError
+from .extractors.base import (
+    BaseMetadataExtractor,
+    DataOutputCategory,
+    DatasetMetadataExtractor,
+    FileInfo,
+    FileMetadataExtractor,
+    MetadataExtractor,
+    MetadataExtractorBase,
+)
 from .utils import (
     args_to_dict,
     check_dataset,
@@ -236,7 +234,7 @@ class Extract(Interface):
             get_context: bool = False,
             force_dataset_level: bool = False,
             extractorargs: Optional[List[str]] = None):
-        
+
         # Get basic arguments
         extractor_name = extractorname
         extractor_args = ([path] + extractorargs
@@ -327,7 +325,7 @@ class Extract(Interface):
             ensure_path_validity(source_dataset, file_tree_path)
         else:
             extraction_arguments.extractor_type = 'dataset'
-        
+
         yield from do_extraction(ep=extraction_arguments)
         return
 
@@ -364,7 +362,7 @@ class Extract(Interface):
 
 
 def do_extraction(ep: ExtractionArguments):
-    extractor_type = ep.extractor_type    
+    extractor_type = ep.extractor_type
 
     # Legacy extraction
     legacy_extractor_map = {
@@ -383,7 +381,7 @@ def do_extraction(ep: ExtractionArguments):
 
         yield from legacy_extractor_map[extractor_type](ep)
         return
-    
+
     # Latest generation extraction
     extractor_class_map = {
         'file': FileMetadataExtractor,
@@ -397,7 +395,7 @@ def do_extraction(ep: ExtractionArguments):
             f"is not a {extractor_type}-level extractor"
         )
         raise ValueError(msg)
-    
+
     lgr.debug(
             "performing %s-level metadata "
             "extraction (%s) for %s at %s",
@@ -406,7 +404,7 @@ def do_extraction(ep: ExtractionArguments):
             extractor_type,
             ep.source_dataset.path / ep.file_tree_path \
             if extractor_type == 'file' else ep.source_dataset.path)
-    
+
     if extractor_type == 'file':
         file_info = get_file_info(ep.source_dataset, ep.file_tree_path)
         extractor = ep.extractor_class(
@@ -428,19 +426,19 @@ def perform_metadata_extraction(
         ep: ExtractionArguments,
         extractor: Union[DatasetMetadataExtractor, FileMetadataExtractor]
     ):
-    
+
     # Get output category; only IMMEDIATE is supported
     output_category = extractor.get_data_output_category()
     if output_category != DataOutputCategory.IMMEDIATE:
         raise NotImplementedError(
             f"Output category {output_category} not supported")
-    
+
     # Prepare result record
     result_template = {
         "action": "meta_extract",
         "path": ep.local_source_object_path
     }
-    
+
     # Get required content
     res = extractor.get_required_content()
     if isinstance(res, bool):
@@ -458,7 +456,7 @@ def perform_metadata_extraction(
                 yield r
         if failure_count > 0:
             return
-    
+
     # Run extraction and update result
     result = extractor.extract(None)
     result.datalad_result_dict.update(result_template)
@@ -481,7 +479,7 @@ def perform_metadata_extraction(
                     path=ep.file_tree_path,
                 )
             )
-    
+
     yield result.datalad_result_dict
 
 
@@ -752,7 +750,7 @@ def legacy_extract_dataset(ea: ExtractionArguments) -> Iterable[dict]:
 
     else:
         raise ValueError(
-            f"unknown extractor class: {type(ea.extractor_class).__name__}")
+            f"unknown extractor class: {ea.extractor_class.__name__}")
 
 
 def annex_status(annex_repo, paths=None):
