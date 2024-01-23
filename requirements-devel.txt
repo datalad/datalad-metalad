@@ -3,12 +3,12 @@ datalad>=0.18
 datalad-metadata-model>=0.3.10
 importlib-metadata>=3.6; python_version < '3.10'
 importlib-resources>=3.0; python_version < '3.9'
-sphinx>=1.7.8
-sphinx-rtd-theme
 pre-commit
 pyyaml
 pytest
 pytest-cov
+sphinx>=1.7.8
+sphinx-rtd-theme
 
 # required for extractor tests
 ExifRead
