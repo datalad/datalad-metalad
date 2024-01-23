@@ -22,6 +22,13 @@ from typing import (
 from uuid import UUID
 
 from datalad.distribution.dataset import Dataset
+# XXX this is the legacy-legacy interface, keep around for a bit more and then
+# remove
+from datalad_deprecated.metadata.extractors.base import BaseMetadataExtractor
+
+
+# Add a generation identifier to the old extractor base class
+BaseMetadataExtractor.__generation__ = 2
 
 
 @dataclasses.dataclass
@@ -350,58 +357,3 @@ class MetadataExtractor(metaclass=abc.ABCMeta):
         object instance is passed via the method's `dataset` argument.
         """
         return {}
-
-
-# XXX this is the legacy-legacy interface, keep around for a bit more and then
-# remove
-class BaseMetadataExtractor:
-
-    __generation__ = 2
-
-    NEEDS_CONTENT = True   # majority of the extractors need data content
-
-    def __init__(self, ds, paths):
-        """
-        Parameters
-        ----------
-        ds : dataset instance
-          Dataset to extract metadata from.
-        paths : list
-          Paths to investigate when extracting content metadata
-        """
-
-        self.ds = ds
-        self.paths = paths
-
-    def get_metadata(self, dataset=True, content=True):
-        """
-        Returns
-        -------
-        dict or None, dict or None
-          Dataset metadata dict, dictionary of filepath regexes with metadata,
-          dicts, each return value could be None if there is no such metadata
-        """
-        # default implementation
-        return \
-            self._get_dataset_metadata() if dataset else None, \
-            ((k, v) for k, v in self._get_content_metadata()) if content else None
-
-    def _get_dataset_metadata(self):
-        """
-        Returns
-        -------
-        dict
-          keys and values are arbitrary
-        """
-        raise NotImplementedError
-
-    def _get_content_metadata(self):
-        """Get ALL metadata for all dataset content.
-
-        Possibly limited to the paths given to the extractor.
-
-        Returns
-        -------
-        generator((location, metadata_dict))
-        """
-        raise NotImplementedError
