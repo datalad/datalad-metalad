@@ -798,8 +798,6 @@ def legacy_get_file_info(dataset: Dataset,
 
 def legacy_extract_file(ea: ExtractionArguments) -> Iterable[dict]:
 
-    import sys
-    print(repr(ea), file=sys.stderr)
     if issubclass(ea.extractor_class, MetadataExtractor):
 
         # Call metalad legacy extractor with a single status record.
